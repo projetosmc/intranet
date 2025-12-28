@@ -37,6 +37,17 @@ serve(async (req) => {
     if (existingUser) {
       userId = existingUser.id;
       console.log(`User already exists with ID: ${userId}`);
+      
+      // Update password
+      const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
+        password,
+      });
+      
+      if (updateError) {
+        console.error("Error updating password:", updateError);
+      } else {
+        console.log("Password updated successfully");
+      }
     } else {
       // Create new user
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
