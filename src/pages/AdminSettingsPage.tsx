@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/contexts/UserContext';
@@ -42,6 +43,7 @@ export default function AdminSettingsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [selectedParentId, setSelectedParentId] = useState<string>('__none__');
+  const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAdmin) {
@@ -127,12 +129,13 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const confirmDelete = async () => {
+    if (!deleteItemId) return;
     try {
       const { error } = await supabase
         .from('menu_items')
         .delete()
-        .eq('id', id);
+        .eq('id', deleteItemId);
 
       if (error) throw error;
       toast({ title: 'Item removido!' });
@@ -141,6 +144,8 @@ export default function AdminSettingsPage() {
     } catch (error) {
       console.error('Error deleting menu item:', error);
       toast({ title: 'Erro ao remover item', variant: 'destructive' });
+    } finally {
+      setDeleteItemId(null);
     }
   };
 
@@ -363,7 +368,7 @@ export default function AdminSettingsPage() {
                           <Button 
                             variant="ghost" 
                             size="icon-sm" 
-                            onClick={() => handleDelete(item.id)}
+                            onClick={() => setDeleteItemId(item.id)}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
@@ -403,7 +408,7 @@ export default function AdminSettingsPage() {
                             <Button 
                               variant="ghost" 
                               size="icon-sm" 
-                              onClick={() => handleDelete(child.id)}
+                              onClick={() => setDeleteItemId(child.id)}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -443,7 +448,7 @@ export default function AdminSettingsPage() {
                         <Button 
                           variant="ghost" 
                           size="icon-sm" 
-                          onClick={() => handleDelete(item.id)}
+                          onClick={() => setDeleteItemId(item.id)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -456,6 +461,24 @@ export default function AdminSettingsPage() {
           </TabsContent>
         </Tabs>
       </motion.div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteItemId} onOpenChange={(open) => !open && setDeleteItemId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este item de menu? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
