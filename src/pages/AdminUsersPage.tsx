@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,6 +14,7 @@ import { useUser } from '@/contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { logAudit } from '@/hooks/useAuditLog';
 
 interface UserProfile {
   id: string;
@@ -90,6 +91,16 @@ export default function AdminUsersPage() {
 
       if (error) throw error;
 
+      // Log audit
+      await logAudit({
+        action: isActive ? 'user_deactivated' : 'user_activated',
+        entity_type: 'profile',
+        entity_id: userId,
+        target_user_id: userId,
+        old_value: { is_active: isActive },
+        new_value: { is_active: !isActive },
+      });
+
       setUsers(users.map(u => 
         u.id === userId ? { ...u, is_active: !isActive } : u
       ));
@@ -108,6 +119,15 @@ export default function AdminUsersPage() {
           .from('user_roles')
           .insert({ user_id: userId, role });
         if (error) throw error;
+
+        // Log audit
+        await logAudit({
+          action: 'role_added',
+          entity_type: 'user_role',
+          entity_id: `${userId}-${role}`,
+          target_user_id: userId,
+          new_value: { role },
+        });
       } else {
         const { error } = await supabase
           .from('user_roles')
@@ -115,6 +135,15 @@ export default function AdminUsersPage() {
           .eq('user_id', userId)
           .eq('role', role);
         if (error) throw error;
+
+        // Log audit
+        await logAudit({
+          action: 'role_removed',
+          entity_type: 'user_role',
+          entity_id: `${userId}-${role}`,
+          target_user_id: userId,
+          old_value: { role },
+        });
       }
 
       await fetchUsers();
@@ -126,6 +155,8 @@ export default function AdminUsersPage() {
   };
 
   const handleUpdateProfile = async (userId: string, data: Partial<UserProfile>) => {
+    const currentUser = users.find(u => u.id === userId);
+    
     try {
       const { error } = await supabase
         .from('profiles')
@@ -138,6 +169,21 @@ export default function AdminUsersPage() {
         .eq('id', userId);
 
       if (error) throw error;
+
+      // Log audit
+      await logAudit({
+        action: 'profile_updated',
+        entity_type: 'profile',
+        entity_id: userId,
+        target_user_id: userId,
+        old_value: {
+          unit: currentUser?.unit,
+          department: currentUser?.department,
+          job_title: currentUser?.job_title,
+          phone: currentUser?.phone,
+        },
+        new_value: data,
+      });
 
       await fetchUsers();
       setIsEditDialogOpen(false);
