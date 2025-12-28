@@ -1,48 +1,45 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, ReactNode } from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatar?: string;
-  role: 'admin' | 'user';
-}
+import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 
 interface UserContextType {
-  user: User | null;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    avatar?: string;
+  } | null;
   isAdmin: boolean;
-  login: (user: User) => void;
-  logout: () => void;
+  isAuthenticated: boolean;
   toggle3D: boolean;
   setToggle3D: (value: boolean) => void;
+  signOut: () => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-const mockUser: User = {
-  id: '1',
-  name: 'João Silva',
-  email: 'joao.silva@montecarlo.com.br',
-  role: 'admin',
-};
-
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useLocalStorage<User | null>('mc-hub-user', mockUser);
+  const { user: authUser, isAuthenticated, signOut } = useAuth();
+  const { isAdmin } = useUserRole();
   const [toggle3D, setToggle3D] = useLocalStorage<boolean>('mc-hub-3d', true);
 
-  const isAdmin = user?.role === 'admin';
-
-  const login = (userData: User) => {
-    setUser(userData);
-  };
-
-  const logout = () => {
-    setUser(null);
-  };
+  const user = authUser ? {
+    id: authUser.id,
+    name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'Usuário',
+    email: authUser.email || '',
+    avatar: authUser.user_metadata?.avatar_url,
+  } : null;
 
   return (
-    <UserContext.Provider value={{ user, isAdmin, login, logout, toggle3D, setToggle3D }}>
+    <UserContext.Provider value={{ 
+      user, 
+      isAdmin, 
+      isAuthenticated, 
+      toggle3D, 
+      setToggle3D, 
+      signOut 
+    }}>
       {children}
     </UserContext.Provider>
   );
