@@ -40,7 +40,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useDbAnnouncements } from '@/hooks/useDbAnnouncements';
-import { Announcement, TemplateType, PollType } from '@/types/tools';
+import { Announcement, TemplateType, PollType } from '@/types/announcements';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';

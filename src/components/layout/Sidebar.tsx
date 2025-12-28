@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Grid3X3, 
   Fuel,
   Shield,
   Search,
   ChevronDown,
-  LucideIcon
+  LucideIcon,
+  Megaphone,
+  FileText
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/contexts/UserContext';
 import { Input } from '@/components/ui/input';
-import { useTools } from '@/hooks/useTools';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DbMenuItem {
@@ -38,6 +38,14 @@ interface MenuItemType {
   children?: MenuItemType[];
 }
 
+interface SearchResult {
+  id: string;
+  title: string;
+  type: 'menu' | 'announcement';
+  path: string;
+  icon: 'menu' | 'announcement';
+}
+
 const MENU_CACHE_KEY = 'mc_hub_menu_cache';
 const MENU_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
@@ -55,13 +63,15 @@ export const clearMenuCache = () => {
 
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { isAdmin } = useUser();
-  const { tools } = useTools();
   const [searchQuery, setSearchQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuItemType[]>([]);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [allSubmenus, setAllSubmenus] = useState<DbMenuItem[]>([]);
 
   useEffect(() => {
     fetchMenuItems();
@@ -109,6 +119,7 @@ export function Sidebar() {
       if (cached) {
         const processedItems = processMenuItems(cached);
         setMenuItems(processedItems);
+        setAllSubmenus(cached.filter(item => item.parent_id));
         autoExpandMenus(processedItems);
         setIsLoading(false);
         return;
@@ -126,6 +137,7 @@ export function Sidebar() {
 
       const items = data as DbMenuItem[];
       setCachedMenus(items);
+      setAllSubmenus(items.filter(item => item.parent_id));
       
       const processedItems = processMenuItems(items);
       setMenuItems(processedItems);
@@ -190,16 +202,73 @@ export function Sidebar() {
     );
   };
 
-  const filteredTools = tools.filter(tool =>
-    tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    tool.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  ).slice(0, 5);
+  // Search function for submenus and announcements
+  const handleSearch = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
 
-  const handleToolClick = (url: string) => {
-    window.open(url, '_blank');
+    const results: SearchResult[] = [];
+    const lowerQuery = query.toLowerCase();
+
+    // Search in submenus
+    allSubmenus.forEach(menu => {
+      if (menu.name.toLowerCase().includes(lowerQuery)) {
+        // Check if it's admin only and user is not admin
+        if (menu.is_admin_only && !isAdmin) return;
+        
+        results.push({
+          id: menu.id,
+          title: menu.name,
+          type: 'menu',
+          path: menu.path,
+          icon: 'menu'
+        });
+      }
+    });
+
+    // Search in announcements
+    try {
+      const { data: announcements } = await supabase
+        .from('announcements')
+        .select('id, title')
+        .eq('active', true)
+        .ilike('title', `%${query}%`)
+        .limit(5);
+
+      if (announcements) {
+        announcements.forEach(ann => {
+          results.push({
+            id: ann.id,
+            title: ann.title,
+            type: 'announcement',
+            path: '/comunicados',
+            icon: 'announcement'
+          });
+        });
+      }
+    } catch (error) {
+      console.error('Error searching announcements:', error);
+    }
+
+    setSearchResults(results.slice(0, 8));
+  };
+
+  const handleResultClick = (result: SearchResult) => {
+    navigate(result.path);
     setSearchQuery('');
     setShowResults(false);
+    setSearchResults([]);
   };
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Filter menus based on admin status
   const visibleMenuItems = menuItems.filter(item => !item.isAdminOnly || isAdmin);
@@ -323,7 +392,7 @@ export function Sidebar() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Buscar ferramentas..."
+            placeholder="Buscar..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -336,38 +405,42 @@ export function Sidebar() {
         </div>
 
         {/* Search Results Dropdown */}
-        {showResults && filteredTools.length > 0 && (
+        {showResults && searchResults.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-50"
           >
-            {filteredTools.map((tool) => (
+            {searchResults.map((result) => (
               <button
-                key={tool.id}
-                onClick={() => handleToolClick(tool.url)}
+                key={`${result.type}-${result.id}`}
+                onClick={() => handleResultClick(result)}
                 className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors flex items-center gap-2"
               >
-                <Grid3X3 className="h-4 w-4 text-primary shrink-0" />
+                {result.type === 'menu' ? (
+                  <FileText className="h-4 w-4 text-primary shrink-0" />
+                ) : (
+                  <Megaphone className="h-4 w-4 text-primary shrink-0" />
+                )}
                 <div className="truncate">
-                  <span className="font-medium text-foreground">{tool.name}</span>
-                  {tool.area && (
-                    <span className="text-muted-foreground ml-2 text-xs">({tool.area})</span>
-                  )}
+                  <span className="font-medium text-foreground">{result.title}</span>
+                  <span className="text-muted-foreground ml-2 text-xs">
+                    ({result.type === 'menu' ? 'Menu' : 'Comunicado'})
+                  </span>
                 </div>
               </button>
             ))}
           </motion.div>
         )}
 
-        {showResults && searchQuery.length > 0 && filteredTools.length === 0 && (
+        {showResults && searchQuery.length > 0 && searchResults.length === 0 && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-3 z-50"
           >
             <p className="text-sm text-muted-foreground text-center">
-              Nenhuma ferramenta encontrada
+              Nenhum resultado encontrado
             </p>
           </motion.div>
         )}

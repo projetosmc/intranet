@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
-import { CommandPalette } from '@/components/CommandPalette';
 
 const pageTransition = {
   initial: { opacity: 0, y: 20 },
@@ -13,20 +12,7 @@ const pageTransition = {
 };
 
 export function MainLayout() {
-  const [commandOpen, setCommandOpen] = useState(false);
   const location = useLocation();
-
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setCommandOpen((open) => !open);
-      }
-    };
-
-    document.addEventListener('keydown', down);
-    return () => document.removeEventListener('keydown', down);
-  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -36,7 +22,7 @@ export function MainLayout() {
         className="flex flex-col min-h-screen"
         style={{ marginLeft: 256 }}
       >
-        <Topbar onSearchOpen={() => setCommandOpen(true)} />
+        <Topbar />
         
         <main className="flex-1 p-6 overflow-hidden">
           <AnimatePresence mode="wait">
@@ -53,8 +39,6 @@ export function MainLayout() {
           </AnimatePresence>
         </main>
       </div>
-
-      <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
     </div>
   );
 }
