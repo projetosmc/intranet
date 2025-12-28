@@ -75,6 +75,21 @@ export default function AdminSettingsPage() {
     const name = formData.get('name') as string;
     const finalPath = parentId ? pathValue : (pathValue || `/${name.toLowerCase().replace(/\s+/g, '-')}`);
     
+    // Check for duplicate name
+    const isDuplicate = menuItems.some(item => 
+      item.name.toLowerCase() === name.toLowerCase() && 
+      item.id !== editingItem?.id
+    );
+
+    if (isDuplicate) {
+      toast({ 
+        title: 'Nome duplicado', 
+        description: 'Já existe um item de menu com este nome.', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
     const item = {
       name,
       path: finalPath,
