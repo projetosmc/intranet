@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from '@/components/CommandPalette';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 const pageTransition = {
   initial: { opacity: 0, y: 20 },
@@ -14,7 +13,6 @@ const pageTransition = {
 };
 
 export function MainLayout() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage('mc-hub-sidebar', false);
   const [commandOpen, setCommandOpen] = useState(false);
   const location = useLocation();
 
@@ -32,16 +30,11 @@ export function MainLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar 
-        collapsed={sidebarCollapsed} 
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
-      />
+      <Sidebar />
       
-      <motion.div
-        initial={false}
-        animate={{ marginLeft: sidebarCollapsed ? 72 : 240 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      <div
         className="flex flex-col min-h-screen"
+        style={{ marginLeft: 256 }}
       >
         <Topbar onSearchOpen={() => setCommandOpen(true)} />
         
@@ -59,7 +52,7 @@ export function MainLayout() {
             </motion.div>
           </AnimatePresence>
         </main>
-      </motion.div>
+      </div>
 
       <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
     </div>

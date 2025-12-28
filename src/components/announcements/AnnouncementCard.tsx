@@ -18,16 +18,16 @@ export function AnnouncementCard({ announcement, onClick, delay = 0 }: Announcem
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: delay * 0.05 }}
       whileHover={{ y: -4 }}
-      className="overflow-hidden rounded-lg shadow-sm transition hover:shadow-lg cursor-pointer bg-card"
+      className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-card border border-border"
       onClick={onClick}
     >
       <img
         alt={announcement.title}
         src={announcement.imageUrl || placeholderImage}
-        className="h-56 w-full object-cover"
+        className="h-40 w-full object-cover"
       />
 
-      <div className="p-4 sm:p-6">
+      <div className="p-4">
         <time 
           dateTime={announcement.publishedAt} 
           className="block text-xs text-muted-foreground"
@@ -35,11 +35,11 @@ export function AnnouncementCard({ announcement, onClick, delay = 0 }: Announcem
           {format(new Date(announcement.publishedAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
         </time>
 
-        <h3 className="mt-0.5 text-lg font-semibold text-foreground hover:text-primary transition-colors">
+        <h3 className="mt-1 text-base font-semibold text-foreground hover:text-primary transition-colors line-clamp-2">
           {announcement.title}
         </h3>
 
-        <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
           {announcement.summary}
         </p>
       </div>
