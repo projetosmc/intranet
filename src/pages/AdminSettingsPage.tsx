@@ -16,6 +16,23 @@ import { toast } from '@/hooks/use-toast';
 import { clearMenuCache } from '@/components/layout/Sidebar';
 import * as LucideIcons from 'lucide-react';
 import { AuditLogsTab } from '@/components/admin/AuditLogsTab';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface MenuItem {
   id: string;
@@ -46,6 +63,14 @@ export default function AdminSettingsPage() {
   const [selectedParentId, setSelectedParentId] = useState<string>('__none__');
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
   const [namePreview, setNamePreview] = useState<string>('');
+  const [selectedIcon, setSelectedIcon] = useState<string>('Circle');
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     if (isAdmin) {
@@ -174,13 +199,147 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = parentItems.findIndex((item) => item.id === active.id);
+      const newIndex = parentItems.findIndex((item) => item.id === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(parentItems, oldIndex, newIndex);
+        
+        // Update sort_order for all affected items
+        try {
+          const updates = newOrder.map((item, index) => 
+            supabase
+              .from('menu_items')
+              .update({ sort_order: index })
+              .eq('id', item.id)
+          );
+          
+          await Promise.all(updates);
+          clearMenuCache();
+          await fetchMenuItems();
+          toast({ title: 'Ordem atualizada!' });
+        } catch (error) {
+          console.error('Error reordering:', error);
+          toast({ title: 'Erro ao reordenar', variant: 'destructive' });
+        }
+      }
+    }
+  };
+
+  const handleChildDragEnd = async (parentId: string, event: DragEndEvent) => {
+    const { active, over } = event;
+    const children = getChildItems(parentId);
+
+    if (over && active.id !== over.id) {
+      const oldIndex = children.findIndex((item) => item.id === active.id);
+      const newIndex = children.findIndex((item) => item.id === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(children, oldIndex, newIndex);
+        
+        try {
+          const updates = newOrder.map((item, index) => 
+            supabase
+              .from('menu_items')
+              .update({ sort_order: index })
+              .eq('id', item.id)
+          );
+          
+          await Promise.all(updates);
+          clearMenuCache();
+          await fetchMenuItems();
+          toast({ title: 'Ordem atualizada!' });
+        } catch (error) {
+          console.error('Error reordering:', error);
+          toast({ title: 'Erro ao reordenar', variant: 'destructive' });
+        }
+      }
+    }
+  };
+
   const getIconComponent = (iconName: string) => {
     const Icon = (LucideIcons as any)[iconName] || LucideIcons.Circle;
     return <Icon className="h-4 w-4" />;
   };
 
+  const getIconComponentLarge = (iconName: string) => {
+    const Icon = (LucideIcons as any)[iconName] || LucideIcons.Circle;
+    return <Icon className="h-6 w-6" />;
+  };
+
   const parentItems = menuItems.filter(item => !item.parent_id);
   const getChildItems = (parentId: string) => menuItems.filter(item => item.parent_id === parentId);
+
+  // Sortable Menu Item Component
+  const SortableMenuItem = ({ item, isChild = false }: { item: MenuItem; isChild?: boolean }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: item.id });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={`flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors ${isChild ? 'pl-12 bg-muted/10' : ''} ${isDragging ? 'z-50 bg-card shadow-lg' : ''}`}
+      >
+        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <div className="flex items-center gap-2 flex-1">
+          {getIconComponent(item.icon)}
+          <span className="font-medium">{item.name}</span>
+          <span className="text-sm text-muted-foreground">{item.path}</span>
+          {item.open_in_new_tab && (
+            <ExternalLink className="h-3 w-3 text-muted-foreground" />
+          )}
+          {item.is_admin_only && (
+            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Admin</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={item.active}
+            onCheckedChange={() => handleToggleActive(item.id, item.active)}
+          />
+          <Button 
+            variant="ghost" 
+            size="icon-sm" 
+            onClick={() => { 
+              setEditingItem(item); 
+              setSelectedParentId(item.parent_id || '__none__'); 
+              setSelectedIcon(item.icon || 'Circle');
+              setNamePreview(item.name);
+              setIsDialogOpen(true); 
+            }}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon-sm" 
+            onClick={() => setDeleteItemId(item.id)}
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   if (!isAdmin) {
     return (
@@ -230,13 +389,15 @@ export default function AdminSettingsPage() {
                   setEditingItem(null);
                   setSelectedParentId('__none__');
                   setNamePreview('');
+                  setSelectedIcon('Circle');
                 } else if (editingItem) {
                   setSelectedParentId(editingItem.parent_id || '__none__');
                   setNamePreview(editingItem.name);
+                  setSelectedIcon(editingItem.icon || 'Circle');
                 }
               }}>
                 <DialogTrigger asChild>
-                  <Button size="sm" onClick={() => { setSelectedParentId('__none__'); setNamePreview(''); }}>
+                  <Button size="sm" onClick={() => { setSelectedParentId('__none__'); setNamePreview(''); setSelectedIcon('Circle'); }}>
                     <Plus className="h-4 w-4 mr-2" />
                     Novo Item
                   </Button>
@@ -303,21 +464,30 @@ export default function AdminSettingsPage() {
 
                     <div>
                       <Label className="mb-1.5 block">Ícone</Label>
-                      <Select name="icon" defaultValue={editingItem?.icon || 'Circle'}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-[200px]">
-                          {availableIcons.map(icon => (
-                            <SelectItem key={icon} value={icon}>
-                              <div className="flex items-center gap-2">
-                                {getIconComponent(icon)}
-                                <span>{icon}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10 border border-primary/20">
+                          {getIconComponentLarge(selectedIcon)}
+                        </div>
+                        <Select 
+                          name="icon" 
+                          defaultValue={editingItem?.icon || 'Circle'}
+                          onValueChange={setSelectedIcon}
+                        >
+                          <SelectTrigger className="flex-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[200px]">
+                            {availableIcons.map(icon => (
+                              <SelectItem key={icon} value={icon}>
+                                <div className="flex items-center gap-2">
+                                  {getIconComponent(icon)}
+                                  <span>{icon}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
                     <div>
@@ -368,126 +538,47 @@ export default function AdminSettingsPage() {
                   <p className="text-sm">Clique em "Novo Item" para adicionar</p>
                 </div>
               ) : (
-                <div className="divide-y divide-border">
-                  {parentItems.map((item) => (
-                    <div key={item.id}>
-                      {/* Parent Item */}
-                      <div className="flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors">
-                        <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
-                        <div className="flex items-center gap-2 flex-1">
-                          {getIconComponent(item.icon)}
-                          <span className="font-medium">{item.name}</span>
-                          <span className="text-sm text-muted-foreground">{item.path}</span>
-                          {item.open_in_new_tab && (
-                            <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                          )}
-                          {item.is_admin_only && (
-                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Admin</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={item.active}
-                            onCheckedChange={() => handleToggleActive(item.id, item.active)}
-                          />
-                          <Button 
-                            variant="ghost" 
-                            size="icon-sm" 
-                            onClick={() => { setEditingItem(item); setSelectedParentId(item.parent_id || '__none__'); setIsDialogOpen(true); }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon-sm" 
-                            onClick={() => setDeleteItemId(item.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Child Items */}
-                      {getChildItems(item.id).map((child) => (
-                        <div 
-                          key={child.id} 
-                          className="flex items-center gap-3 p-4 pl-12 hover:bg-muted/30 transition-colors bg-muted/10"
-                        >
-                          <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
-                          <div className="flex items-center gap-2 flex-1">
-                            {getIconComponent(child.icon)}
-                            <span className="font-medium">{child.name}</span>
-                            <span className="text-sm text-muted-foreground">{child.path}</span>
-                            {child.open_in_new_tab && (
-                              <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                            )}
-                            {child.is_admin_only && (
-                              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Admin</span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={child.active}
-                              onCheckedChange={() => handleToggleActive(child.id, child.active)}
-                            />
-                            <Button 
-                              variant="ghost" 
-                              size="icon-sm" 
-                              onClick={() => { setEditingItem(child); setSelectedParentId(child.parent_id || '__none__'); setIsDialogOpen(true); }}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={parentItems.map(item => item.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="divide-y divide-border">
+                      {parentItems.map((item) => (
+                        <div key={item.id}>
+                          <SortableMenuItem item={item} />
+                          
+                          {/* Child Items with their own DndContext */}
+                          {getChildItems(item.id).length > 0 && (
+                            <DndContext
+                              sensors={sensors}
+                              collisionDetection={closestCenter}
+                              onDragEnd={(event) => handleChildDragEnd(item.id, event)}
                             >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon-sm" 
-                              onClick={() => setDeleteItemId(child.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
+                              <SortableContext
+                                items={getChildItems(item.id).map(child => child.id)}
+                                strategy={verticalListSortingStrategy}
+                              >
+                                {getChildItems(item.id).map((child) => (
+                                  <SortableMenuItem key={child.id} item={child} isChild />
+                                ))}
+                              </SortableContext>
+                            </DndContext>
+                          )}
                         </div>
                       ))}
-                    </div>
-                  ))}
 
-                  {/* Orphan Items (items with parent_id but parent doesn't exist) */}
-                  {menuItems.filter(item => item.parent_id && !parentItems.find(p => p.id === item.parent_id)).map((item) => (
-                    <div 
-                      key={item.id} 
-                      className="flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors"
-                    >
-                      <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
-                      <div className="flex items-center gap-2 flex-1">
-                        {getIconComponent(item.icon)}
-                        <span className="font-medium">{item.name}</span>
-                        <span className="text-sm text-muted-foreground">{item.path}</span>
-                        {item.open_in_new_tab && (
-                          <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={item.active}
-                          onCheckedChange={() => handleToggleActive(item.id, item.active)}
-                        />
-                        <Button 
-                          variant="ghost" 
-                          size="icon-sm" 
-                          onClick={() => { setEditingItem(item); setSelectedParentId(item.parent_id || '__none__'); setIsDialogOpen(true); }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon-sm" 
-                          onClick={() => setDeleteItemId(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
+                      {/* Orphan Items */}
+                      {menuItems.filter(item => item.parent_id && !parentItems.find(p => p.id === item.parent_id)).map((item) => (
+                        <SortableMenuItem key={item.id} item={item} />
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </SortableContext>
+                </DndContext>
               )}
             </div>
           </TabsContent>
