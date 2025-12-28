@@ -41,6 +41,7 @@ export default function AdminSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [selectedParentId, setSelectedParentId] = useState<string>('__none__');
 
   useEffect(() => {
     if (isAdmin) {
@@ -67,11 +68,18 @@ export default function AdminSettingsPage() {
   };
 
   const handleSave = async (formData: FormData) => {
+    const parentId = (formData.get('parent_id') as string) === '__none__' ? null : (formData.get('parent_id') as string) || null;
+    const pathValue = formData.get('path') as string;
+    
+    // If it's a parent menu (no parent_id), path is optional - generate from name
+    const name = formData.get('name') as string;
+    const finalPath = parentId ? pathValue : (pathValue || `/${name.toLowerCase().replace(/\s+/g, '-')}`);
+    
     const item = {
-      name: formData.get('name') as string,
-      path: formData.get('path') as string,
+      name,
+      path: finalPath,
       icon: formData.get('icon') as string,
-      parent_id: (formData.get('parent_id') as string) === '__none__' ? null : (formData.get('parent_id') as string) || null,
+      parent_id: parentId,
       open_in_new_tab: formData.get('open_mode') === 'new_tab',
       is_admin_only: formData.get('is_admin_only') === 'on',
       sort_order: parseInt(formData.get('sort_order') as string) || 0,
@@ -183,9 +191,17 @@ export default function AdminSettingsPage() {
                   Gerencie os itens de menu e submenus do sidebar.
                 </p>
               </div>
-              <Dialog open={isDialogOpen} onOpenChange={(o) => { setIsDialogOpen(o); if (!o) setEditingItem(null); }}>
+              <Dialog open={isDialogOpen} onOpenChange={(o) => { 
+                setIsDialogOpen(o); 
+                if (!o) {
+                  setEditingItem(null);
+                  setSelectedParentId('__none__');
+                } else if (editingItem) {
+                  setSelectedParentId(editingItem.parent_id || '__none__');
+                }
+              }}>
                 <DialogTrigger asChild>
-                  <Button size="sm">
+                  <Button size="sm" onClick={() => setSelectedParentId('__none__')}>
                     <Plus className="h-4 w-4 mr-2" />
                     Novo Item
                   </Button>
@@ -196,14 +212,42 @@ export default function AdminSettingsPage() {
                   </DialogHeader>
                   <form onSubmit={(e) => { e.preventDefault(); handleSave(new FormData(e.currentTarget)); }} className="space-y-4">
                     <div>
+                      <Label>Menu Pai</Label>
+                      <Select 
+                        name="parent_id" 
+                        value={selectedParentId}
+                        onValueChange={setSelectedParentId}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Nenhum (item principal)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Nenhum (menu principal)</SelectItem>
+                          {parentItems.map(item => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {item.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {selectedParentId === '__none__' 
+                          ? 'Este será um menu principal com submenus'
+                          : 'Este será um submenu'}
+                      </p>
+                    </div>
+
+                    <div>
                       <Label>Nome</Label>
                       <Input name="name" defaultValue={editingItem?.name} required placeholder="Nome do menu" />
                     </div>
                     
-                    <div>
-                      <Label>Caminho/URL</Label>
-                      <Input name="path" defaultValue={editingItem?.path} required placeholder="/pagina ou https://..." />
-                    </div>
+                    {selectedParentId !== '__none__' && (
+                      <div>
+                        <Label>Caminho/URL</Label>
+                        <Input name="path" defaultValue={editingItem?.path} required placeholder="/pagina ou https://..." />
+                      </div>
+                    )}
 
                     <div>
                       <Label>Ícone</Label>
@@ -218,23 +262,6 @@ export default function AdminSettingsPage() {
                                 {getIconComponent(icon)}
                                 <span>{icon}</span>
                               </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label>Menu Pai (opcional)</Label>
-                      <Select name="parent_id" defaultValue={editingItem?.parent_id || '__none__'}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Nenhum (item principal)" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none__">Nenhum (item principal)</SelectItem>
-                          {parentItems.map(item => (
-                            <SelectItem key={item.id} value={item.id}>
-                              {item.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -314,7 +341,7 @@ export default function AdminSettingsPage() {
                           <Button 
                             variant="ghost" 
                             size="icon-sm" 
-                            onClick={() => { setEditingItem(item); setIsDialogOpen(true); }}
+                            onClick={() => { setEditingItem(item); setSelectedParentId(item.parent_id || '__none__'); setIsDialogOpen(true); }}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -354,7 +381,7 @@ export default function AdminSettingsPage() {
                             <Button 
                               variant="ghost" 
                               size="icon-sm" 
-                              onClick={() => { setEditingItem(child); setIsDialogOpen(true); }}
+                              onClick={() => { setEditingItem(child); setSelectedParentId(child.parent_id || '__none__'); setIsDialogOpen(true); }}
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -394,7 +421,7 @@ export default function AdminSettingsPage() {
                         <Button 
                           variant="ghost" 
                           size="icon-sm" 
-                          onClick={() => { setEditingItem(item); setIsDialogOpen(true); }}
+                          onClick={() => { setEditingItem(item); setSelectedParentId(item.parent_id || '__none__'); setIsDialogOpen(true); }}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
