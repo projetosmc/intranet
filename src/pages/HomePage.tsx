@@ -1,10 +1,13 @@
 import { motion } from 'framer-motion';
-import { Megaphone, ArrowRight } from 'lucide-react';
+import { Megaphone, ArrowRight, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnnouncementCard } from '@/components/announcements/AnnouncementCard';
 import { BannerCarousel } from '@/components/announcements/BannerCarousel';
+import { EventCalendar } from '@/components/calendar/EventCalendar';
+import { BirthdayList } from '@/components/birthday/BirthdayList';
 import { MCScene } from '@/components/3d/MCScene';
 import { useDbAnnouncements } from '@/hooks/useDbAnnouncements';
+import { useBirthdays } from '@/hooks/useBirthdays';
 import { useUser } from '@/contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,6 +15,7 @@ export default function HomePage() {
   const navigate = useNavigate();
   const { user } = useUser();
   const { activeAnnouncements, bannerAnnouncements } = useDbAnnouncements();
+  const { birthdays, isLoading: birthdaysLoading } = useBirthdays();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -19,6 +23,13 @@ export default function HomePage() {
     if (hour < 18) return 'Boa tarde';
     return 'Boa noite';
   };
+
+  // Convert birthdays to calendar events
+  const birthdayEvents = birthdays.map(b => ({
+    date: b.birthdayDate,
+    title: `🎂 ${b.fullName}`,
+    type: 'birthday'
+  }));
 
   return (
     <div className="relative min-h-[calc(100vh-8rem)]">
@@ -52,6 +63,27 @@ export default function HomePage() {
             <BannerCarousel banners={bannerAnnouncements} />
           </motion.section>
         )}
+
+        {/* Calendar and Birthdays Section */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <Calendar className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-semibold text-foreground">Calendário</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <EventCalendar events={birthdayEvents} />
+            </div>
+            <div>
+              <BirthdayList birthdays={birthdays} isLoading={birthdaysLoading} />
+            </div>
+          </div>
+        </motion.section>
 
         {/* Announcements Section */}
         <motion.section
