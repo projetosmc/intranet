@@ -1,13 +1,18 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Zap } from 'lucide-react';
+import { Search, Star, Clock, Megaphone, Zap, ArrowRight } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ToolCard } from '@/components/tools/ToolCard';
+import { AnnouncementCard } from '@/components/announcements/AnnouncementCard';
 import { BannerCarousel } from '@/components/announcements/BannerCarousel';
-import { HomeBentoGrid } from '@/components/home/HomeBentoGrid';
 import { MCScene } from '@/components/3d/MCScene';
+import { useTools } from '@/hooks/useTools';
 import { useDbAnnouncements } from '@/hooks/useDbAnnouncements';
 import { useUser } from '@/contexts/UserContext';
+import { Tool } from '@/types/tools';
+import { useNavigate } from 'react-router-dom';
 
 const quickLinks = [
   { name: 'Requisição de Despesas', icon: 'Receipt', url: 'https://despesas.montecarlo.com.br' },
@@ -17,9 +22,19 @@ const quickLinks = [
 ];
 
 export default function HomePage() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const { user } = useUser();
-  const { bannerAnnouncements } = useDbAnnouncements();
+  const { tools, toggleFavorite, isFavorite, recordAccess, getFavoriteTools, getRecentTools } = useTools();
+  const { activeAnnouncements, bannerAnnouncements } = useDbAnnouncements();
+
+  const favoriteTools = getFavoriteTools();
+  const recentTools = getRecentTools(4);
+
+  const handleOpenTool = (tool: Tool) => {
+    recordAccess(tool.id);
+    window.open(tool.url, '_blank');
+  };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -115,14 +130,125 @@ export default function HomePage() {
           </motion.section>
         )}
 
-        {/* Bento Grid */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <HomeBentoGrid />
-        </motion.section>
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Favorites & Recents */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Favorites */}
+            <motion.section
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Star className="h-5 w-5 text-warning" />
+                  <h2 className="text-lg font-semibold text-foreground">Favoritos</h2>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => navigate('/ferramentas')}>
+                  Ver todos
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+              {favoriteTools.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {favoriteTools.slice(0, 4).map((tool, index) => (
+                    <ToolCard
+                      key={tool.id}
+                      tool={tool}
+                      isFavorite={true}
+                      onFavoriteToggle={toggleFavorite}
+                      onOpen={handleOpenTool}
+                      delay={index}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="glass-card p-8 text-center">
+                  <Star className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
+                  <p className="text-muted-foreground">
+                    Você ainda não tem favoritos.{' '}
+                    <button
+                      onClick={() => navigate('/ferramentas')}
+                      className="text-primary hover:underline"
+                    >
+                      Explore as ferramentas
+                    </button>
+                  </p>
+                </div>
+              )}
+            </motion.section>
+
+            {/* Recent */}
+            <motion.section
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-info" />
+                  <h2 className="text-lg font-semibold text-foreground">Recentes</h2>
+                </div>
+              </div>
+              {recentTools.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {recentTools.map((tool, index) => (
+                    <ToolCard
+                      key={tool.id}
+                      tool={tool}
+                      isFavorite={isFavorite(tool.id)}
+                      onFavoriteToggle={toggleFavorite}
+                      onOpen={handleOpenTool}
+                      delay={index}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="glass-card p-8 text-center">
+                  <Clock className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
+                  <p className="text-muted-foreground">
+                    Nenhum acesso recente.{' '}
+                    <button
+                      onClick={() => navigate('/ferramentas')}
+                      className="text-primary hover:underline"
+                    >
+                      Explore as ferramentas
+                    </button>
+                  </p>
+                </div>
+              )}
+            </motion.section>
+          </div>
+
+          {/* Right Column - Announcements */}
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Megaphone className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold text-foreground">Comunicados</h2>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/comunicados')}>
+                Ver todos
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+            <div className="space-y-3">
+              {activeAnnouncements.slice(0, 4).map((announcement, index) => (
+                <AnnouncementCard
+                  key={announcement.id}
+                  announcement={announcement}
+                  onClick={() => navigate(`/comunicados/${announcement.id}`)}
+                  delay={index}
+                />
+              ))}
+            </div>
+          </motion.section>
+        </div>
       </div>
     </div>
   );
