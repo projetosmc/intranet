@@ -24,6 +24,11 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  DragOverEvent,
+  pointerWithin,
+  rectIntersection,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -64,9 +69,15 @@ export default function AdminSettingsPage() {
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
   const [namePreview, setNamePreview] = useState<string>('');
   const [selectedIcon, setSelectedIcon] = useState<string>('Circle');
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -199,17 +210,59 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    setOverId(event.over?.id as string || null);
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveId(null);
+    setOverId(null);
 
-    if (over && active.id !== over.id) {
+    if (!over || active.id === over.id) return;
+
+    const activeItem = menuItems.find(item => item.id === active.id);
+    const overItem = menuItems.find(item => item.id === over.id);
+
+    if (!activeItem) return;
+
+    // Check if dragging a child item onto a parent (to change parent)
+    if (activeItem.parent_id && overItem && !overItem.parent_id) {
+      // Moving submenu to a different parent
+      try {
+        const newChildren = getChildItems(overItem.id);
+        await supabase
+          .from('menu_items')
+          .update({ 
+            parent_id: overItem.id, 
+            sort_order: newChildren.length 
+          })
+          .eq('id', activeItem.id);
+        
+        clearMenuCache();
+        await fetchMenuItems();
+        toast({ title: 'Submenu movido!' });
+        return;
+      } catch (error) {
+        console.error('Error moving submenu:', error);
+        toast({ title: 'Erro ao mover submenu', variant: 'destructive' });
+        return;
+      }
+    }
+
+    // Reordering within same level
+    if (!activeItem.parent_id && overItem && !overItem.parent_id) {
+      // Reordering parent items
       const oldIndex = parentItems.findIndex((item) => item.id === active.id);
       const newIndex = parentItems.findIndex((item) => item.id === over.id);
 
       if (oldIndex !== -1 && newIndex !== -1) {
         const newOrder = arrayMove(parentItems, oldIndex, newIndex);
         
-        // Update sort_order for all affected items
         try {
           const updates = newOrder.map((item, index) => 
             supabase
@@ -232,34 +285,65 @@ export default function AdminSettingsPage() {
 
   const handleChildDragEnd = async (parentId: string, event: DragEndEvent) => {
     const { active, over } = event;
-    const children = getChildItems(parentId);
+    setActiveId(null);
+    setOverId(null);
 
-    if (over && active.id !== over.id) {
-      const oldIndex = children.findIndex((item) => item.id === active.id);
-      const newIndex = children.findIndex((item) => item.id === over.id);
+    if (!over || active.id === over.id) return;
 
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newOrder = arrayMove(children, oldIndex, newIndex);
+    const activeItem = menuItems.find(item => item.id === active.id);
+    const overItem = menuItems.find(item => item.id === over.id);
+
+    // Check if dropping onto a different parent
+    if (overItem && !overItem.parent_id && overItem.id !== parentId) {
+      // Moving to a different parent
+      try {
+        const newChildren = getChildItems(overItem.id);
+        await supabase
+          .from('menu_items')
+          .update({ 
+            parent_id: overItem.id, 
+            sort_order: newChildren.length 
+          })
+          .eq('id', String(active.id));
         
-        try {
-          const updates = newOrder.map((item, index) => 
-            supabase
-              .from('menu_items')
-              .update({ sort_order: index })
-              .eq('id', item.id)
-          );
-          
-          await Promise.all(updates);
-          clearMenuCache();
-          await fetchMenuItems();
-          toast({ title: 'Ordem atualizada!' });
-        } catch (error) {
-          console.error('Error reordering:', error);
-          toast({ title: 'Erro ao reordenar', variant: 'destructive' });
-        }
+        clearMenuCache();
+        await fetchMenuItems();
+        toast({ title: 'Submenu movido!' });
+        return;
+      } catch (error) {
+        console.error('Error moving submenu:', error);
+        toast({ title: 'Erro ao mover submenu', variant: 'destructive' });
+        return;
+      }
+    }
+
+    const children = getChildItems(parentId);
+    const oldIndex = children.findIndex((item) => item.id === active.id);
+    const newIndex = children.findIndex((item) => item.id === over.id);
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const newOrder = arrayMove(children, oldIndex, newIndex);
+      
+      try {
+        const updates = newOrder.map((item, index) => 
+          supabase
+            .from('menu_items')
+            .update({ sort_order: index })
+            .eq('id', item.id)
+        );
+        
+        await Promise.all(updates);
+        clearMenuCache();
+        await fetchMenuItems();
+        toast({ title: 'Ordem atualizada!' });
+      } catch (error) {
+        console.error('Error reordering:', error);
+        toast({ title: 'Erro ao reordenar', variant: 'destructive' });
       }
     }
   };
+
+  const getActiveItem = () => menuItems.find(item => item.id === activeId);
 
   const getIconComponent = (iconName: string) => {
     const Icon = (LucideIcons as any)[iconName] || LucideIcons.Circle;
@@ -285,21 +369,39 @@ export default function AdminSettingsPage() {
       isDragging,
     } = useSortable({ id: item.id });
 
+    const isOver = overId === item.id && !isDragging;
+
     const style = {
       transform: CSS.Transform.toString(transform),
-      transition,
-      opacity: isDragging ? 0.5 : 1,
+      transition: transition || 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1)',
     };
 
     return (
-      <div
+      <motion.div
         ref={setNodeRef}
         style={style}
-        className={`flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors ${isChild ? 'pl-12 bg-muted/10' : ''} ${isDragging ? 'z-50 bg-card shadow-lg' : ''}`}
+        initial={false}
+        animate={{
+          scale: isDragging ? 1.02 : 1,
+          boxShadow: isDragging ? '0 10px 40px rgba(0,0,0,0.15)' : 'none',
+          opacity: isDragging ? 0.9 : 1,
+        }}
+        transition={{ duration: 0.2 }}
+        className={`flex items-center gap-3 p-4 transition-all duration-200 ${
+          isChild ? 'pl-12 bg-muted/10' : ''
+        } ${isDragging ? 'z-50 bg-card rounded-lg relative' : 'hover:bg-muted/30'} ${
+          isOver && !isChild ? 'bg-primary/10 border-l-4 border-primary' : ''
+        }`}
       >
-        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
-        </div>
+        <motion.div 
+          {...attributes} 
+          {...listeners} 
+          className="cursor-grab active:cursor-grabbing"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <GripVertical className={`h-4 w-4 transition-colors ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
+        </motion.div>
         <div className="flex items-center gap-2 flex-1">
           {getIconComponent(item.icon)}
           <span className="font-medium">{item.name}</span>
@@ -337,9 +439,20 @@ export default function AdminSettingsPage() {
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
-      </div>
+      </motion.div>
     );
   };
+
+  // Drag Overlay Item (visual feedback while dragging)
+  const DragOverlayItem = ({ item }: { item: MenuItem }) => (
+    <div className="flex items-center gap-3 p-4 bg-card rounded-lg shadow-2xl border-2 border-primary">
+      <GripVertical className="h-4 w-4 text-primary" />
+      <div className="flex items-center gap-2 flex-1">
+        {getIconComponent(item.icon)}
+        <span className="font-semibold">{item.name}</span>
+      </div>
+    </div>
+  );
 
   if (!isAdmin) {
     return (
@@ -541,6 +654,8 @@ export default function AdminSettingsPage() {
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
                   onDragEnd={handleDragEnd}
                 >
                   <SortableContext
@@ -557,6 +672,8 @@ export default function AdminSettingsPage() {
                             <DndContext
                               sensors={sensors}
                               collisionDetection={closestCenter}
+                              onDragStart={handleDragStart}
+                              onDragOver={handleDragOver}
                               onDragEnd={(event) => handleChildDragEnd(item.id, event)}
                             >
                               <SortableContext
@@ -567,6 +684,11 @@ export default function AdminSettingsPage() {
                                   <SortableMenuItem key={child.id} item={child} isChild />
                                 ))}
                               </SortableContext>
+                              <DragOverlay>
+                                {activeId && getActiveItem()?.parent_id === item.id ? (
+                                  <DragOverlayItem item={getActiveItem()!} />
+                                ) : null}
+                              </DragOverlay>
                             </DndContext>
                           )}
                         </div>
@@ -578,6 +700,11 @@ export default function AdminSettingsPage() {
                       ))}
                     </div>
                   </SortableContext>
+                  <DragOverlay>
+                    {activeId && !getActiveItem()?.parent_id ? (
+                      <DragOverlayItem item={getActiveItem()!} />
+                    ) : null}
+                  </DragOverlay>
                 </DndContext>
               )}
             </div>
