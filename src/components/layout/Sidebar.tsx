@@ -1,4 +1,5 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Home, 
@@ -7,21 +8,14 @@ import {
   Activity, 
   HelpCircle, 
   Settings,
-  ChevronLeft,
-  ChevronRight,
   Fuel,
-  Shield
+  Shield,
+  Search
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { useUser } from '@/contexts/UserContext';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Badge } from '@/components/ui/badge';
-
-interface SidebarProps {
-  collapsed: boolean;
-  onToggle: () => void;
-}
+import { Input } from '@/components/ui/input';
+import { useTools } from '@/hooks/useTools';
 
 const menuItems = [
   { name: 'Meu Dia', path: '/', icon: Home },
@@ -36,20 +30,35 @@ const adminItems = [
   { name: 'Admin Comunicados', path: '/admin/comunicados', icon: Megaphone },
 ];
 
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { isAdmin } = useUser();
+  const { tools } = useTools();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showResults, setShowResults] = useState(false);
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
   };
 
+  const filteredTools = tools.filter(tool =>
+    tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    tool.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  ).slice(0, 5);
+
+  const handleToolClick = (url: string) => {
+    window.open(url, '_blank');
+    setSearchQuery('');
+    setShowResults(false);
+  };
+
   const MenuItem = ({ item }: { item: typeof menuItems[0] }) => {
     const Icon = item.icon;
     const active = isActive(item.path);
 
-    const content = (
+    return (
       <NavLink
         to={item.path}
         className={cn(
@@ -70,39 +79,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           "h-5 w-5 shrink-0 transition-colors",
           active ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-primary"
         )} />
-        {!collapsed && (
-          <motion.span
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -10 }}
-            transition={{ duration: 0.15 }}
-          >
-            {item.name}
-          </motion.span>
-        )}
+        <span>{item.name}</span>
       </NavLink>
     );
-
-    if (collapsed) {
-      return (
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>{content}</TooltipTrigger>
-          <TooltipContent side="right" className="font-medium">
-            {item.name}
-          </TooltipContent>
-        </Tooltip>
-      );
-    }
-
-    return content;
   };
 
   return (
-    <motion.aside
-      initial={false}
-      animate={{ width: collapsed ? 72 : 256 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="fixed left-0 top-0 z-40 h-screen flex flex-col"
+    <aside
+      className="fixed left-0 top-0 z-40 h-screen w-64 flex flex-col"
       style={{ background: 'var(--gradient-sidebar)' }}
     >
       {/* Header */}
@@ -110,21 +94,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10">
           <Fuel className="h-6 w-6 text-primary" />
         </div>
-        {!collapsed && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex flex-col"
-          >
-            <span className="font-bold text-foreground">MC Hub</span>
-            <span className="text-xs text-muted-foreground">Monte Carlo</span>
-          </motion.div>
-        )}
+        <div className="flex flex-col">
+          <span className="font-bold text-foreground">MC Hub</span>
+          <span className="text-xs text-muted-foreground">Monte Carlo</span>
+        </div>
       </div>
 
       {/* Admin Badge */}
-      {isAdmin && !collapsed && (
+      {isAdmin && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -139,18 +116,61 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </motion.div>
       )}
 
-      {isAdmin && collapsed && (
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <div className="mx-auto mt-4 flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 border border-primary/20">
-              <Shield className="h-5 w-5 text-primary" />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="font-medium">
-            Administrador
-          </TooltipContent>
-        </Tooltip>
-      )}
+      {/* Search Bar */}
+      <div className="mx-4 mt-4 relative">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Buscar ferramentas..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setShowResults(e.target.value.length > 0);
+            }}
+            onFocus={() => searchQuery.length > 0 && setShowResults(true)}
+            onBlur={() => setTimeout(() => setShowResults(false), 200)}
+            className="pl-9 bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground placeholder:text-sidebar-foreground/50 text-sm h-9"
+          />
+        </div>
+
+        {/* Search Results Dropdown */}
+        {showResults && filteredTools.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-50"
+          >
+            {filteredTools.map((tool) => (
+              <button
+                key={tool.id}
+                onClick={() => handleToolClick(tool.url)}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors flex items-center gap-2"
+              >
+                <Grid3X3 className="h-4 w-4 text-primary shrink-0" />
+                <div className="truncate">
+                  <span className="font-medium text-foreground">{tool.name}</span>
+                  {tool.area && (
+                    <span className="text-muted-foreground ml-2 text-xs">({tool.area})</span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </motion.div>
+        )}
+
+        {showResults && searchQuery.length > 0 && filteredTools.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-3 z-50"
+          >
+            <p className="text-sm text-muted-foreground text-center">
+              Nenhuma ferramenta encontrada
+            </p>
+          </motion.div>
+        )}
+      </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 mt-2 space-y-1 scrollbar-thin">
@@ -162,7 +182,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <>
             <div className="my-4 px-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70">
-                {!collapsed && 'Administração'}
+                Administração
               </span>
               <div className="mt-2 border-t border-sidebar-border" />
             </div>
@@ -175,20 +195,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* Footer with version */}
       <div className="p-3 border-t border-sidebar-border">
-        {!collapsed && (
-          <div className="text-center text-xs text-sidebar-foreground/50 mb-2">
-            v1.0.0
-          </div>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onToggle}
-          className="w-full h-8 text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </Button>
+        <div className="text-center text-xs text-sidebar-foreground/50">
+          v1.0.0
+        </div>
       </div>
-    </motion.aside>
+    </aside>
   );
 }
