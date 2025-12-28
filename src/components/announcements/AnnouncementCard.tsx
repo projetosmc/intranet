@@ -10,38 +10,55 @@ interface AnnouncementCardProps {
 }
 
 export function AnnouncementCard({ announcement, onClick, delay = 0 }: AnnouncementCardProps) {
-  const placeholderImage = 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&q=80&w=1160';
+  const placeholderImage = 'https://images.unsplash.com/photo-1609557927087-f9cf8e88de18?auto=format&fit=crop&q=80&w=1160';
+  const date = new Date(announcement.publishedAt);
 
   return (
     <motion.article
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: delay * 0.05 }}
-      whileHover={{ y: -4 }}
-      className="overflow-hidden rounded-lg shadow-sm transition hover:shadow-lg cursor-pointer bg-card"
+      whileHover={{ y: -2 }}
+      className="flex bg-card rounded-lg overflow-hidden transition hover:shadow-xl cursor-pointer"
       onClick={onClick}
     >
-      <img
-        alt={announcement.title}
-        src={announcement.imageUrl || placeholderImage}
-        className="h-56 w-full object-cover"
-      />
-
-      <div className="p-4 sm:p-6">
+      {/* Vertical Date */}
+      <div className="rotate-180 p-2 [writing-mode:vertical-lr]">
         <time 
           dateTime={announcement.publishedAt} 
-          className="block text-xs text-muted-foreground"
+          className="flex items-center justify-between gap-4 text-xs font-bold text-foreground uppercase"
         >
-          {format(new Date(announcement.publishedAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+          <span>{format(date, 'yyyy')}</span>
+          <span className="w-px flex-1 bg-border"></span>
+          <span>{format(date, 'dd MMM', { locale: ptBR })}</span>
         </time>
+      </div>
 
-        <h3 className="mt-0.5 text-lg font-semibold text-foreground hover:text-primary transition-colors">
-          {announcement.title}
-        </h3>
+      {/* Image */}
+      <div className="hidden sm:block sm:basis-56">
+        <img
+          alt={announcement.title}
+          src={announcement.imageUrl || placeholderImage}
+          className="aspect-square h-full w-full object-cover"
+        />
+      </div>
 
-        <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
-          {announcement.summary}
-        </p>
+      {/* Content */}
+      <div className="flex flex-1 flex-col justify-between">
+        <div className="border-s border-border p-4 sm:border-l-transparent sm:p-6">
+          <h3 className="font-bold text-foreground uppercase line-clamp-2">
+            {announcement.title}
+          </h3>
+          <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+            {announcement.summary}
+          </p>
+        </div>
+
+        <div className="sm:flex sm:items-end sm:justify-end">
+          <span className="block bg-primary px-5 py-3 text-center text-xs font-bold text-primary-foreground uppercase transition hover:bg-primary/90">
+            Ler mais
+          </span>
+        </div>
       </div>
     </motion.article>
   );
