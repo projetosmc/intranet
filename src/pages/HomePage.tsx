@@ -1,10 +1,7 @@
-import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Star, Clock, Megaphone, Zap, ArrowRight } from 'lucide-react';
+import { Star, Clock, Megaphone, ArrowRight, ExternalLink } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ToolCard } from '@/components/tools/ToolCard';
 import { AnnouncementCard } from '@/components/announcements/AnnouncementCard';
 import { BannerCarousel } from '@/components/announcements/BannerCarousel';
 import { MCScene } from '@/components/3d/MCScene';
@@ -14,22 +11,14 @@ import { useUser } from '@/contexts/UserContext';
 import { Tool } from '@/types/tools';
 import { useNavigate } from 'react-router-dom';
 
-const quickLinks = [
-  { name: 'Requisição de Despesas', icon: 'Receipt', url: 'https://despesas.montecarlo.com.br' },
-  { name: 'Portal Preços', icon: 'Tags', url: 'https://precos.montecarlo.com.br' },
-  { name: 'Pré-fatura', icon: 'FileText', url: 'https://prefatura.montecarlo.com.br' },
-  { name: 'Portal Cliente', icon: 'Users', url: 'https://cliente.montecarlo.com.br' },
-];
-
 export default function HomePage() {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
   const { user } = useUser();
-  const { tools, toggleFavorite, isFavorite, recordAccess, getFavoriteTools, getRecentTools } = useTools();
+  const { toggleFavorite, isFavorite, recordAccess, getFavoriteTools, getRecentTools } = useTools();
   const { activeAnnouncements, bannerAnnouncements } = useDbAnnouncements();
 
   const favoriteTools = getFavoriteTools();
-  const recentTools = getRecentTools(4);
+  const recentTools = getRecentTools(6);
 
   const handleOpenTool = (tool: Tool) => {
     recordAccess(tool.id);
@@ -64,58 +53,9 @@ export default function HomePage() {
             <h1 className="text-3xl font-bold text-foreground mb-2">
               {getGreeting()}, <span className="gradient-text">{user?.name?.split(' ')[0]}</span>
             </h1>
-            <p className="text-muted-foreground mb-6">
+            <p className="text-muted-foreground">
               Acesse suas ferramentas favoritas e mantenha-se atualizado com os comunicados.
             </p>
-          </div>
-
-          {/* Search Bar */}
-          <div className="relative max-w-xl">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                placeholder="Buscar ferramentas, páginas..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 h-12 text-base bg-card/80 backdrop-blur-sm border-border/50 rounded-xl shadow-lg focus:shadow-glow-sm transition-shadow"
-              />
-              <kbd className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none inline-flex h-6 select-none items-center gap-1 rounded-md border bg-muted px-2 font-mono text-[11px] font-medium text-muted-foreground">
-                <span className="text-xs">⌘</span>K
-              </kbd>
-            </div>
-          </div>
-        </motion.section>
-
-        {/* Quick Links */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
-          <div className="flex items-center gap-2 mb-4">
-            <Zap className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">Atalhos Rápidos</h2>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {quickLinks.map((link, index) => (
-              <motion.a
-                key={link.name}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.2, delay: 0.1 + index * 0.05 }}
-                className="glass-card flex items-center gap-3 px-4 py-3 hover-lift group"
-              >
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
-                  {getIcon(link.icon)}
-                </div>
-                <span className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">
-                  {link.name}
-                </span>
-              </motion.a>
-            ))}
           </div>
         </motion.section>
 
@@ -124,7 +64,7 @@ export default function HomePage() {
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
           >
             <BannerCarousel banners={bannerAnnouncements} />
           </motion.section>
@@ -132,9 +72,9 @@ export default function HomePage() {
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Favorites & Recents */}
+          {/* Left Column - Meu Dia */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Favorites */}
+            {/* Favoritos - Lista simples */}
             <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -151,72 +91,80 @@ export default function HomePage() {
                 </Button>
               </div>
               {favoriteTools.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {favoriteTools.slice(0, 4).map((tool, index) => (
-                    <ToolCard
+                <div className="flex flex-wrap gap-2">
+                  {favoriteTools.slice(0, 8).map((tool, index) => (
+                    <motion.button
                       key={tool.id}
-                      tool={tool}
-                      isFavorite={true}
-                      onFavoriteToggle={toggleFavorite}
-                      onOpen={handleOpenTool}
-                      delay={index}
-                    />
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.2, delay: index * 0.03 }}
+                      onClick={() => handleOpenTool(tool)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card/80 border border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all group"
+                    >
+                      <div className="flex items-center justify-center w-6 h-6 rounded-md bg-primary/10 text-primary">
+                        {getIcon(tool.icon)}
+                      </div>
+                      <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                        {tool.name}
+                      </span>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </motion.button>
                   ))}
                 </div>
               ) : (
-                <div className="glass-card p-8 text-center">
-                  <Star className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
-                  <p className="text-muted-foreground">
-                    Você ainda não tem favoritos.{' '}
-                    <button
-                      onClick={() => navigate('/ferramentas')}
-                      className="text-primary hover:underline"
-                    >
-                      Explore as ferramentas
-                    </button>
-                  </p>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  Nenhum favorito.{' '}
+                  <button
+                    onClick={() => navigate('/ferramentas')}
+                    className="text-primary hover:underline"
+                  >
+                    Explore as ferramentas
+                  </button>
+                </p>
               )}
             </motion.section>
 
-            {/* Recent */}
+            {/* Recentes - Lista simples */}
             <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-info" />
-                  <h2 className="text-lg font-semibold text-foreground">Recentes</h2>
-                </div>
+              <div className="flex items-center gap-2 mb-4">
+                <Clock className="h-5 w-5 text-info" />
+                <h2 className="text-lg font-semibold text-foreground">Recentes</h2>
               </div>
               {recentTools.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-wrap gap-2">
                   {recentTools.map((tool, index) => (
-                    <ToolCard
+                    <motion.button
                       key={tool.id}
-                      tool={tool}
-                      isFavorite={isFavorite(tool.id)}
-                      onFavoriteToggle={toggleFavorite}
-                      onOpen={handleOpenTool}
-                      delay={index}
-                    />
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.2, delay: index * 0.03 }}
+                      onClick={() => handleOpenTool(tool)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card/80 border border-border/50 hover:border-info/50 hover:bg-info/5 transition-all group"
+                    >
+                      <div className="flex items-center justify-center w-6 h-6 rounded-md bg-info/10 text-info">
+                        {getIcon(tool.icon)}
+                      </div>
+                      <span className="text-sm font-medium text-foreground group-hover:text-info transition-colors">
+                        {tool.name}
+                      </span>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </motion.button>
                   ))}
                 </div>
               ) : (
-                <div className="glass-card p-8 text-center">
-                  <Clock className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
-                  <p className="text-muted-foreground">
-                    Nenhum acesso recente.{' '}
-                    <button
-                      onClick={() => navigate('/ferramentas')}
-                      className="text-primary hover:underline"
-                    >
-                      Explore as ferramentas
-                    </button>
-                  </p>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  Nenhum acesso recente.{' '}
+                  <button
+                    onClick={() => navigate('/ferramentas')}
+                    className="text-primary hover:underline"
+                  >
+                    Explore as ferramentas
+                  </button>
+                </p>
               )}
             </motion.section>
           </div>
