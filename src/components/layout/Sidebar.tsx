@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Home, 
   Grid3X3, 
@@ -10,24 +10,42 @@ import {
   Settings,
   Fuel,
   Shield,
-  Search
+  Search,
+  Monitor,
+  ChevronDown,
+  FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/contexts/UserContext';
 import { Input } from '@/components/ui/input';
 import { useTools } from '@/hooks/useTools';
 
-const menuItems = [
+interface MenuItemType {
+  name: string;
+  path: string;
+  icon: any;
+  children?: MenuItemType[];
+}
+
+const menuItems: MenuItemType[] = [
   { name: 'Meu Dia', path: '/', icon: Home },
   { name: 'Comunicados', path: '/comunicados', icon: Megaphone },
-  { name: 'Status', path: '/status', icon: Activity },
+  { 
+    name: 'Tecnologia', 
+    path: '/tecnologia', 
+    icon: Monitor,
+    children: [
+      { name: 'Status Sistemas', path: '/status', icon: Activity },
+    ]
+  },
   { name: 'Suporte', path: '/suporte', icon: HelpCircle },
 ];
 
-const adminItems = [
+const adminItems: MenuItemType[] = [
   { name: 'Configurações Gerais', path: '/admin/configuracoes', icon: Settings },
   { name: 'Comunicados', path: '/admin/comunicados', icon: Megaphone },
   { name: 'Usuários', path: '/admin/usuarios', icon: Shield },
+  { name: 'Logs de Auditoria', path: '/admin/auditoria', icon: FileText },
 ];
 
 export function Sidebar() {
@@ -38,9 +56,19 @@ export function Sidebar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
 
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['Tecnologia']);
+
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
+  };
+
+  const isMenuExpanded = (name: string) => expandedMenus.includes(name);
+
+  const toggleMenu = (name: string) => {
+    setExpandedMenus(prev => 
+      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
+    );
   };
 
   const filteredTools = tools.filter(tool =>
@@ -54,15 +82,55 @@ export function Sidebar() {
     setShowResults(false);
   };
 
-  const MenuItem = ({ item }: { item: typeof menuItems[0] }) => {
+  const MenuItem = ({ item, isChild = false }: { item: MenuItemType; isChild?: boolean }) => {
     const Icon = item.icon;
+    const hasChildren = item.children && item.children.length > 0;
     const active = isActive(item.path);
+    const expanded = isMenuExpanded(item.name);
+
+    if (hasChildren) {
+      return (
+        <div>
+          <button
+            onClick={() => toggleMenu(item.name)}
+            className={cn(
+              "w-full ripple-container group flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 relative overflow-hidden",
+              "text-sidebar-foreground hover:bg-gray-100 dark:hover:bg-gray-100 hover:text-gray-700 dark:hover:text-gray-700"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <Icon className="h-5 w-5 shrink-0 text-sidebar-foreground/50 group-hover:text-primary transition-colors" />
+              <span>{item.name}</span>
+            </div>
+            <ChevronDown className={cn(
+              "h-4 w-4 text-sidebar-foreground/50 transition-transform",
+              expanded && "rotate-180"
+            )} />
+          </button>
+          <AnimatePresence>
+            {expanded && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="ml-4 space-y-1 overflow-hidden"
+              >
+                {item.children?.map((child) => (
+                  <MenuItem key={child.path} item={child} isChild />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      );
+    }
 
     return (
       <NavLink
         to={item.path}
         className={cn(
           "ripple-container group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 relative overflow-hidden",
+          isChild && "py-1.5 text-sm",
           active 
             ? "bg-gray-100 dark:bg-gray-100 text-primary dark:text-primary font-semibold" 
             : "text-sidebar-foreground hover:bg-gray-100 dark:hover:bg-gray-100 hover:text-gray-700 dark:hover:text-gray-700"
@@ -77,6 +145,7 @@ export function Sidebar() {
         )}
         <Icon className={cn(
           "h-5 w-5 shrink-0 transition-colors",
+          isChild && "h-4 w-4",
           active ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-primary"
         )} />
         <span>{item.name}</span>
