@@ -31,6 +31,7 @@ const menuItems = [
 
 const adminItems = [
   { name: 'Admin Ferramentas', path: '/admin/ferramentas', icon: Settings },
+  { name: 'Admin Comunicados', path: '/admin/comunicados', icon: Megaphone },
 ];
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {

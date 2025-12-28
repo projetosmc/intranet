@@ -14,7 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      announcements: {
+        Row: {
+          active: boolean | null
+          content: string
+          created_at: string | null
+          id: string
+          pinned: boolean | null
+          published_at: string | null
+          summary: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          content: string
+          created_at?: string | null
+          id?: string
+          pinned?: boolean | null
+          published_at?: string | null
+          summary: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          pinned?: boolean | null
+          published_at?: string | null
+          summary?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
