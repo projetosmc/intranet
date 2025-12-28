@@ -35,7 +35,7 @@ export default function HomePage() {
     <div className="relative min-h-[calc(100vh-8rem)]">
       <MCScene />
 
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Hero Section */}
         <motion.section
           initial={{ opacity: 0, y: 20 }}
@@ -64,53 +64,49 @@ export default function HomePage() {
           </motion.section>
         )}
 
-        {/* Calendar and Birthdays Section */}
+        {/* Main Content - Split Layout */}
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.15 }}
         >
-          <div className="flex items-center gap-2 mb-4">
-            <Calendar className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-semibold text-foreground">Calendário</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <EventCalendar events={birthdayEvents} />
-            </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Side - Announcements */}
             <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Megaphone className="h-5 w-5 text-primary" />
+                  <h2 className="text-xl font-semibold text-foreground">Comunicados</h2>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => navigate('/comunicados')}>
+                  Ver todos
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {activeAnnouncements.slice(0, 4).map((announcement, index) => (
+                  <AnnouncementCard
+                    key={announcement.id}
+                    announcement={announcement}
+                    onClick={() => navigate(`/comunicados/${announcement.id}`)}
+                    delay={index}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Right Side - Calendar and Birthdays */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-foreground">Calendário</h2>
+              </div>
+              
+              <EventCalendar events={birthdayEvents} />
+              
               <BirthdayList birthdays={birthdays} isLoading={birthdaysLoading} />
             </div>
-          </div>
-        </motion.section>
-
-        {/* Announcements Section */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <Megaphone className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold text-foreground">Comunicados</h2>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/comunicados')}>
-              Ver todos
-              <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {activeAnnouncements.slice(0, 6).map((announcement, index) => (
-              <AnnouncementCard
-                key={announcement.id}
-                announcement={announcement}
-                onClick={() => navigate(`/comunicados/${announcement.id}`)}
-                delay={index}
-              />
-            ))}
           </div>
         </motion.section>
       </div>

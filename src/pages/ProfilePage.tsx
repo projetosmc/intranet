@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Camera, Mail, Save, Shield, LogOut } from 'lucide-react';
+import { User, Camera, Mail, Save, Shield, LogOut, Cake, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth();
@@ -19,22 +20,25 @@ export default function ProfilePage() {
 
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [birthdayDate, setBirthdayDate] = useState('');
+  const [unit, setUnit] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (user) {
-      // Fetch profile data
       const fetchProfile = async () => {
         const { data } = await supabase
           .from('profiles')
-          .select('full_name, avatar_url')
+          .select('full_name, avatar_url, birthday_date, unit')
           .eq('id', user.id)
           .maybeSingle();
 
         if (data) {
           setFullName(data.full_name || '');
           setAvatarUrl(data.avatar_url);
+          setBirthdayDate(data.birthday_date || '');
+          setUnit(data.unit || '');
         } else {
           setFullName(user.user_metadata?.full_name || '');
         }
@@ -53,21 +57,18 @@ export default function ProfilePage() {
       const fileName = `${user.id}.${fileExt}`;
       const filePath = `avatars/${fileName}`;
 
-      // Upload to storage
       const { error: uploadError } = await supabase.storage
         .from('announcements')
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data } = supabase.storage
         .from('announcements')
         .getPublicUrl(filePath);
 
       const newAvatarUrl = data.publicUrl;
 
-      // Update profile
       const { error: updateError } = await supabase
         .from('profiles')
         .upsert({
@@ -106,11 +107,12 @@ export default function ProfilePage() {
           id: user.id,
           full_name: fullName,
           email: user.email,
+          birthday_date: birthdayDate || null,
+          unit: unit || null,
         });
 
       if (error) throw error;
 
-      // Also update user metadata
       await supabase.auth.updateUser({
         data: { full_name: fullName },
       });
@@ -154,7 +156,7 @@ export default function ProfilePage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="glass-card p-8"
+        className="bg-card border border-border rounded-xl p-8 shadow-md"
       >
         {/* Avatar Section */}
         <div className="flex flex-col items-center mb-8">
@@ -236,6 +238,34 @@ export default function ProfilePage() {
             <p className="text-xs text-muted-foreground">
               O email não pode ser alterado
             </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="birthday" className="flex items-center gap-2">
+                <Cake className="h-4 w-4" />
+                Data de Aniversário
+              </Label>
+              <Input
+                id="birthday"
+                type="date"
+                value={birthdayDate}
+                onChange={(e) => setBirthdayDate(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="unit" className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Unidade
+              </Label>
+              <Input
+                id="unit"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                placeholder="Ex: Matriz, Filial SP"
+              />
+            </div>
           </div>
 
           <div className="flex gap-3 pt-4">
