@@ -35,6 +35,7 @@ interface MenuItemType {
   icon: LucideIcon;
   openInNewTab: boolean;
   isAdminOnly: boolean;
+  isParent: boolean;
   children?: MenuItemType[];
 }
 
@@ -175,6 +176,7 @@ export function Sidebar() {
           icon: getIconComponent(child.icon),
           openInNewTab: child.open_in_new_tab,
           isAdminOnly: child.is_admin_only,
+          isParent: false,
         }));
 
       return {
@@ -184,6 +186,7 @@ export function Sidebar() {
         icon: getIconComponent(parent.icon),
         openInNewTab: parent.open_in_new_tab,
         isAdminOnly: parent.is_admin_only,
+        isParent: true,
         children: children.length > 0 ? children : undefined,
       };
     });
@@ -316,9 +319,18 @@ export function Sidebar() {
       );
     }
 
-    // For items without children but that are category headers (have children defined but all filtered)
-    if (hasChildren) {
-      return null;
+    // For parent items without visible children - show as category header (not clickable link)
+    if (item.isParent && !isChild) {
+      return (
+        <div
+          className={cn(
+            "w-full flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider",
+            "text-sidebar-foreground/70"
+          )}
+        >
+          <span>{item.name}</span>
+        </div>
+      );
     }
 
     const linkProps = item.openInNewTab 
