@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Fuel, Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { Fuel, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -91,39 +91,63 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sidebar via-background to-sidebar p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
         className="w-full max-w-md"
       >
-        <div className="glass-card rounded-2xl p-8 shadow-glow">
-          {/* Logo */}
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10">
-              <Fuel className="h-7 w-7 text-primary" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-xl">MC Hub</span>
-              <span className="text-xs text-muted-foreground">Monte Carlo</span>
-            </div>
+        {/* Logo */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="flex items-center justify-center mb-4"
+        >
+          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10">
+            <Fuel className="h-7 w-7 text-primary" />
           </div>
+        </motion.div>
 
-          {/* Title */}
-          <h1 className="text-2xl font-bold text-center mb-2">
-            {isLogin ? 'Entrar' : 'Criar conta'}
-          </h1>
-          <p className="text-muted-foreground text-center mb-6">
-            {isLogin
-              ? 'Acesse sua conta para continuar'
-              : 'Preencha os dados para criar sua conta'}
-          </p>
+        {/* Title */}
+        <motion.h1
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="text-2xl font-bold text-center mb-2"
+        >
+          Sistema MC Hub
+        </motion.h1>
 
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="text-muted-foreground text-center mb-6"
+        >
+          Faça login para acessar o sistema
+        </motion.p>
+
+        {/* Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-card border border-border rounded-2xl p-6 shadow-xl"
+        >
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Nome completo</Label>
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-2"
+              >
+                <Label htmlFor="fullName" className="text-sm font-medium">
+                  Nome completo
+                </Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -132,17 +156,19 @@ export default function AuthPage() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Seu nome"
-                    className="pl-10"
+                    className="pl-10 bg-background border-input"
                   />
                 </div>
                 {errors.fullName && (
                   <p className="text-xs text-destructive">{errors.fullName}</p>
                 )}
-              </div>
+              </motion.div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-sm font-medium">
+                Email
+              </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -151,7 +177,7 @@ export default function AuthPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu@email.com"
-                  className="pl-10"
+                  className="pl-10 bg-background border-input"
                 />
               </div>
               {errors.email && (
@@ -160,7 +186,9 @@ export default function AuthPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password" className="text-sm font-medium">
+                Senha
+              </Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -169,7 +197,7 @@ export default function AuthPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="pl-10"
+                  className="pl-10 bg-background border-input"
                 />
               </div>
               {errors.password && (
@@ -179,16 +207,13 @@ export default function AuthPage() {
 
             <Button
               type="submit"
-              className="w-full gap-2"
+              className="w-full"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <>
-                  {isLogin ? 'Entrar' : 'Criar conta'}
-                  <ArrowRight className="h-4 w-4" />
-                </>
+                isLogin ? 'Entrar' : 'Criar conta'
               )}
             </Button>
           </form>
@@ -208,7 +233,17 @@ export default function AuthPage() {
                 : 'Já tem conta? Entrar'}
             </button>
           </div>
-        </div>
+        </motion.div>
+
+        {/* Footer */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="text-center text-sm text-muted-foreground mt-6"
+        >
+          Solicite acesso ao administrador do sistema
+        </motion.p>
       </motion.div>
     </div>
   );
