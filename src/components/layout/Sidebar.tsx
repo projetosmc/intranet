@@ -228,13 +228,13 @@ export function Sidebar() {
       }
     });
 
-    // Search in announcements
+    // Search in announcements (title and summary/description)
     try {
       const { data: announcements } = await supabase
         .from('announcements')
-        .select('id, title')
+        .select('id, title, summary')
         .eq('active', true)
-        .ilike('title', `%${query}%`)
+        .or(`title.ilike.%${query}%,summary.ilike.%${query}%`)
         .limit(5);
 
       if (announcements) {
