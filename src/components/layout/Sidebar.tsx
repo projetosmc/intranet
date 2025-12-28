@@ -1,62 +1,115 @@
-import { useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Home, 
   Grid3X3, 
-  Megaphone, 
-  Activity, 
-  HelpCircle, 
-  Settings,
   Fuel,
   Shield,
   Search,
-  Monitor,
   ChevronDown,
-  FileText
+  LucideIcon
 } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/contexts/UserContext';
 import { Input } from '@/components/ui/input';
 import { useTools } from '@/hooks/useTools';
+import { supabase } from '@/integrations/supabase/client';
 
-interface MenuItemType {
+interface DbMenuItem {
+  id: string;
   name: string;
   path: string;
-  icon: any;
+  icon: string;
+  parent_id: string | null;
+  open_in_new_tab: boolean;
+  sort_order: number;
+  is_admin_only: boolean;
+  active: boolean;
+}
+
+interface MenuItemType {
+  id: string;
+  name: string;
+  path: string;
+  icon: LucideIcon;
+  openInNewTab: boolean;
+  isAdminOnly: boolean;
   children?: MenuItemType[];
 }
 
-const menuItems: MenuItemType[] = [
-  { name: 'Meu Dia', path: '/', icon: Home },
-  { name: 'Comunicados', path: '/comunicados', icon: Megaphone },
-  { 
-    name: 'TECNOLOGIA', 
-    path: '/tecnologia', 
-    icon: Monitor,
-    children: [
-      { name: 'Status Sistemas', path: '/status', icon: Activity },
-      { name: 'Suporte', path: '/suporte', icon: HelpCircle },
-    ]
-  },
-];
-
-const adminItems: MenuItemType[] = [
-  { name: 'Configurações Gerais', path: '/admin/configuracoes', icon: Settings },
-  { name: 'Comunicados', path: '/admin/comunicados', icon: Megaphone },
-  { name: 'Usuários', path: '/admin/usuarios', icon: Shield },
-  { name: 'Logs de Auditoria', path: '/admin/auditoria', icon: FileText },
-];
-
 export function Sidebar() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { isAdmin } = useUser();
   const { tools } = useTools();
   const [searchQuery, setSearchQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
+  const [menuItems, setMenuItems] = useState<MenuItemType[]>([]);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(['TECNOLOGIA', 'CONFIGURAÇÕES']);
+  useEffect(() => {
+    fetchMenuItems();
+  }, []);
+
+  const fetchMenuItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('menu_items')
+        .select('*')
+        .eq('active', true)
+        .order('sort_order');
+
+      if (error) throw error;
+
+      const items = data as DbMenuItem[];
+      const processedItems = processMenuItems(items);
+      setMenuItems(processedItems);
+      
+      // Auto-expand menus that have children
+      const menusWithChildren = processedItems
+        .filter(item => item.children && item.children.length > 0)
+        .map(item => item.name);
+      setExpandedMenus(menusWithChildren);
+    } catch (error) {
+      console.error('Error fetching menu items:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getIconComponent = (iconName: string): LucideIcon => {
+    const icons = LucideIcons as unknown as Record<string, LucideIcon>;
+    const Icon = icons[iconName];
+    return Icon || LucideIcons.Circle;
+  };
+
+  const processMenuItems = (items: DbMenuItem[]): MenuItemType[] => {
+    const parentItems = items.filter(item => !item.parent_id);
+    
+    return parentItems.map(parent => {
+      const children = items
+        .filter(item => item.parent_id === parent.id)
+        .map(child => ({
+          id: child.id,
+          name: child.name,
+          path: child.path,
+          icon: getIconComponent(child.icon),
+          openInNewTab: child.open_in_new_tab,
+          isAdminOnly: child.is_admin_only,
+        }));
+
+      return {
+        id: parent.id,
+        name: parent.name,
+        path: parent.path,
+        icon: getIconComponent(parent.icon),
+        openInNewTab: parent.open_in_new_tab,
+        isAdminOnly: parent.is_admin_only,
+        children: children.length > 0 ? children : undefined,
+      };
+    });
+  };
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
@@ -82,13 +135,19 @@ export function Sidebar() {
     setShowResults(false);
   };
 
+  // Filter menus based on admin status
+  const visibleMenuItems = menuItems.filter(item => !item.isAdminOnly || isAdmin);
+
   const MenuItem = ({ item, isChild = false }: { item: MenuItemType; isChild?: boolean }) => {
     const Icon = item.icon;
     const hasChildren = item.children && item.children.length > 0;
     const active = isActive(item.path);
     const expanded = isMenuExpanded(item.name);
 
-    if (hasChildren) {
+    // Filter children based on admin status
+    const visibleChildren = item.children?.filter(child => !child.isAdminOnly || isAdmin);
+
+    if (hasChildren && visibleChildren && visibleChildren.length > 0) {
       return (
         <div>
           <button
@@ -112,7 +171,7 @@ export function Sidebar() {
                 exit={{ opacity: 0, height: 0 }}
                 className="space-y-1 overflow-hidden"
               >
-                {item.children?.map((child) => (
+                {visibleChildren.map((child) => (
                   <MenuItem key={child.path} item={child} isChild />
                 ))}
               </motion.div>
@@ -122,9 +181,19 @@ export function Sidebar() {
       );
     }
 
+    // For items without children but that are category headers (have children defined but all filtered)
+    if (hasChildren) {
+      return null;
+    }
+
+    const linkProps = item.openInNewTab 
+      ? { target: '_blank', rel: 'noopener noreferrer' }
+      : {};
+
     return (
       <NavLink
         to={item.path}
+        {...linkProps}
         className={cn(
           "ripple-container group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 relative overflow-hidden",
           isChild && "py-1.5 text-sm",
@@ -240,37 +309,12 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 mt-2 space-y-1 scrollbar-thin">
-        {menuItems.map((item) => (
-          <MenuItem key={item.path} item={item} />
-        ))}
-
-        {isAdmin && (
-          <div className="mt-4">
-            <button
-              onClick={() => toggleMenu('CONFIGURAÇÕES')}
-              className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 hover:bg-gray-100 dark:hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <span>Configurações</span>
-              <ChevronDown className={cn(
-                "h-4 w-4 text-sidebar-foreground/50 transition-transform",
-                isMenuExpanded('CONFIGURAÇÕES') && "rotate-180"
-              )} />
-            </button>
-            <AnimatePresence>
-              {isMenuExpanded('CONFIGURAÇÕES') && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="space-y-1 overflow-hidden"
-                >
-                  {adminItems.map((item) => (
-                    <MenuItem key={item.path} item={item} />
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+        {isLoading ? (
+          <div className="px-3 py-2 text-sm text-muted-foreground">Carregando...</div>
+        ) : (
+          visibleMenuItems.map((item) => (
+            <MenuItem key={item.id} item={item} />
+          ))
         )}
       </nav>
 
