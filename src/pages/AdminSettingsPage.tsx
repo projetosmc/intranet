@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Plus, Pencil, Trash2, GripVertical, ExternalLink, Menu } from 'lucide-react';
+import { Settings, Plus, Pencil, Trash2, GripVertical, ExternalLink, Menu, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { clearMenuCache } from '@/components/layout/Sidebar';
 import * as LucideIcons from 'lucide-react';
+import { AuditLogsTab } from '@/components/admin/AuditLogsTab';
 
 interface MenuItem {
   id: string;
@@ -200,6 +201,10 @@ export default function AdminSettingsPage() {
             <TabsTrigger value="menu" className="flex items-center gap-2">
               <Menu className="h-4 w-4" />
               Menu do Sidebar
+            </TabsTrigger>
+            <TabsTrigger value="audit" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Logs de Auditoria
             </TabsTrigger>
           </TabsList>
 
@@ -458,6 +463,10 @@ export default function AdminSettingsPage() {
                 </div>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="audit" className="mt-6">
+            <AuditLogsTab />
           </TabsContent>
         </Tabs>
       </motion.div>
