@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { UserProvider } from "@/contexts/UserContext";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import HomePage from "./pages/HomePage";
 import ToolsPage from "./pages/ToolsPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
@@ -12,6 +13,7 @@ import StatusPage from "./pages/StatusPage";
 import SupportPage from "./pages/SupportPage";
 import AdminToolsPage from "./pages/AdminToolsPage";
 import AdminAnnouncementsPage from "./pages/AdminAnnouncementsPage";
+import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,7 +26,8 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route element={<MainLayout />}>
+            <Route path="/auth" element={<AuthPage />} />
+            <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
               <Route path="/" element={<HomePage />} />
               <Route path="/ferramentas" element={<ToolsPage />} />
               <Route path="/comunicados" element={<AnnouncementsPage />} />
