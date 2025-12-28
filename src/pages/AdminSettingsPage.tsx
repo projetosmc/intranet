@@ -70,17 +70,24 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const toTitleCase = (str: string) => {
+    return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+  };
+
   const handleSave = async (formData: FormData) => {
     const parentId = (formData.get('parent_id') as string) === '__none__' ? null : (formData.get('parent_id') as string) || null;
     const pathValue = formData.get('path') as string;
     
+    // Format name: UPPERCASE for parent menus, Title Case for submenus
+    const rawName = formData.get('name') as string;
+    const formattedName = parentId ? toTitleCase(rawName) : rawName.toUpperCase();
+    
     // If it's a parent menu (no parent_id), path is optional - generate from name
-    const name = formData.get('name') as string;
-    const finalPath = parentId ? pathValue : (pathValue || `/${name.toLowerCase().replace(/\s+/g, '-')}`);
+    const finalPath = parentId ? pathValue : (pathValue || `/${rawName.toLowerCase().replace(/\s+/g, '-')}`);
     
     // Check for duplicate name
     const isDuplicate = menuItems.some(item => 
-      item.name.toLowerCase() === name.toLowerCase() && 
+      item.name.toLowerCase() === formattedName.toLowerCase() && 
       item.id !== editingItem?.id
     );
 
@@ -94,7 +101,7 @@ export default function AdminSettingsPage() {
     }
 
     const item = {
-      name,
+      name: formattedName,
       path: finalPath,
       icon: formData.get('icon') as string,
       parent_id: parentId,
