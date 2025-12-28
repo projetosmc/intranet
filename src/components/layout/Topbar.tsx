@@ -21,7 +21,7 @@ interface TopbarProps {
 }
 
 export function Topbar({ onSearchOpen }: TopbarProps) {
-  const { user, toggle3D, setToggle3D, logout } = useUser();
+  const { user, toggle3D, setToggle3D, signOut } = useUser();
   const [isDark, setIsDark] = useState(false);
 
   const toggleTheme = () => {
@@ -118,7 +118,7 @@ export function Topbar({ onSearchOpen }: TopbarProps) {
                 <span>{toggle3D ? 'Desativar efeitos 3D' : 'Ativar efeitos 3D'}</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout} className="text-destructive">
+              <DropdownMenuItem onClick={signOut} className="text-destructive">
                 Sair
               </DropdownMenuItem>
             </DropdownMenuContent>

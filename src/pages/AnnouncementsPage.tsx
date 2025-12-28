@@ -1,21 +1,30 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Megaphone, ArrowLeft, Pin, Calendar, RefreshCw, Cloud, Database } from 'lucide-react';
+import { Megaphone, ArrowLeft, Pin, Calendar, RefreshCw, Image, FileText, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AnnouncementCard } from '@/components/announcements/AnnouncementCard';
-import { useAnnouncements } from '@/hooks/useAnnouncements';
+import { PollCard } from '@/components/announcements/PollCard';
+import { useDbAnnouncements } from '@/hooks/useDbAnnouncements';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+const templateIcons = {
+  simple: FileText,
+  banner: Image,
+  poll: BarChart3,
+};
 
 export default function AnnouncementsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { announcements, source, isLoading, refetch } = useAnnouncements();
+  const { activeAnnouncements, isLoading, refetch, vote } = useDbAnnouncements();
 
-  const selectedAnnouncement = id ? announcements.find(a => a.id === id) : null;
+  const selectedAnnouncement = id ? activeAnnouncements.find(a => a.id === id) : null;
 
   if (selectedAnnouncement) {
+    const Icon = templateIcons[selectedAnnouncement.templateType];
+
     return (
       <div className="max-w-3xl mx-auto">
         <motion.div
@@ -33,11 +42,16 @@ export default function AnnouncementsPage() {
           </Button>
 
           <article className="glass-card p-8">
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-3 mb-4 flex-wrap">
+              <Badge variant="outline" className="gap-1">
+                <Icon className="h-3 w-3" />
+                {selectedAnnouncement.templateType === 'simple' ? 'Comunicado' :
+                 selectedAnnouncement.templateType === 'banner' ? 'Banner' : 'Enquete'}
+              </Badge>
               {selectedAnnouncement.pinned && (
                 <div className="flex items-center gap-1 text-primary text-sm">
                   <Pin className="h-4 w-4" />
-                  Comunicado Fixado
+                  Fixado
                 </div>
               )}
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -45,6 +59,16 @@ export default function AnnouncementsPage() {
                 {format(new Date(selectedAnnouncement.publishedAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
               </div>
             </div>
+
+            {selectedAnnouncement.templateType === 'banner' && selectedAnnouncement.imageUrl && (
+              <div className="rounded-xl overflow-hidden mb-6">
+                <img
+                  src={selectedAnnouncement.imageUrl}
+                  alt={selectedAnnouncement.title}
+                  className="w-full h-64 object-cover"
+                />
+              </div>
+            )}
 
             <h1 className="text-2xl font-bold text-foreground mb-4">
               {selectedAnnouncement.title}
@@ -54,11 +78,15 @@ export default function AnnouncementsPage() {
               {selectedAnnouncement.summary}
             </p>
 
-            <div className="prose prose-slate max-w-none">
-              <p className="text-foreground whitespace-pre-wrap">
-                {selectedAnnouncement.content}
-              </p>
-            </div>
+            {selectedAnnouncement.templateType === 'poll' ? (
+              <PollCard announcement={selectedAnnouncement} onVote={vote} />
+            ) : (
+              <div className="prose prose-slate max-w-none">
+                <p className="text-foreground whitespace-pre-wrap">
+                  {selectedAnnouncement.content}
+                </p>
+              </div>
+            )}
           </article>
         </motion.div>
       </div>
@@ -76,10 +104,6 @@ export default function AnnouncementsPage() {
           <div className="flex items-center gap-2">
             <Megaphone className="h-6 w-6 text-primary" />
             <h1 className="text-2xl font-bold text-foreground">Comunicados</h1>
-            <Badge variant={source === 'webflow' ? 'default' : 'secondary'} className="gap-1">
-              {source === 'webflow' ? <Cloud className="h-3 w-3" /> : <Database className="h-3 w-3" />}
-              {source === 'webflow' ? 'Webflow' : source === 'loading' ? 'Carregando...' : 'Local'}
-            </Badge>
           </div>
           <Button variant="outline" size="sm" onClick={refetch} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
@@ -92,17 +116,28 @@ export default function AnnouncementsPage() {
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {announcements.map((announcement, index) => (
-          <AnnouncementCard
-            key={announcement.id}
-            announcement={announcement}
-            onClick={() => navigate(`/comunicados/${announcement.id}`)}
-            delay={index}
-          />
+        {activeAnnouncements.map((announcement, index) => (
+          announcement.templateType === 'poll' ? (
+            <motion.div
+              key={announcement.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+            >
+              <PollCard announcement={announcement} onVote={vote} />
+            </motion.div>
+          ) : (
+            <AnnouncementCard
+              key={announcement.id}
+              announcement={announcement}
+              onClick={() => navigate(`/comunicados/${announcement.id}`)}
+              delay={index}
+            />
+          )
         ))}
       </div>
 
-      {announcements.length === 0 && (
+      {activeAnnouncements.length === 0 && !isLoading && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -114,6 +149,12 @@ export default function AnnouncementsPage() {
             Não há comunicados disponíveis no momento.
           </p>
         </motion.div>
+      )}
+
+      {isLoading && (
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
       )}
     </div>
   );

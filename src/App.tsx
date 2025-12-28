@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { UserProvider } from "@/contexts/UserContext";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { AdminRoute } from "@/components/AdminRoute";
 import HomePage from "./pages/HomePage";
 import ToolsPage from "./pages/ToolsPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
@@ -14,6 +15,7 @@ import SupportPage from "./pages/SupportPage";
 import AdminToolsPage from "./pages/AdminToolsPage";
 import AdminAnnouncementsPage from "./pages/AdminAnnouncementsPage";
 import AuthPage from "./pages/AuthPage";
+import SetupAdminPage from "./pages/SetupAdminPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +29,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/setup-admin" element={<ProtectedRoute><SetupAdminPage /></ProtectedRoute>} />
             <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
               <Route path="/" element={<HomePage />} />
               <Route path="/ferramentas" element={<ToolsPage />} />
@@ -34,8 +37,8 @@ const App = () => (
               <Route path="/comunicados/:id" element={<AnnouncementsPage />} />
               <Route path="/status" element={<StatusPage />} />
               <Route path="/suporte" element={<SupportPage />} />
-              <Route path="/admin/ferramentas" element={<AdminToolsPage />} />
-              <Route path="/admin/comunicados" element={<AdminAnnouncementsPage />} />
+              <Route path="/admin/ferramentas" element={<AdminRoute><AdminToolsPage /></AdminRoute>} />
+              <Route path="/admin/comunicados" element={<AdminRoute><AdminAnnouncementsPage /></AdminRoute>} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
