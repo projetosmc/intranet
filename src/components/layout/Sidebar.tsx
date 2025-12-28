@@ -9,12 +9,14 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Fuel
+  Fuel,
+  Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/contexts/UserContext';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -51,10 +53,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       <NavLink
         to={item.path}
         className={cn(
-          "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 relative overflow-hidden",
+          "ripple-container group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 relative overflow-hidden",
           active 
-            ? "bg-sidebar-accent text-sidebar-primary" 
-            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+            ? "bg-gray-100 dark:bg-gray-100 text-primary dark:text-primary font-semibold" 
+            : "text-sidebar-foreground hover:bg-gray-100 dark:hover:bg-gray-100 hover:text-gray-700 dark:hover:text-gray-700"
         )}
       >
         {active && (
@@ -98,12 +100,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <motion.aside
       initial={false}
-      animate={{ width: collapsed ? 72 : 240 }}
+      animate={{ width: collapsed ? 72 : 256 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="fixed left-0 top-0 z-40 h-screen bg-sidebar border-r border-sidebar-border flex flex-col"
+      className="fixed left-0 top-0 z-40 h-screen flex flex-col"
+      style={{ background: 'var(--gradient-sidebar)' }}
     >
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-sidebar-border">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-6 h-[65px] bg-card border-b border-border">
         <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10">
           <Fuel className="h-6 w-6 text-primary" />
         </div>
@@ -114,21 +117,55 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             exit={{ opacity: 0 }}
             className="flex flex-col"
           >
-            <span className="font-bold text-sidebar-foreground">MC Hub</span>
-            <span className="text-xs text-sidebar-foreground/50">Monte Carlo</span>
+            <span className="font-bold text-foreground">MC Hub</span>
+            <span className="text-xs text-muted-foreground">Monte Carlo</span>
           </motion.div>
         )}
       </div>
 
+      {/* Admin Badge */}
+      {isAdmin && !collapsed && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-4 mt-4"
+        >
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20">
+            <Shield className="h-4 w-4 text-primary" />
+            <span className="text-xs font-semibold text-primary uppercase tracking-wider">
+              Administrador
+            </span>
+          </div>
+        </motion.div>
+      )}
+
+      {isAdmin && collapsed && (
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <div className="mx-auto mt-4 flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 border border-primary/20">
+              <Shield className="h-5 w-5 text-primary" />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="font-medium">
+            Administrador
+          </TooltipContent>
+        </Tooltip>
+      )}
+
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1 scrollbar-thin">
+      <nav className="flex-1 overflow-y-auto py-4 px-2 mt-2 space-y-1 scrollbar-thin">
         {menuItems.map((item) => (
           <MenuItem key={item.path} item={item} />
         ))}
 
         {isAdmin && (
           <>
-            <div className="my-4 border-t border-sidebar-border" />
+            <div className="my-4 px-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70">
+                {!collapsed && 'Administração'}
+              </span>
+              <div className="mt-2 border-t border-sidebar-border" />
+            </div>
             {adminItems.map((item) => (
               <MenuItem key={item.path} item={item} />
             ))}
@@ -136,11 +173,16 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         )}
       </nav>
 
-      {/* Toggle Button */}
+      {/* Footer with version */}
       <div className="p-3 border-t border-sidebar-border">
+        {!collapsed && (
+          <div className="text-center text-xs text-sidebar-foreground/50 mb-2">
+            v1.0.0
+          </div>
+        )}
         <Button
           variant="ghost"
-          size="icon-sm"
+          size="sm"
           onClick={onToggle}
           className="w-full h-8 text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent"
         >
