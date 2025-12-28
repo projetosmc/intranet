@@ -8,6 +8,7 @@ import { BirthdayList } from '@/components/birthday/BirthdayList';
 import { MCScene } from '@/components/3d/MCScene';
 import { useDbAnnouncements } from '@/hooks/useDbAnnouncements';
 import { useBirthdays } from '@/hooks/useBirthdays';
+import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { useUser } from '@/contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -16,6 +17,7 @@ export default function HomePage() {
   const { user } = useUser();
   const { activeAnnouncements, bannerAnnouncements } = useDbAnnouncements();
   const { birthdays, isLoading: birthdaysLoading } = useBirthdays();
+  const { events: calendarEvents, addEvent, deleteEvent } = useCalendarEvents();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -24,12 +26,22 @@ export default function HomePage() {
     return 'Boa noite';
   };
 
-  // Convert birthdays to calendar events
+  // Combine birthday events with calendar events
   const birthdayEvents = birthdays.map(b => ({
     date: b.birthdayDate,
     title: `🎂 ${b.fullName}`,
     type: 'birthday'
   }));
+
+  const allEvents = [
+    ...birthdayEvents,
+    ...calendarEvents.map(e => ({
+      date: e.event_date,
+      title: e.title,
+      type: e.event_type,
+      id: e.id
+    }))
+  ];
 
   return (
     <div className="relative min-h-[calc(100vh-8rem)]">
@@ -103,7 +115,11 @@ export default function HomePage() {
                 <h2 className="text-xl font-semibold text-foreground">Calendário</h2>
               </div>
               
-              <EventCalendar events={birthdayEvents} />
+              <EventCalendar 
+                events={allEvents} 
+                onAddEvent={addEvent}
+                onDeleteEvent={deleteEvent}
+              />
               
               <BirthdayList birthdays={birthdays} isLoading={birthdaysLoading} />
             </div>

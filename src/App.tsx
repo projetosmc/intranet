@@ -8,12 +8,12 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
 import HomePage from "./pages/HomePage";
-import ToolsPage from "./pages/ToolsPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
 import StatusPage from "./pages/StatusPage";
 import SupportPage from "./pages/SupportPage";
-import AdminToolsPage from "./pages/AdminToolsPage";
+import AdminSettingsPage from "./pages/AdminSettingsPage";
 import AdminAnnouncementsPage from "./pages/AdminAnnouncementsPage";
+import AdminUsersPage from "./pages/AdminUsersPage";
 import AuthPage from "./pages/AuthPage";
 import SetupAdminPage from "./pages/SetupAdminPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -33,14 +33,14 @@ const App = () => (
             <Route path="/setup-admin" element={<ProtectedRoute><SetupAdminPage /></ProtectedRoute>} />
             <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
               <Route path="/" element={<HomePage />} />
-              <Route path="/ferramentas" element={<ToolsPage />} />
               <Route path="/comunicados" element={<AnnouncementsPage />} />
               <Route path="/comunicados/:id" element={<AnnouncementsPage />} />
               <Route path="/status" element={<StatusPage />} />
               <Route path="/suporte" element={<SupportPage />} />
               <Route path="/perfil" element={<ProfilePage />} />
-              <Route path="/admin/ferramentas" element={<AdminRoute><AdminToolsPage /></AdminRoute>} />
+              <Route path="/admin/configuracoes" element={<AdminRoute><AdminSettingsPage /></AdminRoute>} />
               <Route path="/admin/comunicados" element={<AdminRoute><AdminAnnouncementsPage /></AdminRoute>} />
+              <Route path="/admin/usuarios" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

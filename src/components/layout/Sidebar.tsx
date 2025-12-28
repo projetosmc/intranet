@@ -19,15 +19,15 @@ import { useTools } from '@/hooks/useTools';
 
 const menuItems = [
   { name: 'Meu Dia', path: '/', icon: Home },
-  { name: 'Ferramentas', path: '/ferramentas', icon: Grid3X3 },
   { name: 'Comunicados', path: '/comunicados', icon: Megaphone },
   { name: 'Status', path: '/status', icon: Activity },
   { name: 'Suporte', path: '/suporte', icon: HelpCircle },
 ];
 
 const adminItems = [
-  { name: 'Admin Ferramentas', path: '/admin/ferramentas', icon: Settings },
-  { name: 'Admin Comunicados', path: '/admin/comunicados', icon: Megaphone },
+  { name: 'Configurações Gerais', path: '/admin/configuracoes', icon: Settings },
+  { name: 'Comunicados', path: '/admin/comunicados', icon: Megaphone },
+  { name: 'Usuários', path: '/admin/usuarios', icon: Shield },
 ];
 
 export function Sidebar() {
@@ -182,7 +182,7 @@ export function Sidebar() {
           <>
             <div className="my-4 px-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70">
-                Administração
+                Configurações
               </span>
               <div className="mt-2 border-t border-sidebar-border" />
             </div>

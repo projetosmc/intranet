@@ -59,6 +59,89 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          event_date: string
+          event_type: string | null
+          id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date: string
+          event_type?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date?: string
+          event_type?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      menu_items: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          icon: string | null
+          id: string
+          is_admin_only: boolean | null
+          name: string
+          open_in_new_tab: boolean | null
+          parent_id: string | null
+          path: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_admin_only?: boolean | null
+          name: string
+          open_in_new_tab?: boolean | null
+          parent_id?: string | null
+          path: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_admin_only?: boolean | null
+          name?: string
+          open_in_new_tab?: boolean | null
+          parent_id?: string | null
+          path?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_items_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       poll_options: {
         Row: {
           announcement_id: string
@@ -119,32 +202,50 @@ export type Database = {
       }
       profiles: {
         Row: {
+          ad_object_id: string | null
+          ad_synced_at: string | null
           avatar_url: string | null
           birthday_date: string | null
           created_at: string | null
+          department: string | null
           email: string | null
           full_name: string | null
           id: string
+          is_active: boolean | null
+          job_title: string | null
+          phone: string | null
           unit: string | null
           updated_at: string | null
         }
         Insert: {
+          ad_object_id?: string | null
+          ad_synced_at?: string | null
           avatar_url?: string | null
           birthday_date?: string | null
           created_at?: string | null
+          department?: string | null
           email?: string | null
           full_name?: string | null
           id: string
+          is_active?: boolean | null
+          job_title?: string | null
+          phone?: string | null
           unit?: string | null
           updated_at?: string | null
         }
         Update: {
+          ad_object_id?: string | null
+          ad_synced_at?: string | null
           avatar_url?: string | null
           birthday_date?: string | null
           created_at?: string | null
+          department?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
+          is_active?: boolean | null
+          job_title?: string | null
+          phone?: string | null
           unit?: string | null
           updated_at?: string | null
         }
