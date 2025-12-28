@@ -3,62 +3,77 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronLeft, 
   ChevronRight, 
+  Calendar as CalendarIcon, 
   Maximize2, 
   Minimize2,
-  Calendar as CalendarIcon,
+  Plus,
+  Trash2,
   List,
   Grid3X3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import {
-  format,
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
+import { 
+  format, 
+  addMonths, 
+  subMonths, 
+  startOfMonth, 
+  endOfMonth, 
+  startOfWeek, 
   endOfWeek,
-  addDays,
-  addMonths,
-  subMonths,
-  addWeeks,
-  subWeeks,
+  eachDayOfInterval,
   isSameMonth,
   isSameDay,
   isToday,
+  addWeeks,
+  subWeeks,
+  addDays,
+  subDays
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useUser } from '@/contexts/UserContext';
+
+interface CalendarEvent {
+  date: Date;
+  title: string;
+  type?: string;
+  id?: string;
+}
+
+interface EventCalendarProps {
+  events?: CalendarEvent[];
+  onDateSelect?: (date: Date) => void;
+  onAddEvent?: (event: { title: string; event_date: Date; event_type: string; description?: string }) => Promise<boolean>;
+  onDeleteEvent?: (id: string) => Promise<boolean>;
+}
 
 type ViewType = 'day' | 'week' | 'month';
 
-interface EventCalendarProps {
-  events?: { date: Date; title: string; type?: string }[];
-  onDateSelect?: (date: Date) => void;
-}
-
-export function EventCalendar({ events = [], onDateSelect }: EventCalendarProps) {
+export function EventCalendar({ events = [], onDateSelect, onAddEvent, onDeleteEvent }: EventCalendarProps) {
+  const { isAdmin } = useUser();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [view, setView] = useState<ViewType>('month');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [newEventTitle, setNewEventTitle] = useState('');
+  const [newEventType, setNewEventType] = useState('general');
+  const [newEventDescription, setNewEventDescription] = useState('');
 
   const handlePrevious = () => {
-    if (view === 'month') {
-      setCurrentDate(subMonths(currentDate, 1));
-    } else if (view === 'week') {
-      setCurrentDate(subWeeks(currentDate, 1));
-    } else {
-      setCurrentDate(addDays(currentDate, -1));
-    }
+    if (view === 'month') setCurrentDate(subMonths(currentDate, 1));
+    else if (view === 'week') setCurrentDate(subWeeks(currentDate, 1));
+    else setCurrentDate(subDays(currentDate, 1));
   };
 
   const handleNext = () => {
-    if (view === 'month') {
-      setCurrentDate(addMonths(currentDate, 1));
-    } else if (view === 'week') {
-      setCurrentDate(addWeeks(currentDate, 1));
-    } else {
-      setCurrentDate(addDays(currentDate, 1));
-    }
+    if (view === 'month') setCurrentDate(addMonths(currentDate, 1));
+    else if (view === 'week') setCurrentDate(addWeeks(currentDate, 1));
+    else setCurrentDate(addDays(currentDate, 1));
   };
 
   const handleDateClick = (date: Date) => {
@@ -69,6 +84,24 @@ export function EventCalendar({ events = [], onDateSelect }: EventCalendarProps)
   const handleToday = () => {
     setCurrentDate(new Date());
     setSelectedDate(new Date());
+  };
+
+  const handleAddEvent = async () => {
+    if (!selectedDate || !newEventTitle.trim() || !onAddEvent) return;
+    
+    const success = await onAddEvent({
+      title: newEventTitle,
+      event_date: selectedDate,
+      event_type: newEventType,
+      description: newEventDescription,
+    });
+
+    if (success) {
+      setNewEventTitle('');
+      setNewEventDescription('');
+      setNewEventType('general');
+      setIsAddDialogOpen(false);
+    }
   };
 
   const getEventsForDate = (date: Date) => {
