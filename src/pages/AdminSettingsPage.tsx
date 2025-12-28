@@ -12,6 +12,7 @@ import { useUser } from '@/contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { clearMenuCache } from '@/components/layout/Sidebar';
 import * as LucideIcons from 'lucide-react';
 
 interface MenuItem {
@@ -95,6 +96,7 @@ export default function AdminSettingsPage() {
 
       setIsDialogOpen(false);
       setEditingItem(null);
+      clearMenuCache(); // Clear sidebar cache
       await fetchMenuItems();
     } catch (error) {
       console.error('Error saving menu item:', error);
@@ -111,6 +113,7 @@ export default function AdminSettingsPage() {
 
       if (error) throw error;
       toast({ title: 'Item removido!' });
+      clearMenuCache(); // Clear sidebar cache
       await fetchMenuItems();
     } catch (error) {
       console.error('Error deleting menu item:', error);
@@ -126,6 +129,7 @@ export default function AdminSettingsPage() {
         .eq('id', id);
 
       if (error) throw error;
+      clearMenuCache(); // Clear sidebar cache
       await fetchMenuItems();
     } catch (error) {
       console.error('Error toggling menu item:', error);
