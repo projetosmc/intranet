@@ -247,7 +247,7 @@ export default function AdminSettingsPage() {
                   </DialogHeader>
                   <form onSubmit={(e) => { e.preventDefault(); handleSave(new FormData(e.currentTarget)); }} className="space-y-4">
                     <div>
-                      <Label>Menu Pai</Label>
+                      <Label className="mb-1.5 block">Menu Pai</Label>
                       <Select 
                         name="parent_id" 
                         value={selectedParentId}
@@ -273,7 +273,7 @@ export default function AdminSettingsPage() {
                     </div>
 
                     <div>
-                      <Label>Nome</Label>
+                      <Label className="mb-1.5 block">Nome</Label>
                       <Input 
                         name="name" 
                         defaultValue={editingItem?.name} 
@@ -296,13 +296,13 @@ export default function AdminSettingsPage() {
                     
                     {selectedParentId !== '__none__' && (
                       <div>
-                        <Label>Caminho/URL</Label>
+                        <Label className="mb-1.5 block">Caminho/URL</Label>
                         <Input name="path" defaultValue={editingItem?.path} required placeholder="/pagina ou https://..." />
                       </div>
                     )}
 
                     <div>
-                      <Label>Ícone</Label>
+                      <Label className="mb-1.5 block">Ícone</Label>
                       <Select name="icon" defaultValue={editingItem?.icon || 'Circle'}>
                         <SelectTrigger>
                           <SelectValue />
@@ -321,7 +321,7 @@ export default function AdminSettingsPage() {
                     </div>
 
                     <div>
-                      <Label>Ordem</Label>
+                      <Label className="mb-1.5 block">Ordem</Label>
                       <Input 
                         name="sort_order" 
                         type="number" 
@@ -331,7 +331,7 @@ export default function AdminSettingsPage() {
                     </div>
 
                     <div>
-                      <Label>Abrir em</Label>
+                      <Label className="mb-1.5 block">Abrir em</Label>
                       <Select name="open_mode" defaultValue={editingItem?.open_in_new_tab ? 'new_tab' : 'same_window'}>
                         <SelectTrigger>
                           <SelectValue />
