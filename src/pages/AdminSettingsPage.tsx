@@ -45,6 +45,7 @@ export default function AdminSettingsPage() {
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [selectedParentId, setSelectedParentId] = useState<string>('__none__');
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
+  const [namePreview, setNamePreview] = useState<string>('');
 
   useEffect(() => {
     if (isAdmin) {
@@ -228,12 +229,14 @@ export default function AdminSettingsPage() {
                 if (!o) {
                   setEditingItem(null);
                   setSelectedParentId('__none__');
+                  setNamePreview('');
                 } else if (editingItem) {
                   setSelectedParentId(editingItem.parent_id || '__none__');
+                  setNamePreview(editingItem.name);
                 }
               }}>
                 <DialogTrigger asChild>
-                  <Button size="sm" onClick={() => setSelectedParentId('__none__')}>
+                  <Button size="sm" onClick={() => { setSelectedParentId('__none__'); setNamePreview(''); }}>
                     <Plus className="h-4 w-4 mr-2" />
                     Novo Item
                   </Button>
@@ -271,7 +274,24 @@ export default function AdminSettingsPage() {
 
                     <div>
                       <Label>Nome</Label>
-                      <Input name="name" defaultValue={editingItem?.name} required placeholder="Nome do menu" />
+                      <Input 
+                        name="name" 
+                        defaultValue={editingItem?.name} 
+                        required 
+                        placeholder="Nome do menu"
+                        onChange={(e) => setNamePreview(e.target.value)}
+                      />
+                      {namePreview && (
+                        <div className="mt-2 p-2 bg-muted rounded-md">
+                          <p className="text-xs text-muted-foreground mb-1">Preview:</p>
+                          <p className="text-sm font-medium">
+                            {selectedParentId === '__none__' 
+                              ? namePreview.toUpperCase() 
+                              : namePreview.toLowerCase().replace(/\b\w/g, char => char.toUpperCase())
+                            }
+                          </p>
+                        </div>
+                      )}
                     </div>
                     
                     {selectedParentId !== '__none__' && (
