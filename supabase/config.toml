@@ -1,1 +1,4 @@
 project_id = "haycuruhkzmhszwcmcpn"
+
+[functions.webflow-comunicados]
+verify_jwt = false
