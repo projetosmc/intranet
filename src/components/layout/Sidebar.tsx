@@ -273,8 +273,14 @@ export function Sidebar() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Filter menus based on admin status
-  const visibleMenuItems = menuItems.filter(item => !item.isAdminOnly || isAdmin);
+  // Special top items (Meu Dia, Comunicados) - shown independently at the top
+  const topItemNames = ['Meu Dia', 'Comunicados'];
+  const topItems = menuItems.filter(item => topItemNames.includes(item.name) && (!item.isAdminOnly || isAdmin));
+  
+  // Filter menus based on admin status, excluding top items from regular menu
+  const visibleMenuItems = menuItems.filter(item => 
+    (!item.isAdminOnly || isAdmin) && !topItemNames.includes(item.name)
+  );
 
   const MenuItem = ({ item, isChild = false }: { item: MenuItemType; isChild?: boolean }) => {
     const Icon = item.icon;
@@ -463,9 +469,22 @@ export function Sidebar() {
         {isLoading ? (
           <div className="px-3 py-2 text-sm text-muted-foreground">Carregando...</div>
         ) : (
-          visibleMenuItems.map((item) => (
-            <MenuItem key={item.id} item={item} />
-          ))
+          <>
+            {/* Top items (Meu Dia, Comunicados) */}
+            {topItems.map((item) => (
+              <MenuItem key={item.id} item={{ ...item, isParent: false }} isChild />
+            ))}
+            
+            {/* Separator if there are top items */}
+            {topItems.length > 0 && visibleMenuItems.length > 0 && (
+              <div className="my-3 border-t border-sidebar-border" />
+            )}
+            
+            {/* Regular menu items */}
+            {visibleMenuItems.map((item) => (
+              <MenuItem key={item.id} item={item} />
+            ))}
+          </>
         )}
       </nav>
 
