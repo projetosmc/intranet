@@ -31,7 +31,7 @@ const menuItems: MenuItemType[] = [
   { name: 'Meu Dia', path: '/', icon: Home },
   { name: 'Comunicados', path: '/comunicados', icon: Megaphone },
   { 
-    name: 'Tecnologia', 
+    name: 'TECNOLOGIA', 
     path: '/tecnologia', 
     icon: Monitor,
     children: [
@@ -56,7 +56,7 @@ export function Sidebar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
 
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(['Tecnologia']);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['TECNOLOGIA', 'CONFIGURAÇÕES']);
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
@@ -94,14 +94,11 @@ export function Sidebar() {
           <button
             onClick={() => toggleMenu(item.name)}
             className={cn(
-              "w-full ripple-container group flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 relative overflow-hidden",
-              "text-sidebar-foreground hover:bg-gray-100 dark:hover:bg-gray-100 hover:text-gray-700 dark:hover:text-gray-700"
+              "w-full ripple-container group flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all duration-200 relative overflow-hidden",
+              "text-sidebar-foreground/70 hover:bg-gray-100 dark:hover:bg-gray-100 hover:text-gray-700 dark:hover:text-gray-700"
             )}
           >
-            <div className="flex items-center gap-3">
-              <Icon className="h-5 w-5 shrink-0 text-sidebar-foreground/50 group-hover:text-primary transition-colors" />
-              <span>{item.name}</span>
-            </div>
+            <span>{item.name}</span>
             <ChevronDown className={cn(
               "h-4 w-4 text-sidebar-foreground/50 transition-transform",
               expanded && "rotate-180"
@@ -113,7 +110,7 @@ export function Sidebar() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="ml-4 space-y-1 overflow-hidden"
+                className="space-y-1 overflow-hidden"
               >
                 {item.children?.map((child) => (
                   <MenuItem key={child.path} item={child} isChild />
@@ -248,17 +245,32 @@ export function Sidebar() {
         ))}
 
         {isAdmin && (
-          <>
-            <div className="my-4 px-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70">
-                Configurações
-              </span>
-              <div className="mt-2 border-t border-sidebar-border" />
-            </div>
-            {adminItems.map((item) => (
-              <MenuItem key={item.path} item={item} />
-            ))}
-          </>
+          <div className="mt-4">
+            <button
+              onClick={() => toggleMenu('CONFIGURAÇÕES')}
+              className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 hover:bg-gray-100 dark:hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <span>Configurações</span>
+              <ChevronDown className={cn(
+                "h-4 w-4 text-sidebar-foreground/50 transition-transform",
+                isMenuExpanded('CONFIGURAÇÕES') && "rotate-180"
+              )} />
+            </button>
+            <AnimatePresence>
+              {isMenuExpanded('CONFIGURAÇÕES') && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-1 overflow-hidden"
+                >
+                  {adminItems.map((item) => (
+                    <MenuItem key={item.path} item={item} />
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         )}
       </nav>
 
