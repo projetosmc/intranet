@@ -33,88 +33,92 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   const currentBanner = banners[currentIndex];
 
   return (
-    <div className="relative w-full h-64 md:h-80 rounded-2xl overflow-hidden group">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentBanner.id}
-          initial={{ opacity: 0, x: 100 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -100 }}
-          transition={{ duration: 0.3 }}
-          className="absolute inset-0 cursor-pointer"
-          onClick={() => navigate(`/comunicados/${currentBanner.id}`)}
-        >
-          <img
-            src={currentBanner.imageUrl}
-            alt={currentBanner.title}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-6">
-            <motion.h3
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-2xl font-bold text-white mb-2"
-            >
-              {currentBanner.title}
-            </motion.h3>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-white/80 line-clamp-2"
-            >
-              {currentBanner.summary}
-            </motion.p>
-          </div>
-        </motion.div>
-      </AnimatePresence>
+    <div className="relative w-full rounded-2xl overflow-hidden bg-card border border-border shadow-lg">
+      {/* Main Carousel Container */}
+      <div className="relative aspect-[21/9] md:aspect-[3/1]">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentBanner.id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="absolute inset-0 cursor-pointer"
+            onClick={() => navigate(`/comunicados/${currentBanner.id}`)}
+          >
+            <img
+              src={currentBanner.imageUrl}
+              alt={currentBanner.title}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+            
+            {/* Content Overlay */}
+            <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
+              <motion.h3
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-xl md:text-3xl font-bold text-white mb-2"
+              >
+                {currentBanner.title}
+              </motion.h3>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="text-white/80 text-sm md:text-base line-clamp-2 max-w-2xl"
+              >
+                {currentBanner.summary}
+              </motion.p>
+            </div>
+          </motion.div>
+        </AnimatePresence>
 
+        {banners.length > 1 && (
+          <>
+            {/* Navigation Arrows */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm border border-white/20 rounded-full h-10 w-10 transition-all"
+              onClick={(e) => {
+                e.stopPropagation();
+                prevSlide();
+              }}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm border border-white/20 rounded-full h-10 w-10 transition-all"
+              onClick={(e) => {
+                e.stopPropagation();
+                nextSlide();
+              }}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          </>
+        )}
+      </div>
+
+      {/* Bottom Indicators */}
       {banners.length > 1 && (
-        <>
-          {/* Navigation buttons */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e) => {
-              e.stopPropagation();
-              prevSlide();
-            }}
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e) => {
-              e.stopPropagation();
-              nextSlide();
-            }}
-          >
-            <ChevronRight className="h-6 w-6" />
-          </Button>
-
-          {/* Dots indicator */}
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
-            {banners.map((_, index) => (
-              <button
-                key={index}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentIndex(index);
-                }}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  index === currentIndex
-                    ? 'bg-white w-6'
-                    : 'bg-white/50 hover:bg-white/80'
-                }`}
-              />
-            ))}
-          </div>
-        </>
+        <div className="flex items-center justify-center gap-2 py-3 bg-muted/50">
+          {banners.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentIndex(index)}
+              className={`h-2 rounded-full transition-all duration-300 ${
+                index === currentIndex
+                  ? 'bg-primary w-8'
+                  : 'bg-muted-foreground/30 w-2 hover:bg-muted-foreground/50'
+              }`}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
