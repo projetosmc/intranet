@@ -7,24 +7,31 @@ export function useUserRole() {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
 
   // Listen to auth state changes directly
   useEffect(() => {
+    // Get initial session first
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserId(session?.user?.id ?? null);
+      setAuthReady(true);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUserId(session?.user?.id ?? null);
+        setAuthReady(true);
       }
     );
-
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUserId(session?.user?.id ?? null);
-    });
 
     return () => subscription.unsubscribe();
   }, []);
 
   const fetchRoles = useCallback(async () => {
+    if (!authReady) {
+      return;
+    }
+
     if (!userId) {
       setRoles([]);
       setIsLoading(false);
@@ -48,16 +55,13 @@ export function useUserRole() {
     } finally {
       setIsLoading(false);
     }
-  }, [userId]);
+  }, [userId, authReady]);
 
   useEffect(() => {
-    if (userId) {
+    if (authReady) {
       fetchRoles();
-    } else {
-      setRoles([]);
-      setIsLoading(false);
     }
-  }, [userId, fetchRoles]);
+  }, [authReady, fetchRoles]);
 
   const isAdmin = roles.includes('admin');
   const isModerator = roles.includes('moderator') || isAdmin;
@@ -66,7 +70,7 @@ export function useUserRole() {
     roles,
     isAdmin,
     isModerator,
-    isLoading,
+    isLoading: !authReady || isLoading,
     refetch: fetchRoles,
   };
 }
