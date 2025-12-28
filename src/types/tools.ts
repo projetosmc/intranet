@@ -1,4 +1,6 @@
 export type ToolStatus = 'PRODUCAO' | 'PILOTO' | 'CONSTRUCAO';
+export type TemplateType = 'simple' | 'banner' | 'poll';
+export type PollType = 'single' | 'multiple';
 
 export interface Tool {
   id: string;
@@ -23,6 +25,17 @@ export interface Announcement {
   pinned: boolean;
   publishedAt: string;
   active: boolean;
+  templateType: TemplateType;
+  imageUrl?: string;
+  pollType?: PollType;
+  pollOptions?: PollOption[];
+}
+
+export interface PollOption {
+  id: string;
+  optionText: string;
+  voteCount?: number;
+  userVoted?: boolean;
 }
 
 export interface Favorite {

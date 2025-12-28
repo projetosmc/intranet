@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Star, Clock, Megaphone, Zap, ArrowRight } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ToolCard } from '@/components/tools/ToolCard';
 import { AnnouncementCard } from '@/components/announcements/AnnouncementCard';
+import { BannerCarousel } from '@/components/announcements/BannerCarousel';
 import { MCScene } from '@/components/3d/MCScene';
 import { useTools } from '@/hooks/useTools';
-import { useAnnouncements } from '@/hooks/useAnnouncements';
+import { useDbAnnouncements } from '@/hooks/useDbAnnouncements';
 import { useUser } from '@/contexts/UserContext';
 import { Tool } from '@/types/tools';
 import { useNavigate } from 'react-router-dom';
@@ -25,7 +26,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const { user } = useUser();
   const { tools, toggleFavorite, isFavorite, recordAccess, getFavoriteTools, getRecentTools } = useTools();
-  const { announcements } = useAnnouncements();
+  const { activeAnnouncements, bannerAnnouncements } = useDbAnnouncements();
 
   const favoriteTools = getFavoriteTools();
   const recentTools = getRecentTools(4);
@@ -117,6 +118,17 @@ export default function HomePage() {
             ))}
           </div>
         </motion.section>
+
+        {/* Banner Carousel */}
+        {bannerAnnouncements.length > 0 && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+          >
+            <BannerCarousel banners={bannerAnnouncements} />
+          </motion.section>
+        )}
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -226,7 +238,7 @@ export default function HomePage() {
               </Button>
             </div>
             <div className="space-y-3">
-              {announcements.slice(0, 4).map((announcement, index) => (
+              {activeAnnouncements.slice(0, 4).map((announcement, index) => (
                 <AnnouncementCard
                   key={announcement.id}
                   announcement={announcement}

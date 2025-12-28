@@ -152,6 +152,7 @@ export const initialAnnouncements: Announcement[] = [
     pinned: true,
     publishedAt: new Date().toISOString(),
     active: true,
+    templateType: 'simple',
   },
   {
     id: '2',
@@ -161,6 +162,7 @@ export const initialAnnouncements: Announcement[] = [
     pinned: false,
     publishedAt: new Date(Date.now() - 86400000).toISOString(),
     active: true,
+    templateType: 'simple',
   },
   {
     id: '3',
@@ -170,6 +172,7 @@ export const initialAnnouncements: Announcement[] = [
     pinned: false,
     publishedAt: new Date(Date.now() - 172800000).toISOString(),
     active: true,
+    templateType: 'simple',
   },
 ];
 

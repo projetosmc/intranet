@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Pencil, Trash2, Pin, PinOff, Eye, EyeOff } from 'lucide-react';
+import { Plus, Pencil, Trash2, Pin, PinOff, Eye, EyeOff, Upload, Image, FileText, BarChart3, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,10 +32,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useDbAnnouncements } from '@/hooks/useDbAnnouncements';
-import { Announcement } from '@/types/tools';
+import { Announcement, TemplateType, PollType } from '@/types/tools';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 type FormData = {
   title: string;
@@ -43,6 +51,10 @@ type FormData = {
   content: string;
   pinned: boolean;
   active: boolean;
+  templateType: TemplateType;
+  imageUrl?: string;
+  pollType?: PollType;
+  pollOptions: string[];
 };
 
 const initialFormData: FormData = {
@@ -51,15 +63,33 @@ const initialFormData: FormData = {
   content: '',
   pinned: false,
   active: true,
+  templateType: 'simple',
+  imageUrl: undefined,
+  pollType: 'single',
+  pollOptions: ['', ''],
+};
+
+const templateIcons = {
+  simple: FileText,
+  banner: Image,
+  poll: BarChart3,
+};
+
+const templateLabels = {
+  simple: 'Comunicado',
+  banner: 'Banner',
+  poll: 'Enquete',
 };
 
 export default function AdminAnnouncementsPage() {
-  const { announcements, isLoading, addAnnouncement, updateAnnouncement, deleteAnnouncement } = useDbAnnouncements();
+  const { announcements, isLoading, addAnnouncement, updateAnnouncement, deleteAnnouncement, uploadImage } = useDbAnnouncements();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleOpenCreate = () => {
     setEditingId(null);
@@ -75,6 +105,10 @@ export default function AdminAnnouncementsPage() {
       content: announcement.content,
       pinned: announcement.pinned,
       active: announcement.active,
+      templateType: announcement.templateType,
+      imageUrl: announcement.imageUrl,
+      pollType: announcement.pollType || 'single',
+      pollOptions: announcement.pollOptions?.map((o) => o.optionText) || ['', ''],
     });
     setIsDialogOpen(true);
   };
@@ -84,15 +118,63 @@ export default function AdminAnnouncementsPage() {
     setIsDeleteDialogOpen(true);
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const url = await uploadImage(file);
+    if (url) {
+      setFormData((prev) => ({ ...prev, imageUrl: url }));
+    }
+    setIsUploading(false);
+  };
+
+  const handleAddPollOption = () => {
+    setFormData((prev) => ({
+      ...prev,
+      pollOptions: [...prev.pollOptions, ''],
+    }));
+  };
+
+  const handleRemovePollOption = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      pollOptions: prev.pollOptions.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handlePollOptionChange = (index: number, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      pollOptions: prev.pollOptions.map((opt, i) => (i === index ? value : opt)),
+    }));
+  };
+
   const handleSubmit = async () => {
-    if (!formData.title.trim() || !formData.summary.trim() || !formData.content.trim()) {
+    if (!formData.title.trim() || !formData.summary.trim()) {
       return;
     }
 
+    const announcementData = {
+      title: formData.title,
+      summary: formData.summary,
+      content: formData.content,
+      pinned: formData.pinned,
+      active: formData.active,
+      templateType: formData.templateType,
+      imageUrl: formData.imageUrl,
+      pollType: formData.templateType === 'poll' ? formData.pollType : undefined,
+    };
+
+    const pollOptions = formData.templateType === 'poll'
+      ? formData.pollOptions.filter((opt) => opt.trim())
+      : undefined;
+
     if (editingId) {
-      await updateAnnouncement(editingId, formData);
+      await updateAnnouncement(editingId, announcementData, pollOptions);
     } else {
-      await addAnnouncement(formData);
+      await addAnnouncement(announcementData, pollOptions);
     }
 
     setIsDialogOpen(false);
@@ -115,6 +197,8 @@ export default function AdminAnnouncementsPage() {
   const toggleActive = async (announcement: Announcement) => {
     await updateAnnouncement(announcement.id, { active: !announcement.active });
   };
+
+  const TemplateIcon = templateIcons[formData.templateType];
 
   return (
     <div className="space-y-6">
@@ -144,6 +228,7 @@ export default function AdminAnnouncementsPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Tipo</TableHead>
               <TableHead>Título</TableHead>
               <TableHead>Resumo</TableHead>
               <TableHead>Data</TableHead>
@@ -155,85 +240,94 @@ export default function AdminAnnouncementsPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   Carregando...
                 </TableCell>
               </TableRow>
             ) : announcements.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   Nenhum comunicado cadastrado
                 </TableCell>
               </TableRow>
             ) : (
-              announcements.map((announcement, index) => (
-                <motion.tr
-                  key={announcement.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="border-b border-border/50 hover:bg-muted/50 transition-colors"
-                >
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      {announcement.pinned && (
-                        <Badge variant="secondary" className="text-xs">
-                          <Pin className="h-3 w-3 mr-1" />
-                          Fixado
-                        </Badge>
-                      )}
-                      <span className="line-clamp-1">{announcement.title}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="max-w-xs">
-                    <span className="line-clamp-1 text-muted-foreground">
-                      {announcement.summary}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {format(new Date(announcement.publishedAt), "dd/MM/yyyy", { locale: ptBR })}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => togglePinned(announcement)}
-                      className={announcement.pinned ? 'text-primary' : 'text-muted-foreground'}
-                    >
-                      {announcement.pinned ? <Pin className="h-4 w-4" /> : <PinOff className="h-4 w-4" />}
-                    </Button>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => toggleActive(announcement)}
-                      className={announcement.active ? 'text-green-500' : 'text-muted-foreground'}
-                    >
-                      {announcement.active ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                    </Button>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
+              announcements.map((announcement, index) => {
+                const Icon = templateIcons[announcement.templateType];
+                return (
+                  <motion.tr
+                    key={announcement.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="border-b border-border/50 hover:bg-muted/50 transition-colors"
+                  >
+                    <TableCell>
+                      <Badge variant="outline" className="gap-1">
+                        <Icon className="h-3 w-3" />
+                        {templateLabels[announcement.templateType]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {announcement.pinned && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Pin className="h-3 w-3 mr-1" />
+                            Fixado
+                          </Badge>
+                        )}
+                        <span className="line-clamp-1">{announcement.title}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-xs">
+                      <span className="line-clamp-1 text-muted-foreground">
+                        {announcement.summary}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {format(new Date(announcement.publishedAt), "dd/MM/yyyy", { locale: ptBR })}
+                    </TableCell>
+                    <TableCell className="text-center">
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleOpenEdit(announcement)}
+                        onClick={() => togglePinned(announcement)}
+                        className={announcement.pinned ? 'text-primary' : 'text-muted-foreground'}
                       >
-                        <Pencil className="h-4 w-4" />
+                        {announcement.pinned ? <Pin className="h-4 w-4" /> : <PinOff className="h-4 w-4" />}
                       </Button>
+                    </TableCell>
+                    <TableCell className="text-center">
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleOpenDelete(announcement.id)}
-                        className="text-destructive hover:text-destructive"
+                        onClick={() => toggleActive(announcement)}
+                        className={announcement.active ? 'text-green-500' : 'text-muted-foreground'}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        {announcement.active ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                       </Button>
-                    </div>
-                  </TableCell>
-                </motion.tr>
-              ))
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenEdit(announcement)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenDelete(announcement.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </motion.tr>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -241,12 +335,42 @@ export default function AdminAnnouncementsPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingId ? 'Editar Comunicado' : 'Novo Comunicado'}
             </DialogTitle>
           </DialogHeader>
+
+          {/* Template Selection */}
+          <div className="space-y-3">
+            <Label>Tipo de Comunicado</Label>
+            <div className="grid grid-cols-3 gap-3">
+              {(['simple', 'banner', 'poll'] as TemplateType[]).map((type) => {
+                const Icon = templateIcons[type];
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, templateType: type }))}
+                    className={cn(
+                      "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                      formData.templateType === type
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <Icon className={cn(
+                      "h-6 w-6",
+                      formData.templateType === type ? "text-primary" : "text-muted-foreground"
+                    )} />
+                    <span className="text-sm font-medium">{templateLabels[type]}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="title">Título</Label>
@@ -266,16 +390,123 @@ export default function AdminAnnouncementsPage() {
                 placeholder="Breve resumo do comunicado"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="content">Conteúdo</Label>
-              <Textarea
-                id="content"
-                value={formData.content}
-                onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                placeholder="Conteúdo completo do comunicado (suporta markdown)"
-                rows={6}
-              />
-            </div>
+
+            {formData.templateType !== 'poll' && (
+              <div className="space-y-2">
+                <Label htmlFor="content">Conteúdo</Label>
+                <Textarea
+                  id="content"
+                  value={formData.content}
+                  onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+                  placeholder="Conteúdo completo do comunicado (suporta markdown)"
+                  rows={6}
+                />
+              </div>
+            )}
+
+            {/* Image Upload for Banner */}
+            {formData.templateType === 'banner' && (
+              <div className="space-y-2">
+                <Label>Imagem do Banner</Label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                {formData.imageUrl ? (
+                  <div className="relative rounded-xl overflow-hidden">
+                    <img
+                      src={formData.imageUrl}
+                      alt="Banner preview"
+                      className="w-full h-40 object-cover"
+                    />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2"
+                      onClick={() => setFormData((prev) => ({ ...prev, imageUrl: undefined }))}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full h-40 flex-col gap-2"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? (
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+                    ) : (
+                      <>
+                        <Upload className="h-6 w-6" />
+                        <span>Clique para enviar imagem</span>
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Poll Options */}
+            {formData.templateType === 'poll' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Tipo de Votação</Label>
+                  <Select
+                    value={formData.pollType}
+                    onValueChange={(value: PollType) =>
+                      setFormData((prev) => ({ ...prev, pollType: value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="single">Escolha única</SelectItem>
+                      <SelectItem value="multiple">Múltipla escolha</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Opções da Enquete</Label>
+                  <div className="space-y-2">
+                    {formData.pollOptions.map((option, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Input
+                          value={option}
+                          onChange={(e) => handlePollOptionChange(index, e.target.value)}
+                          placeholder={`Opção ${index + 1}`}
+                        />
+                        {formData.pollOptions.length > 2 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemovePollOption(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddPollOption}
+                    className="mt-2"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar opção
+                  </Button>
+                </div>
+              </>
+            )}
+
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
                 <Switch
