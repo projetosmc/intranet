@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Announcement, PollOption, TemplateType, PollType } from '@/types/tools';
+import { Announcement, PollOption, TemplateType, PollType } from '@/types/announcements';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Announcement } from '@/types/tools';
+import { Announcement } from '@/types/announcements';
 import { useNavigate } from 'react-router-dom';
 
 interface BannerCarouselProps {

@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, Bell, Moon, Sun, User } from 'lucide-react';
+import { Bell, Moon, Sun, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -13,15 +12,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
 import { useUser } from '@/contexts/UserContext';
 import { cn } from '@/lib/utils';
 
-interface TopbarProps {
-  onSearchOpen: () => void;
-}
-
-export function Topbar({ onSearchOpen }: TopbarProps) {
+export function Topbar() {
   const { user, toggle3D, setToggle3D, signOut } = useUser();
   const navigate = useNavigate();
   const [isDark, setIsDark] = useState(false);
@@ -38,22 +32,7 @@ export function Topbar({ onSearchOpen }: TopbarProps) {
       transition={{ duration: 0.3 }}
       className="sticky top-0 z-30 h-16 border-b border-border bg-background/80 backdrop-blur-xl"
     >
-      <div className="flex items-center justify-between h-full px-6">
-        {/* Search */}
-        <div className="flex-1 max-w-md">
-          <Button
-            variant="outline"
-            className="w-full justify-start text-muted-foreground font-normal h-10"
-            onClick={onSearchOpen}
-          >
-            <Search className="h-4 w-4 mr-2" />
-            <span>Buscar ferramentas...</span>
-            <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-              <span className="text-xs">⌘</span>K
-            </kbd>
-          </Button>
-        </div>
-
+      <div className="flex items-center justify-end h-full px-6">
         {/* Right Actions */}
         <div className="flex items-center gap-2">
           {/* 3D Toggle */}

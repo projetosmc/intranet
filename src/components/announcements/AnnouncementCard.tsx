@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Announcement } from '@/types/tools';
+import { Announcement } from '@/types/announcements';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 

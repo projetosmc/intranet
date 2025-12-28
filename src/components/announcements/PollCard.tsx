@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { BarChart3, CheckCircle2 } from 'lucide-react';
-import { Announcement } from '@/types/tools';
+import { Announcement } from '@/types/announcements';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
