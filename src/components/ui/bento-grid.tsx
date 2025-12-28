@@ -23,7 +23,7 @@ export function BentoGrid({ children, className }: BentoGridProps) {
   return (
     <div
       className={cn(
-        "grid w-full auto-rows-[22rem] grid-cols-3 gap-4",
+        "grid w-full grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4",
         className
       )}
     >
@@ -45,46 +45,65 @@ export function BentoCard({
   return (
     <div
       className={cn(
-        "group relative col-span-3 flex flex-col justify-between overflow-hidden rounded-xl",
-        "bg-card/50 backdrop-blur-sm",
-        "border border-border/50",
-        "transform-gpu transition-all duration-300 hover:shadow-glow-sm",
+        "group relative flex flex-col justify-between overflow-hidden rounded-xl",
+        "bg-card border border-border/50",
+        "h-[280px] p-6",
+        "transform-gpu transition-all duration-300",
+        "hover:shadow-lg hover:border-primary/30",
         className
       )}
     >
-      <div className="absolute inset-0 overflow-hidden">{background}</div>
-      <div className="pointer-events-none z-10 flex transform-gpu flex-col gap-1 p-6 transition-all duration-300 group-hover:-translate-y-2">
-        <Icon className="h-12 w-12 origin-left transform-gpu text-primary transition-all duration-300 ease-in-out group-hover:scale-75" />
-        <h3 className="text-xl font-semibold text-foreground">{name}</h3>
-        <p className="max-w-lg text-muted-foreground">{description}</p>
+      {/* Background - contained and non-overlapping */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 opacity-50 group-hover:opacity-70 transition-opacity duration-300">
+          {background}
+        </div>
       </div>
-
-      <div
-        className={cn(
-          "pointer-events-none absolute bottom-0 flex w-full translate-y-10 transform-gpu flex-row items-center p-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
+      
+      {/* Content overlay */}
+      <div className="relative z-10 flex flex-col h-full">
+        {/* Header */}
+        <div className="flex items-start gap-3 mb-3">
+          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary shrink-0">
+            <Icon className="h-6 w-6" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-lg font-semibold text-foreground truncate">{name}</h3>
+            <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{description}</p>
+          </div>
+        </div>
+        
+        {/* Spacer */}
+        <div className="flex-1" />
+        
+        {/* CTA */}
+        {cta && (
+          <div className="mt-auto pt-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-2 text-primary hover:text-primary hover:bg-primary/10 -ml-2"
+              onClick={onClick}
+              asChild={!!href}
+            >
+              {href ? (
+                <a href={href} target="_blank" rel="noopener noreferrer">
+                  {cta}
+                  <ArrowRightIcon className="h-4 w-4" />
+                </a>
+              ) : (
+                <>
+                  {cta}
+                  <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </>
+              )}
+            </Button>
+          </div>
         )}
-      >
-        <Button
-          variant="ghost"
-          size="sm"
-          className="pointer-events-auto gap-1"
-          onClick={onClick}
-          asChild={!!href}
-        >
-          {href ? (
-            <a href={href} target="_blank" rel="noopener noreferrer">
-              {cta}
-              <ArrowRightIcon className="h-4 w-4" />
-            </a>
-          ) : (
-            <>
-              {cta}
-              <ArrowRightIcon className="h-4 w-4" />
-            </>
-          )}
-        </Button>
       </div>
-      <div className="pointer-events-none absolute inset-0 transform-gpu transition-all duration-300 group-hover:bg-primary/[.03]" />
+      
+      {/* Hover gradient overlay */}
+      <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-t from-primary/5 to-transparent" />
     </div>
   );
 }
