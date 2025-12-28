@@ -36,9 +36,9 @@ const menuItems: MenuItemType[] = [
     icon: Monitor,
     children: [
       { name: 'Status Sistemas', path: '/status', icon: Activity },
+      { name: 'Suporte', path: '/suporte', icon: HelpCircle },
     ]
   },
-  { name: 'Suporte', path: '/suporte', icon: HelpCircle },
 ];
 
 const adminItems: MenuItemType[] = [
