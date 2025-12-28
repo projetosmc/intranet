@@ -70,7 +70,7 @@ export default function AdminSettingsPage() {
       name: formData.get('name') as string,
       path: formData.get('path') as string,
       icon: formData.get('icon') as string,
-      parent_id: formData.get('parent_id') as string || null,
+      parent_id: (formData.get('parent_id') as string) === '__none__' ? null : (formData.get('parent_id') as string) || null,
       open_in_new_tab: formData.get('open_in_new_tab') === 'on',
       is_admin_only: formData.get('is_admin_only') === 'on',
       sort_order: parseInt(formData.get('sort_order') as string) || 0,
@@ -222,12 +222,12 @@ export default function AdminSettingsPage() {
 
                     <div>
                       <Label>Menu Pai (opcional)</Label>
-                      <Select name="parent_id" defaultValue={editingItem?.parent_id || ''}>
+                      <Select name="parent_id" defaultValue={editingItem?.parent_id || '__none__'}>
                         <SelectTrigger>
                           <SelectValue placeholder="Nenhum (item principal)" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Nenhum (item principal)</SelectItem>
+                          <SelectItem value="__none__">Nenhum (item principal)</SelectItem>
                           {parentItems.map(item => (
                             <SelectItem key={item.id} value={item.id}>
                               {item.name}
