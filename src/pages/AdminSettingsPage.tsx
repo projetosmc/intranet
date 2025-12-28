@@ -71,7 +71,7 @@ export default function AdminSettingsPage() {
       path: formData.get('path') as string,
       icon: formData.get('icon') as string,
       parent_id: (formData.get('parent_id') as string) === '__none__' ? null : (formData.get('parent_id') as string) || null,
-      open_in_new_tab: formData.get('open_in_new_tab') === 'on',
+      open_in_new_tab: formData.get('open_mode') === 'new_tab',
       is_admin_only: formData.get('is_admin_only') === 'on',
       sort_order: parseInt(formData.get('sort_order') as string) || 0,
       active: true,
@@ -247,12 +247,17 @@ export default function AdminSettingsPage() {
                       />
                     </div>
 
-                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-sm">Abrir em nova aba</p>
-                        <p className="text-xs text-muted-foreground">Link abrirá em uma nova janela</p>
-                      </div>
-                      <Switch name="open_in_new_tab" defaultChecked={editingItem?.open_in_new_tab} />
+                    <div>
+                      <Label>Abrir em</Label>
+                      <Select name="open_mode" defaultValue={editingItem?.open_in_new_tab ? 'new_tab' : 'same_window'}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="same_window">Mesma janela</SelectItem>
+                          <SelectItem value="new_tab">Nova aba</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
