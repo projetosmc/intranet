@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, Bell, Moon, Sun, User, Command } from 'lucide-react';
+import { Search, Bell, Moon, Sun, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -22,6 +23,7 @@ interface TopbarProps {
 
 export function Topbar({ onSearchOpen }: TopbarProps) {
   const { user, toggle3D, setToggle3D, signOut } = useUser();
+  const navigate = useNavigate();
   const [isDark, setIsDark] = useState(false);
 
   const toggleTheme = () => {
@@ -109,7 +111,7 @@ export function Topbar({ onSearchOpen }: TopbarProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/perfil')}>
                 <User className="mr-2 h-4 w-4" />
                 <span>Perfil</span>
               </DropdownMenuItem>

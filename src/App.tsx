@@ -16,6 +16,7 @@ import AdminToolsPage from "./pages/AdminToolsPage";
 import AdminAnnouncementsPage from "./pages/AdminAnnouncementsPage";
 import AuthPage from "./pages/AuthPage";
 import SetupAdminPage from "./pages/SetupAdminPage";
+import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
               <Route path="/comunicados/:id" element={<AnnouncementsPage />} />
               <Route path="/status" element={<StatusPage />} />
               <Route path="/suporte" element={<SupportPage />} />
+              <Route path="/perfil" element={<ProfilePage />} />
               <Route path="/admin/ferramentas" element={<AdminRoute><AdminToolsPage /></AdminRoute>} />
               <Route path="/admin/comunicados" element={<AdminRoute><AdminAnnouncementsPage /></AdminRoute>} />
             </Route>
