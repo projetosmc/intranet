@@ -38,6 +38,14 @@ interface MenuItemType {
   children?: MenuItemType[];
 }
 
+const MENU_CACHE_KEY = 'mc_hub_menu_cache';
+const MENU_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+interface MenuCache {
+  items: DbMenuItem[];
+  timestamp: number;
+}
+
 export function Sidebar() {
   const location = useLocation();
   const { isAdmin } = useUser();
@@ -52,7 +60,42 @@ export function Sidebar() {
     fetchMenuItems();
   }, []);
 
+  const getCachedMenus = (): DbMenuItem[] | null => {
+    try {
+      const cached = localStorage.getItem(MENU_CACHE_KEY);
+      if (cached) {
+        const parsed: MenuCache = JSON.parse(cached);
+        if (Date.now() - parsed.timestamp < MENU_CACHE_DURATION) {
+          return parsed.items;
+        }
+        localStorage.removeItem(MENU_CACHE_KEY);
+      }
+    } catch {
+      localStorage.removeItem(MENU_CACHE_KEY);
+    }
+    return null;
+  };
+
+  const setCachedMenus = (items: DbMenuItem[]) => {
+    try {
+      const cache: MenuCache = { items, timestamp: Date.now() };
+      localStorage.setItem(MENU_CACHE_KEY, JSON.stringify(cache));
+    } catch {
+      // Ignore storage errors
+    }
+  };
+
   const fetchMenuItems = async () => {
+    // Try cache first
+    const cached = getCachedMenus();
+    if (cached) {
+      const processedItems = processMenuItems(cached);
+      setMenuItems(processedItems);
+      autoExpandMenus(processedItems);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('menu_items')
@@ -63,19 +106,23 @@ export function Sidebar() {
       if (error) throw error;
 
       const items = data as DbMenuItem[];
+      setCachedMenus(items);
+      
       const processedItems = processMenuItems(items);
       setMenuItems(processedItems);
-      
-      // Auto-expand menus that have children
-      const menusWithChildren = processedItems
-        .filter(item => item.children && item.children.length > 0)
-        .map(item => item.name);
-      setExpandedMenus(menusWithChildren);
+      autoExpandMenus(processedItems);
     } catch (error) {
       console.error('Error fetching menu items:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const autoExpandMenus = (items: MenuItemType[]) => {
+    const menusWithChildren = items
+      .filter(item => item.children && item.children.length > 0)
+      .map(item => item.name);
+    setExpandedMenus(menusWithChildren);
   };
 
   const getIconComponent = (iconName: string): LucideIcon => {
