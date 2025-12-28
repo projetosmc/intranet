@@ -49,6 +49,8 @@ interface MenuCache {
 // Export function to clear cache from other components
 export const clearMenuCache = () => {
   localStorage.removeItem(MENU_CACHE_KEY);
+  // Dispatch custom event to trigger sidebar refresh
+  window.dispatchEvent(new CustomEvent('menu-cache-cleared'));
 };
 
 export function Sidebar() {
@@ -63,6 +65,16 @@ export function Sidebar() {
 
   useEffect(() => {
     fetchMenuItems();
+    
+    // Listen for menu cache clear events to refresh instantly
+    const handleMenuCacheCleared = () => {
+      fetchMenuItems(true); // Force fetch from database
+    };
+    
+    window.addEventListener('menu-cache-cleared', handleMenuCacheCleared);
+    return () => {
+      window.removeEventListener('menu-cache-cleared', handleMenuCacheCleared);
+    };
   }, []);
 
   const getCachedMenus = (): DbMenuItem[] | null => {
@@ -90,15 +102,17 @@ export function Sidebar() {
     }
   };
 
-  const fetchMenuItems = async () => {
-    // Try cache first
-    const cached = getCachedMenus();
-    if (cached) {
-      const processedItems = processMenuItems(cached);
-      setMenuItems(processedItems);
-      autoExpandMenus(processedItems);
-      setIsLoading(false);
-      return;
+  const fetchMenuItems = async (skipCache = false) => {
+    // Try cache first (unless skipping)
+    if (!skipCache) {
+      const cached = getCachedMenus();
+      if (cached) {
+        const processedItems = processMenuItems(cached);
+        setMenuItems(processedItems);
+        autoExpandMenus(processedItems);
+        setIsLoading(false);
+        return;
+      }
     }
 
     try {
