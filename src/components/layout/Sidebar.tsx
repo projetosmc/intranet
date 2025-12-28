@@ -46,6 +46,11 @@ interface MenuCache {
   timestamp: number;
 }
 
+// Export function to clear cache from other components
+export const clearMenuCache = () => {
+  localStorage.removeItem(MENU_CACHE_KEY);
+};
+
 export function Sidebar() {
   const location = useLocation();
   const { isAdmin } = useUser();
