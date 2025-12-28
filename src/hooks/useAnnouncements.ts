@@ -1,54 +1,111 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Announcement } from '@/types/tools';
 import { initialAnnouncements } from '@/data/tools';
 import { useLocalStorage } from './useLocalStorage';
+import { supabase } from '@/integrations/supabase/client';
 
 export function useAnnouncements() {
-  const [announcements, setAnnouncements] = useLocalStorage<Announcement[]>(
+  const [localAnnouncements, setLocalAnnouncements] = useLocalStorage<Announcement[]>(
     'mc-hub-announcements', 
     initialAnnouncements
   );
+  const [webflowAnnouncements, setWebflowAnnouncements] = useState<Announcement[]>([]);
+  const [source, setSource] = useState<'local' | 'webflow' | 'loading'>('loading');
+  const [error, setError] = useState<string | null>(null);
 
-  const activeAnnouncements = useMemo(
-    () => announcements.filter(a => a.active).sort((a, b) => {
-      if (a.pinned && !b.pinned) return -1;
-      if (!a.pinned && b.pinned) return 1;
-      return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-    }),
+  // Fetch from Webflow via Edge Function
+  useEffect(() => {
+    const fetchWebflowAnnouncements = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('webflow-comunicados');
+        
+        if (error) {
+          console.error('Edge function error:', error);
+          setSource('local');
+          return;
+        }
+
+        if (data?.announcements?.length > 0) {
+          setWebflowAnnouncements(data.announcements);
+          setSource('webflow');
+          console.log('Loaded announcements from Webflow:', data.announcements.length);
+        } else {
+          setSource('local');
+          console.log('No Webflow announcements, using local fallback');
+        }
+      } catch (err) {
+        console.error('Failed to fetch from Webflow:', err);
+        setSource('local');
+      }
+    };
+
+    fetchWebflowAnnouncements();
+  }, []);
+
+  // Use Webflow announcements if available, otherwise local
+  const announcements = useMemo(() => {
+    const items = source === 'webflow' ? webflowAnnouncements : localAnnouncements;
+    return items
+      .filter(a => a.active)
+      .sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+      });
+  }, [source, webflowAnnouncements, localAnnouncements]);
+
+  const pinnedAnnouncements = useMemo(
+    () => announcements.filter(a => a.pinned),
     [announcements]
   );
 
-  const pinnedAnnouncements = useMemo(
-    () => activeAnnouncements.filter(a => a.pinned),
-    [activeAnnouncements]
-  );
-
+  // Local management functions (for fallback)
   const addAnnouncement = useCallback((announcement: Omit<Announcement, 'id' | 'publishedAt'>) => {
     const newAnnouncement: Announcement = {
       ...announcement,
       id: crypto.randomUUID(),
       publishedAt: new Date().toISOString(),
     };
-    setAnnouncements(prev => [...prev, newAnnouncement]);
+    setLocalAnnouncements(prev => [...prev, newAnnouncement]);
     return newAnnouncement;
-  }, [setAnnouncements]);
+  }, [setLocalAnnouncements]);
 
   const updateAnnouncement = useCallback((id: string, updates: Partial<Announcement>) => {
-    setAnnouncements(prev => prev.map(a => 
+    setLocalAnnouncements(prev => prev.map(a => 
       a.id === id ? { ...a, ...updates } : a
     ));
-  }, [setAnnouncements]);
+  }, [setLocalAnnouncements]);
 
   const deleteAnnouncement = useCallback((id: string) => {
-    setAnnouncements(prev => prev.filter(a => a.id !== id));
-  }, [setAnnouncements]);
+    setLocalAnnouncements(prev => prev.filter(a => a.id !== id));
+  }, [setLocalAnnouncements]);
+
+  const refetch = useCallback(async () => {
+    setSource('loading');
+    try {
+      const { data, error } = await supabase.functions.invoke('webflow-comunicados');
+      
+      if (error || !data?.announcements?.length) {
+        setSource('local');
+        return;
+      }
+
+      setWebflowAnnouncements(data.announcements);
+      setSource('webflow');
+    } catch {
+      setSource('local');
+    }
+  }, []);
 
   return {
-    announcements: activeAnnouncements,
-    allAnnouncements: announcements,
+    announcements,
+    allAnnouncements: source === 'webflow' ? webflowAnnouncements : localAnnouncements,
     pinnedAnnouncements,
     addAnnouncement,
     updateAnnouncement,
     deleteAnnouncement,
+    source,
+    isLoading: source === 'loading',
+    refetch,
   };
 }

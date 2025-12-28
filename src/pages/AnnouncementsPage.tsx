@@ -1,8 +1,8 @@
-import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Megaphone, ArrowLeft, Pin, Calendar } from 'lucide-react';
+import { Megaphone, ArrowLeft, Pin, Calendar, RefreshCw, Cloud, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { AnnouncementCard } from '@/components/announcements/AnnouncementCard';
 import { useAnnouncements } from '@/hooks/useAnnouncements';
 import { format } from 'date-fns';
@@ -11,7 +11,7 @@ import { ptBR } from 'date-fns/locale';
 export default function AnnouncementsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { announcements } = useAnnouncements();
+  const { announcements, source, isLoading, refetch } = useAnnouncements();
 
   const selectedAnnouncement = id ? announcements.find(a => a.id === id) : null;
 
@@ -72,9 +72,19 @@ export default function AnnouncementsPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <div className="flex items-center gap-2 mb-2">
-          <Megaphone className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold text-foreground">Comunicados</h1>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Megaphone className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-bold text-foreground">Comunicados</h1>
+            <Badge variant={source === 'webflow' ? 'default' : 'secondary'} className="gap-1">
+              {source === 'webflow' ? <Cloud className="h-3 w-3" /> : <Database className="h-3 w-3" />}
+              {source === 'webflow' ? 'Webflow' : source === 'loading' ? 'Carregando...' : 'Local'}
+            </Badge>
+          </div>
+          <Button variant="outline" size="sm" onClick={refetch} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
         </div>
         <p className="text-muted-foreground">
           Fique por dentro das últimas novidades e atualizações
