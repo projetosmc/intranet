@@ -14,6 +14,7 @@ import SupportPage from "./pages/SupportPage";
 import AdminSettingsPage from "./pages/AdminSettingsPage";
 import AdminAnnouncementsPage from "./pages/AdminAnnouncementsPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
+import AdminAuditLogsPage from "./pages/AdminAuditLogsPage";
 import AuthPage from "./pages/AuthPage";
 import SetupAdminPage from "./pages/SetupAdminPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/admin/configuracoes" element={<AdminRoute><AdminSettingsPage /></AdminRoute>} />
               <Route path="/admin/comunicados" element={<AdminRoute><AdminAnnouncementsPage /></AdminRoute>} />
               <Route path="/admin/usuarios" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
+              <Route path="/admin/auditoria" element={<AdminRoute><AdminAuditLogsPage /></AdminRoute>} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
