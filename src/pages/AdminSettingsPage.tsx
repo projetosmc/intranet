@@ -16,6 +16,8 @@ import { toast } from '@/hooks/use-toast';
 import { clearMenuCache } from '@/components/layout/Sidebar';
 import * as LucideIcons from 'lucide-react';
 import { AuditLogsTab } from '@/components/admin/AuditLogsTab';
+import { RoomConfigTab } from '@/components/admin/RoomConfigTab';
+import { SystemsTab } from '@/components/admin/SystemsTab';
 import { menuItemSchema, validateForm, type MenuItemFormData } from '@/lib/validations';
 import {
   DndContext,
@@ -1145,6 +1147,14 @@ export default function AdminSettingsPage() {
                 </DndContext>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="rooms" className="mt-6">
+            <RoomConfigTab />
+          </TabsContent>
+
+          <TabsContent value="systems" className="mt-6">
+            <SystemsTab />
           </TabsContent>
 
           <TabsContent value="audit" className="mt-6">
