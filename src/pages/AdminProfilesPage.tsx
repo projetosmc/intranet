@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Pencil, Check, Search, X, RefreshCw } from 'lucide-react';
+import { Shield, Pencil, Check, Search, X, RefreshCw, Users, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,10 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { ScreenPermissionsTab } from '@/components/admin/ScreenPermissionsTab';
 
 interface UserWithRole {
   id: string;
@@ -169,118 +171,139 @@ export default function AdminProfilesPage() {
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold">Gerenciamento de Perfis</h1>
-          </div>
+        <div className="flex items-center gap-2 mb-6">
+          <Shield className="h-6 w-6 text-primary" />
+          <h1 className="text-2xl font-bold">Gerenciamento de Perfis</h1>
         </div>
 
-        <div className="glass-card p-6 rounded-xl">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-            <div>
-              <h2 className="text-lg font-semibold">Usuários e Permissões</h2>
-              <p className="text-sm text-muted-foreground">
-                Gerencie os perfis de acesso dos usuários do sistema
-              </p>
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="relative flex-1 sm:flex-initial">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nome, email ou perfil..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 pr-9 w-full sm:w-80"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={handleClearSearch}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+        <Tabs defaultValue="usuarios" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="usuarios" className="gap-2">
+              <Users className="h-4 w-4" />
+              Usuários
+            </TabsTrigger>
+            <TabsTrigger value="permissoes" className="gap-2">
+              <Lock className="h-4 w-4" />
+              Permissões por Perfil
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Aba de Usuários */}
+          <TabsContent value="usuarios">
+            <div className="glass-card p-6 rounded-xl">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold">Usuários e Permissões</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Gerencie os perfis de acesso dos usuários do sistema
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:flex-initial">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por nome, email ou perfil..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 pr-9 w-full sm:w-80"
+                    />
+                    {searchTerm && (
+                      <button
+                        onClick={handleClearSearch}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={fetchUsers}
+                    disabled={isLoading}
+                    title="Atualizar lista"
                   >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
+                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
               </div>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={fetchUsers}
-                disabled={isLoading}
-                title="Atualizar lista"
-              >
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              </Button>
-            </div>
-          </div>
-          
-          {/* Results count */}
-          {searchTerm && (
-            <p className="text-sm text-muted-foreground mb-3">
-              {filteredUsers.length} usuário{filteredUsers.length !== 1 ? 's' : ''} encontrado{filteredUsers.length !== 1 ? 's' : ''}
-            </p>
-          )}
+              
+              {/* Results count */}
+              {searchTerm && (
+                <p className="text-sm text-muted-foreground mb-3">
+                  {filteredUsers.length} usuário{filteredUsers.length !== 1 ? 's' : ''} encontrado{filteredUsers.length !== 1 ? 's' : ''}
+                </p>
+              )}
 
-          <div className="border border-border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Usuário</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Perfis</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                      Carregando...
-                    </TableCell>
-                  </TableRow>
-                ) : filteredUsers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                      Nenhum usuário encontrado
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.fullName}</TableCell>
-                      <TableCell className="text-muted-foreground">{user.email}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1 flex-wrap">
-                          {user.roles.length === 0 ? (
-                            <Badge variant="outline" className="text-muted-foreground">
-                              Sem perfil
-                            </Badge>
-                          ) : (
-                            user.roles.map((role) => (
-                              <Badge key={role} variant={getRoleBadgeVariant(role)}>
-                                {availableRoles.find(r => r.value === role)?.label || role}
-                              </Badge>
-                            ))
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditRoles(user)}
-                        >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Editar Perfil
-                        </Button>
-                      </TableCell>
+              <div className="border border-border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Usuário</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Perfis</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                          Carregando...
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredUsers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                          Nenhum usuário encontrado
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredUsers.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">{user.fullName}</TableCell>
+                          <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-1 flex-wrap">
+                              {user.roles.length === 0 ? (
+                                <Badge variant="outline" className="text-muted-foreground">
+                                  Sem perfil
+                                </Badge>
+                              ) : (
+                                user.roles.map((role) => (
+                                  <Badge key={role} variant={getRoleBadgeVariant(role)}>
+                                    {availableRoles.find(r => r.value === role)?.label || role}
+                                  </Badge>
+                                ))
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditRoles(user)}
+                            >
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Editar Perfil
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Aba de Permissões por Perfil */}
+          <TabsContent value="permissoes">
+            <div className="glass-card p-6 rounded-xl">
+              <ScreenPermissionsTab />
+            </div>
+          </TabsContent>
+        </Tabs>
       </motion.div>
 
       {/* Edit Roles Dialog */}
