@@ -1,11 +1,14 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Megaphone, ArrowLeft, Pin, Calendar, RefreshCw, Image, FileText, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { AnnouncementCard } from '@/components/announcements/AnnouncementCard';
 import { PollCard } from '@/components/announcements/PollCard';
 import { AnnouncementsPageSkeleton } from '@/components/announcements/AnnouncementSkeleton';
+import { RichTextContent } from '@/components/ui/rich-text-editor';
 import { useDbAnnouncements } from '@/hooks/useDbAnnouncements';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -19,9 +22,20 @@ const templateIcons = {
 export default function AnnouncementsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { activeAnnouncements, isLoading, refetch, vote } = useDbAnnouncements();
+  const { activeAnnouncements, isLoading, refetch, vote, registerView } = useDbAnnouncements();
 
   const selectedAnnouncement = id ? activeAnnouncements.find(a => a.id === id) : null;
+
+  // Registrar visualização quando acessar o comunicado
+  useEffect(() => {
+    if (selectedAnnouncement) {
+      registerView(selectedAnnouncement.id);
+    }
+  }, [selectedAnnouncement, registerView]);
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
 
   if (selectedAnnouncement) {
     const Icon = templateIcons[selectedAnnouncement.templateType];
@@ -57,7 +71,7 @@ export default function AnnouncementsPage() {
               )}
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
-                {format(new Date(selectedAnnouncement.publishedAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                {format(new Date(selectedAnnouncement.publishedAt), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
               </div>
             </div>
 
@@ -82,10 +96,26 @@ export default function AnnouncementsPage() {
             {selectedAnnouncement.templateType === 'poll' ? (
               <PollCard announcement={selectedAnnouncement} onVote={vote} />
             ) : (
-              <div className="prose prose-slate max-w-none">
-                <p className="text-foreground whitespace-pre-wrap">
-                  {selectedAnnouncement.content}
-                </p>
+              <div className="prose prose-slate dark:prose-invert max-w-none">
+                <RichTextContent html={selectedAnnouncement.content} />
+              </div>
+            )}
+
+            {/* Rodapé com autor */}
+            {selectedAnnouncement.author && (
+              <div className="mt-8 pt-6 border-t border-border flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  {selectedAnnouncement.author.avatarUrl ? (
+                    <AvatarImage src={selectedAnnouncement.author.avatarUrl} alt={selectedAnnouncement.author.name} />
+                  ) : null}
+                  <AvatarFallback>
+                    {getInitials(selectedAnnouncement.author.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm text-muted-foreground">Publicado por</p>
+                  <p className="font-medium">{selectedAnnouncement.author.name}</p>
+                </div>
               </div>
             )}
           </article>
