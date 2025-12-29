@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Announcement } from '@/types/announcements';
-import { OptimizedImage } from '@/components/ui/optimized-image';
+import { PixelImage } from '@/components/ui/pixel-image';
 import { useNavigate } from 'react-router-dom';
 
 interface BannerCarouselProps {
@@ -47,12 +47,14 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
             className="absolute inset-0 cursor-pointer"
             onClick={() => navigate(`/comunicados/${currentBanner.id}`)}
           >
-            <OptimizedImage
+            <PixelImage
               src={currentBanner.imageUrl || ''}
               alt={currentBanner.title}
-              priority={true}
-              aspectRatio="banner"
-              className="absolute inset-0"
+              customGrid={{ rows: 3, cols: 8 }}
+              grayscaleAnimation
+              pixelFadeInDuration={800}
+              maxAnimationDelay={1000}
+              className="absolute inset-0 w-full h-full"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
             
