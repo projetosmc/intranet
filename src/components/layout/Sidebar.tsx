@@ -349,8 +349,14 @@ export function Sidebar() {
     const active = isActive(item.path);
     const expanded = isMenuExpanded(item.name);
 
-    // Filter children based on admin status
-    const visibleChildren = item.children?.filter(child => !child.isAdminOnly || isAdmin);
+    // Filter children based on admin status AND screen permissions
+    const visibleChildren = item.children?.filter(child => {
+      // Check admin-only flag
+      if (child.isAdminOnly && !isAdmin) return false;
+      // Check screen permissions (canAccess verifies if user has permission)
+      if (!canAccess(child.path)) return false;
+      return true;
+    });
 
     if (hasChildren && visibleChildren && visibleChildren.length > 0) {
       return (
