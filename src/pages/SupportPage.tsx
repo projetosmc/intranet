@@ -16,7 +16,7 @@ import { useFeaturePermission } from '@/hooks/useFeaturePermission';
 import { toast } from '@/hooks/use-toast';
 import { FaqManagementModal } from '@/components/support/FaqManagementModal';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
-import { useLoadingState } from '@/hooks/useLoadingState';
+import { useGlobalLoading } from '@/contexts/GlobalLoadingContext';
 
 interface FAQ {
   cod_faq: string;
@@ -54,7 +54,7 @@ export default function SupportPage() {
   const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [supportLinks, setSupportLinks] = useState<SupportConfig[]>([]);
   const [contacts, setContacts] = useState<SupportConfig[]>([]);
-  const { isLoading, withLoading } = useLoadingState(true);
+  const { isLoading, withLoading } = useGlobalLoading();
   const [faqSearchQuery, setFaqSearchQuery] = useState('');
   
   // Edit states
