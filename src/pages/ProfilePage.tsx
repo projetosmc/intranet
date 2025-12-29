@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Camera, Mail, Save, Shield, LogOut, Cake, Building2 } from 'lucide-react';
+import { User, Camera, Mail, Save, Shield, LogOut, Cake, Building2, Briefcase, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,9 @@ export default function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [birthdayDate, setBirthdayDate] = useState('');
   const [unit, setUnit] = useState('');
+  const [department, setDepartment] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
+  const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -29,7 +32,7 @@ export default function ProfilePage() {
       const fetchProfile = async () => {
         const { data } = await supabase
           .from('tab_perfil_usuario')
-          .select('des_nome_completo, des_avatar_url, dta_aniversario, des_unidade')
+          .select('des_nome_completo, des_avatar_url, dta_aniversario, des_unidade, des_departamento, des_cargo, des_telefone')
           .eq('cod_usuario', user.id)
           .maybeSingle();
 
@@ -38,6 +41,9 @@ export default function ProfilePage() {
           setAvatarUrl(data.des_avatar_url);
           setBirthdayDate(data.dta_aniversario || '');
           setUnit(data.des_unidade || '');
+          setDepartment(data.des_departamento || '');
+          setJobTitle(data.des_cargo || '');
+          setPhone(data.des_telefone || '');
         } else {
           setFullName(user.user_metadata?.full_name || '');
         }
@@ -108,6 +114,9 @@ export default function ProfilePage() {
           des_email: user.email,
           dta_aniversario: birthdayDate || null,
           des_unidade: unit || null,
+          des_departamento: department || null,
+          des_cargo: jobTitle || null,
+          des_telefone: phone || null,
         });
 
       if (error) throw error;
@@ -262,6 +271,47 @@ export default function ProfilePage() {
                 placeholder="Ex: Matriz, Filial SP"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="department" className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Departamento
+              </Label>
+              <Input
+                id="department"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                placeholder="Ex: TI, RH, Financeiro"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="jobTitle" className="flex items-center gap-2">
+                <Briefcase className="h-4 w-4" />
+                Cargo
+              </Label>
+              <Input
+                id="jobTitle"
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                placeholder="Ex: Analista, Gerente"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phone" className="flex items-center gap-2">
+              <Phone className="h-4 w-4" />
+              Telefone
+            </Label>
+            <Input
+              id="phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Ex: (11) 99999-9999"
+            />
           </div>
 
           <div className="flex gap-3 pt-4">

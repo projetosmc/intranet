@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/contexts/UserContext';
+import { useFeaturePermission } from '@/hooks/useFeaturePermission';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -33,6 +34,7 @@ interface RoleType {
 export default function AdminProfilesPage() {
   const navigate = useNavigate();
   const { isAdmin } = useUser();
+  const { canAccessUsersTab, canAccessRoleTypesTab, canAccessPermissionsTab } = useFeaturePermission();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [roleTypes, setRoleTypes] = useState<RoleType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -168,7 +170,10 @@ export default function AdminProfilesPage() {
     return role?.des_cor || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
   }, [roleTypes]);
 
-  if (!isAdmin) {
+  // Verificar se tem acesso a pelo menos uma aba
+  const hasAnyAccess = isAdmin || canAccessUsersTab || canAccessRoleTypesTab || canAccessPermissionsTab;
+
+  if (!hasAnyAccess) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
@@ -180,6 +185,11 @@ export default function AdminProfilesPage() {
     );
   }
 
+  // Determinar qual aba mostrar por padrão
+  const defaultTab = canAccessUsersTab || isAdmin ? 'usuarios' : 
+                     canAccessRoleTypesTab ? 'tipos' : 
+                     canAccessPermissionsTab ? 'permissoes' : 'usuarios';
+
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
@@ -188,20 +198,26 @@ export default function AdminProfilesPage() {
           <h1 className="text-2xl font-bold">Gerenciamento de Perfis</h1>
         </div>
 
-        <Tabs defaultValue="usuarios" className="space-y-6">
+        <Tabs defaultValue={defaultTab} className="space-y-6">
           <TabsList>
-            <TabsTrigger value="usuarios" className="gap-2">
-              <Users className="h-4 w-4" />
-              Usuários
-            </TabsTrigger>
-            <TabsTrigger value="tipos" className="gap-2">
-              <UserCog className="h-4 w-4" />
-              Tipos de Perfil
-            </TabsTrigger>
-            <TabsTrigger value="permissoes" className="gap-2">
-              <Lock className="h-4 w-4" />
-              Permissões por Perfil
-            </TabsTrigger>
+            {(canAccessUsersTab || isAdmin) && (
+              <TabsTrigger value="usuarios" className="gap-2">
+                <Users className="h-4 w-4" />
+                Usuários
+              </TabsTrigger>
+            )}
+            {(canAccessRoleTypesTab || isAdmin) && (
+              <TabsTrigger value="tipos" className="gap-2">
+                <UserCog className="h-4 w-4" />
+                Tipos de Perfil
+              </TabsTrigger>
+            )}
+            {(canAccessPermissionsTab || isAdmin) && (
+              <TabsTrigger value="permissoes" className="gap-2">
+                <Lock className="h-4 w-4" />
+                Permissões por Perfil
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Aba de Usuários */}
