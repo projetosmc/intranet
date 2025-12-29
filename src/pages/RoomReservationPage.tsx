@@ -182,6 +182,49 @@ export default function RoomReservationPage() {
     return isBefore(timeDate, now);
   };
 
+  // Calculate next available start time (current time + 10 minutes, rounded to next 30 min slot)
+  const getNextAvailableTime = (): { start: string; end: string } => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 10); // Add 10 minutes
+    
+    // Round up to next 30 minute slot
+    const minutes = now.getMinutes();
+    const roundedMinutes = minutes <= 30 ? 30 : 60;
+    if (roundedMinutes === 60) {
+      now.setHours(now.getHours() + 1);
+      now.setMinutes(0);
+    } else {
+      now.setMinutes(30);
+    }
+    
+    // Ensure we don't go past 20:00 (8 PM)
+    if (now.getHours() >= 20) {
+      return { start: '07:00', end: '08:00' }; // Default to next day first slot
+    }
+    
+    const startHour = String(now.getHours()).padStart(2, '0');
+    const startMinute = String(now.getMinutes()).padStart(2, '0');
+    const startTime = `${startHour}:${startMinute}`;
+    
+    // End time is 1 hour after start
+    const endDate = new Date(now);
+    endDate.setHours(endDate.getHours() + 1);
+    const endHour = String(endDate.getHours()).padStart(2, '0');
+    const endMinute = String(endDate.getMinutes()).padStart(2, '0');
+    const endTime = `${endHour}:${endMinute}`;
+    
+    return { start: startTime, end: endTime };
+  };
+
+  // Auto-set next available time when selecting today's date
+  useEffect(() => {
+    if (reservationDate && isToday(reservationDate) && !editingReservation) {
+      const { start, end } = getNextAvailableTime();
+      setStartTime(start);
+      setEndTime(end);
+    }
+  }, [reservationDate, editingReservation]);
+
   // Calculate duration
   const calculateDuration = (start: string, end: string): string => {
     const [startH, startM] = start.split(':').map(Number);
