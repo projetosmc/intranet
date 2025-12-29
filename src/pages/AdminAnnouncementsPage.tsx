@@ -453,52 +453,61 @@ export default function AdminAnnouncementsPage() {
                   </div>
                 )}
 
-                {/* Image Upload for Banner */}
-                {formData.templateType === 'banner' && (
-                  <div className="space-y-2">
-                    <Label>Imagem do Banner</Label>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                    {formData.imageUrl ? (
-                      <div className="relative rounded-xl overflow-hidden">
-                        <img
-                          src={formData.imageUrl}
-                          alt="Banner preview"
-                          className="w-full h-40 object-cover"
-                        />
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-2 right-2"
-                          onClick={() => setFormData((prev) => ({ ...prev, imageUrl: undefined }))}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ) : (
+                {/* Image Upload - Obrigatório para todos os tipos */}
+                <div className="space-y-2">
+                  <Label>Imagem *</Label>
+                  <p className="text-xs text-muted-foreground">
+                    {formData.templateType === 'banner' && 'Tamanho ideal: 1920x600px (proporção 16:5)'}
+                    {formData.templateType === 'simple' && 'Tamanho ideal: 800x450px (proporção 16:9)'}
+                    {formData.templateType === 'poll' && 'Tamanho ideal: 600x400px (proporção 3:2)'}
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  {formData.imageUrl ? (
+                    <div className="relative rounded-xl overflow-hidden">
+                      <img
+                        src={formData.imageUrl}
+                        alt="Preview"
+                        className="w-full h-40 object-cover"
+                      />
                       <Button
-                        variant="outline"
-                        className="w-full h-40 flex-col gap-2"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isUploading}
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2"
+                        onClick={() => setFormData((prev) => ({ ...prev, imageUrl: undefined }))}
                       >
-                        {isUploading ? (
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
-                        ) : (
-                          <>
-                            <Upload className="h-6 w-6" />
-                            <span>Clique para enviar imagem</span>
-                          </>
-                        )}
+                        <X className="h-4 w-4" />
                       </Button>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full h-40 flex-col gap-2",
+                        formErrors.imageUrl && "border-destructive"
+                      )}
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                    >
+                      {isUploading ? (
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+                      ) : (
+                        <>
+                          <Upload className="h-6 w-6" />
+                          <span>Clique para enviar imagem</span>
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  {formErrors.imageUrl && (
+                    <p className="text-sm text-destructive">{formErrors.imageUrl}</p>
+                  )}
+                </div>
 
                 {/* Poll Options */}
                 {formData.templateType === 'poll' && (

@@ -12,6 +12,7 @@ import AnnouncementsPage from "./pages/AnnouncementsPage";
 import StatusPage from "./pages/StatusPage";
 import SupportPage from "./pages/SupportPage";
 import RoomReservationPage from "./pages/RoomReservationPage";
+import KnowledgeBasePage from "./pages/KnowledgeBasePage";
 import AdminSettingsPage from "./pages/AdminSettingsPage";
 import AdminAnnouncementsPage from "./pages/AdminAnnouncementsPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/status" element={<StatusPage />} />
               <Route path="/suporte" element={<SupportPage />} />
               <Route path="/reserva-salas" element={<RoomReservationPage />} />
+              <Route path="/base-conhecimento" element={<KnowledgeBasePage />} />
               <Route path="/perfil" element={<ProfilePage />} />
               {/* Rotas administrativas com verificação de permissão */}
               <Route path="/admin/configuracoes" element={<PermissionRoute><AdminSettingsPage /></PermissionRoute>} />
