@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Lock, Save, Loader2, Check, X, Info, Copy } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Lock, Save, Loader2, Check, X, Info, Copy, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -31,75 +31,196 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 interface Permissao {
   cod_permissao: string;
-  des_role: 'admin' | 'moderator' | 'user';
+  des_role: string;
   des_rota: string;
   des_nome_tela: string;
   ind_pode_acessar: boolean;
+  num_ordem: number;
 }
 
-type AppRole = 'admin' | 'moderator' | 'user';
+interface RoleType {
+  cod_perfil_tipo: string;
+  des_codigo: string;
+  des_nome: string;
+  des_cor: string;
+}
 
-const roleLabels: Record<AppRole, { label: string; abbrev: string; color: string }> = {
-  admin: {
-    label: 'Administrador',
-    abbrev: 'ADM',
-    color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  },
-  moderator: {
-    label: 'Moderador',
-    abbrev: 'MOD',
-    color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  },
-  user: {
-    label: 'Usuário',
-    abbrev: 'USR',
-    color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  },
-};
+interface ScreenGroup {
+  rota: string;
+  nome: string;
+  ordem: number;
+  permissions: Record<string, Permissao>;
+}
 
-const roles: AppRole[] = ['admin', 'moderator', 'user'];
+function SortableScreenRow({
+  screen,
+  screenData,
+  roles,
+  roleLabels,
+  pendingChanges,
+  onToggle,
+}: {
+  screen: string;
+  screenData: ScreenGroup;
+  roles: RoleType[];
+  roleLabels: Record<string, { label: string; abbrev: string; color: string }>;
+  pendingChanges: Map<string, boolean>;
+  onToggle: (permissao: Permissao) => void;
+}) {
+  const firstPermission = Object.values(screenData.permissions)[0];
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: firstPermission?.cod_permissao || screen });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <TableRow ref={setNodeRef} style={style}>
+      <TableCell className="w-[40px]">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded"
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </button>
+      </TableCell>
+      <TableCell>
+        <div className="flex flex-col">
+          <span className="font-medium">{screen}</span>
+          <span className="text-xs text-muted-foreground">
+            {screenData.rota}
+          </span>
+        </div>
+      </TableCell>
+      {roles.map((role) => {
+        const permissao = screenData.permissions[role.des_codigo];
+        if (!permissao) return <TableCell key={role.des_codigo} />;
+
+        const hasChange = pendingChanges.has(permissao.cod_permissao);
+        const label = roleLabels[role.des_codigo];
+
+        return (
+          <TableCell key={role.des_codigo} className="text-center">
+            <div className="flex items-center justify-center gap-2">
+              <Switch
+                checked={permissao.ind_pode_acessar}
+                onCheckedChange={() => onToggle(permissao)}
+                className="data-[state=checked]:bg-green-500"
+              />
+              {permissao.ind_pode_acessar ? (
+                <Check className="h-3 w-3 text-green-500" />
+              ) : (
+                <X className="h-3 w-3 text-destructive" />
+              )}
+              {hasChange && (
+                <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+              )}
+            </div>
+          </TableCell>
+        );
+      })}
+    </TableRow>
+  );
+}
 
 export function ScreenPermissionsTab() {
   const [permissoes, setPermissoes] = useState<Permissao[]>([]);
+  const [roleTypes, setRoleTypes] = useState<RoleType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Map<string, boolean>>(new Map());
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
-  const [sourceRole, setSourceRole] = useState<AppRole | ''>('');
-  const [targetRole, setTargetRole] = useState<AppRole | ''>('');
+  const [sourceRole, setSourceRole] = useState<string>('');
+  const [targetRole, setTargetRole] = useState<string>('');
   const [isCopying, setIsCopying] = useState(false);
-  
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
-    fetchPermissoes();
+    fetchData();
   }, []);
 
-  const fetchPermissoes = async () => {
+  const fetchData = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      // Buscar tipos de perfil
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('tab_perfil_tipo')
+        .select('cod_perfil_tipo, des_codigo, des_nome, des_cor')
+        .eq('ind_ativo', true)
+        .order('num_ordem');
+
+      if (rolesError) throw rolesError;
+      setRoleTypes((rolesData || []) as RoleType[]);
+
+      // Buscar permissões
+      const { data: permData, error: permError } = await supabase
         .from('tab_permissao_tela')
         .select('*')
-        .order('des_nome_tela')
-        .order('des_role');
+        .order('num_ordem')
+        .order('des_nome_tela');
 
-      if (error) throw error;
-      setPermissoes((data || []) as Permissao[]);
+      if (permError) throw permError;
+      setPermissoes((permData || []) as Permissao[]);
     } catch (error) {
-      console.error('Erro ao carregar permissões:', error);
-      toast({ title: 'Erro ao carregar permissões', variant: 'destructive' });
+      console.error('Erro ao carregar dados:', error);
+      toast({ title: 'Erro ao carregar dados', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Criar labels dinâmicos baseados nos tipos de perfil
+  const roleLabels = useMemo(() => {
+    const labels: Record<string, { label: string; abbrev: string; color: string }> = {};
+    roleTypes.forEach((role) => {
+      labels[role.des_codigo] = {
+        label: role.des_nome,
+        abbrev: role.des_nome.substring(0, 3).toUpperCase(),
+        color: role.des_cor,
+      };
+    });
+    return labels;
+  }, [roleTypes]);
+
   const handleToggle = (permissao: Permissao) => {
-    // Atualiza localmente
     setPermissoes((prev) =>
       prev.map((p) =>
         p.cod_permissao === permissao.cod_permissao
@@ -108,14 +229,12 @@ export function ScreenPermissionsTab() {
       )
     );
 
-    // Marca como alteração pendente
     setPendingChanges((prev) => {
       const newMap = new Map(prev);
       const currentValue = permissoes.find(
         (p) => p.cod_permissao === permissao.cod_permissao
       )?.ind_pode_acessar;
 
-      // Se está voltando ao valor original, remove do pending
       if (newMap.has(permissao.cod_permissao)) {
         newMap.delete(permissao.cod_permissao);
       } else {
@@ -144,11 +263,9 @@ export function ScreenPermissionsTab() {
         if (error) throw error;
       }
 
-      // Log de auditoria será feito automaticamente pelo sistema
-
       toast({ title: `${updates.length} permissão(ões) atualizada(s) com sucesso!` });
       setPendingChanges(new Map());
-      await fetchPermissoes();
+      await fetchData();
     } catch (error) {
       console.error('Erro ao salvar permissões:', error);
       toast({ title: 'Erro ao salvar permissões', variant: 'destructive' });
@@ -162,10 +279,8 @@ export function ScreenPermissionsTab() {
 
     setIsCopying(true);
     try {
-      // Buscar permissões do perfil de origem
       const sourcePermissions = permissoes.filter((p) => p.des_role === sourceRole);
 
-      // Atualizar permissões do perfil de destino
       for (const sourcePermission of sourcePermissions) {
         const targetPermission = permissoes.find(
           (p) => p.des_role === targetRole && p.des_rota === sourcePermission.des_rota
@@ -181,15 +296,13 @@ export function ScreenPermissionsTab() {
         }
       }
 
-      // Log de auditoria será feito automaticamente pelo sistema
-
-      toast({
-        title: `Permissões copiadas de ${roleLabels[sourceRole].label} para ${roleLabels[targetRole].label}`,
-      });
+      const sourceLabel = roleLabels[sourceRole]?.label || sourceRole;
+      const targetLabel = roleLabels[targetRole]?.label || targetRole;
+      toast({ title: `Permissões copiadas de ${sourceLabel} para ${targetLabel}` });
       setCopyDialogOpen(false);
       setSourceRole('');
       setTargetRole('');
-      await fetchPermissoes();
+      await fetchData();
     } catch (error) {
       console.error('Erro ao copiar permissões:', error);
       toast({ title: 'Erro ao copiar permissões', variant: 'destructive' });
@@ -198,21 +311,74 @@ export function ScreenPermissionsTab() {
     }
   };
 
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const screens = Object.keys(groupedByScreen);
+      const oldIndex = screens.findIndex((s) => {
+        const firstPerm = groupedByScreen[s].permissions[Object.keys(groupedByScreen[s].permissions)[0]];
+        return firstPerm?.cod_permissao === active.id;
+      });
+      const newIndex = screens.findIndex((s) => {
+        const firstPerm = groupedByScreen[s].permissions[Object.keys(groupedByScreen[s].permissions)[0]];
+        return firstPerm?.cod_permissao === over.id;
+      });
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newScreenOrder = arrayMove(screens, oldIndex, newIndex);
+
+        // Atualizar ordem no banco
+        try {
+          for (let i = 0; i < newScreenOrder.length; i++) {
+            const screenName = newScreenOrder[i];
+            const screenPerms = Object.values(groupedByScreen[screenName].permissions);
+            for (const perm of screenPerms) {
+              await supabase
+                .from('tab_permissao_tela')
+                .update({ num_ordem: i + 1 })
+                .eq('cod_permissao', perm.cod_permissao);
+            }
+          }
+          toast({ title: 'Ordem das telas atualizada!' });
+          await fetchData();
+        } catch (error) {
+          console.error('Erro ao atualizar ordem:', error);
+          toast({ title: 'Erro ao atualizar ordem', variant: 'destructive' });
+        }
+      }
+    }
+  };
+
   // Agrupa permissões por tela
   const groupedByScreen = useMemo(() => {
-    return permissoes.reduce(
-      (acc, p) => {
-        if (!acc[p.des_nome_tela]) {
-          acc[p.des_nome_tela] = { rota: p.des_rota, permissions: {} };
-        }
-        acc[p.des_nome_tela].permissions[p.des_role] = p;
-        return acc;
-      },
-      {} as Record<string, { rota: string; permissions: Record<string, Permissao> }>
-    );
+    const grouped: Record<string, ScreenGroup> = {};
+    permissoes.forEach((p) => {
+      if (!grouped[p.des_nome_tela]) {
+        grouped[p.des_nome_tela] = {
+          rota: p.des_rota,
+          nome: p.des_nome_tela,
+          ordem: p.num_ordem,
+          permissions: {},
+        };
+      }
+      grouped[p.des_nome_tela].permissions[p.des_role] = p;
+    });
+    return grouped;
   }, [permissoes]);
 
-  const screens = useMemo(() => Object.keys(groupedByScreen).sort(), [groupedByScreen]);
+  const sortedScreens = useMemo(() => {
+    return Object.keys(groupedByScreen).sort((a, b) => {
+      return (groupedByScreen[a].ordem || 0) - (groupedByScreen[b].ordem || 0);
+    });
+  }, [groupedByScreen]);
+
+  const sortableIds = useMemo(() => {
+    return sortedScreens.map((screen) => {
+      const firstPerm = Object.values(groupedByScreen[screen].permissions)[0];
+      return firstPerm?.cod_permissao || screen;
+    });
+  }, [sortedScreens, groupedByScreen]);
 
   if (isLoading) {
     return (
@@ -264,85 +430,67 @@ export function ScreenPermissionsTab() {
         <Info className="h-5 w-5 text-muted-foreground mt-0.5" />
         <p className="text-sm text-muted-foreground">
           Ative ou desative o acesso de cada perfil às telas do sistema. Use "Copiar
-          Permissões" para replicar configurações entre perfis. Todas as alterações são
-          registradas em log de auditoria.
+          Permissões" para replicar configurações entre perfis. Arraste as linhas para
+          reordenar as telas.
         </p>
       </div>
 
       {/* Legenda de perfis */}
       <div className="flex flex-wrap gap-2">
-        {roles.map((role) => (
-          <Badge key={role} className={roleLabels[role].color}>
-            {roleLabels[role].label}
+        {roleTypes.map((role) => (
+          <Badge key={role.des_codigo} className={role.des_cor}>
+            {role.des_nome}
           </Badge>
         ))}
       </div>
 
-      {/* Tabela de permissões */}
+      {/* Tabela de permissões com drag-and-drop */}
       <div className="border border-border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[250px]">Tela</TableHead>
-              {roles.map((role) => (
-                <TableHead key={role} className="text-center w-[120px]">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="cursor-help">
-                        <Badge className={roleLabels[role].color}>
-                          {roleLabels[role].abbrev}
-                        </Badge>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{roleLabels[role].label}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {screens.map((screen) => (
-              <TableRow key={screen}>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{screen}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {groupedByScreen[screen].rota}
-                    </span>
-                  </div>
-                </TableCell>
-                {roles.map((role) => {
-                  const permissao = groupedByScreen[screen]?.permissions[role];
-                  if (!permissao) return <TableCell key={role} />;
-
-                  const hasChange = pendingChanges.has(permissao.cod_permissao);
-
-                  return (
-                    <TableCell key={role} className="text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <Switch
-                          checked={permissao.ind_pode_acessar}
-                          onCheckedChange={() => handleToggle(permissao)}
-                          className="data-[state=checked]:bg-green-500"
-                        />
-                        {permissao.ind_pode_acessar ? (
-                          <Check className="h-3 w-3 text-green-500" />
-                        ) : (
-                          <X className="h-3 w-3 text-destructive" />
-                        )}
-                        {hasChange && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
-                        )}
-                      </div>
-                    </TableCell>
-                  );
-                })}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[40px]"></TableHead>
+                <TableHead className="w-[250px]">Tela</TableHead>
+                {roleTypes.map((role) => (
+                  <TableHead key={role.des_codigo} className="text-center w-[120px]">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help">
+                          <Badge className={role.des_cor}>
+                            {role.des_nome.substring(0, 3).toUpperCase()}
+                          </Badge>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{role.des_nome}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TableHead>
+                ))}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+                {sortedScreens.map((screen) => (
+                  <SortableScreenRow
+                    key={screen}
+                    screen={screen}
+                    screenData={groupedByScreen[screen]}
+                    roles={roleTypes}
+                    roleLabels={roleLabels}
+                    pendingChanges={pendingChanges}
+                    onToggle={handleToggle}
+                  />
+                ))}
+              </SortableContext>
+            </TableBody>
+          </Table>
+        </DndContext>
       </div>
 
       {/* Dialog de copiar permissões */}
@@ -359,17 +507,14 @@ export function ScreenPermissionsTab() {
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <label className="text-sm font-medium">Copiar de (origem):</label>
-              <Select
-                value={sourceRole}
-                onValueChange={(v) => setSourceRole(v as AppRole)}
-              >
+              <Select value={sourceRole} onValueChange={setSourceRole}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o perfil de origem" />
                 </SelectTrigger>
                 <SelectContent>
-                  {roles.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {roleLabels[role].label}
+                  {roleTypes.map((role) => (
+                    <SelectItem key={role.des_codigo} value={role.des_codigo}>
+                      {role.des_nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -378,19 +523,16 @@ export function ScreenPermissionsTab() {
 
             <div className="grid gap-2">
               <label className="text-sm font-medium">Copiar para (destino):</label>
-              <Select
-                value={targetRole}
-                onValueChange={(v) => setTargetRole(v as AppRole)}
-              >
+              <Select value={targetRole} onValueChange={setTargetRole}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o perfil de destino" />
                 </SelectTrigger>
                 <SelectContent>
-                  {roles
-                    .filter((r) => r !== sourceRole)
+                  {roleTypes
+                    .filter((r) => r.des_codigo !== sourceRole)
                     .map((role) => (
-                      <SelectItem key={role} value={role}>
-                        {roleLabels[role].label}
+                      <SelectItem key={role.des_codigo} value={role.des_codigo}>
+                        {role.des_nome}
                       </SelectItem>
                     ))}
                 </SelectContent>

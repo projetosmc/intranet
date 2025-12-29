@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Pencil, Check, Search, X, RefreshCw, Users, Lock } from 'lucide-react';
+import { Shield, Pencil, Check, Search, X, RefreshCw, Users, Lock, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { ScreenPermissionsTab } from '@/components/admin/ScreenPermissionsTab';
+import { RoleTypesTab } from '@/components/admin/RoleTypesTab';
 
 interface UserWithRole {
   id: string;
@@ -22,16 +23,18 @@ interface UserWithRole {
   roles: string[];
 }
 
-const availableRoles = [
-  { value: 'admin', label: 'Administrador', description: 'Acesso total ao sistema' },
-  { value: 'moderator', label: 'Moderador', description: 'Pode gerenciar conteúdo' },
-  { value: 'user', label: 'Usuário', description: 'Acesso básico' },
-];
+interface RoleType {
+  des_codigo: string;
+  des_nome: string;
+  des_descricao: string | null;
+  des_cor: string;
+}
 
 export default function AdminProfilesPage() {
   const navigate = useNavigate();
   const { isAdmin } = useUser();
   const [users, setUsers] = useState<UserWithRole[]>([]);
+  const [roleTypes, setRoleTypes] = useState<RoleType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
@@ -40,14 +43,24 @@ export default function AdminProfilesPage() {
 
   useEffect(() => {
     if (isAdmin) {
-      fetchUsers();
+      fetchData();
     }
   }, [isAdmin]);
 
-  const fetchUsers = async () => {
+  const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Buscar perfis
+      // Buscar tipos de perfil
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('tab_perfil_tipo')
+        .select('des_codigo, des_nome, des_descricao, des_cor')
+        .eq('ind_ativo', true)
+        .order('num_ordem');
+
+      if (rolesError) throw rolesError;
+      setRoleTypes((rolesData || []) as RoleType[]);
+
+      // Buscar perfis de usuário
       const { data: profiles, error: profilesError } = await supabase
         .from('tab_perfil_usuario')
         .select('cod_usuario, des_email, des_nome_completo')
@@ -56,27 +69,27 @@ export default function AdminProfilesPage() {
 
       if (profilesError) throw profilesError;
 
-      // Buscar roles
-      const { data: roles, error: rolesError } = await supabase
+      // Buscar roles dos usuários
+      const { data: userRoles, error: userRolesError } = await supabase
         .from('tab_usuario_role')
         .select('seq_usuario, des_role');
 
-      if (rolesError) throw rolesError;
+      if (userRolesError) throw userRolesError;
 
       // Combinar dados
       const usersWithRoles: UserWithRole[] = (profiles || []).map(profile => ({
         id: profile.cod_usuario,
         email: profile.des_email || '',
         fullName: profile.des_nome_completo || 'Sem nome',
-        roles: (roles || [])
+        roles: (userRoles || [])
           .filter(r => r.seq_usuario === profile.cod_usuario)
           .map(r => r.des_role),
       }));
 
       setUsers(usersWithRoles);
     } catch (error) {
-      console.error('Error fetching users:', error);
-      toast({ title: 'Erro ao carregar usuários', variant: 'destructive' });
+      console.error('Error fetching data:', error);
+      toast({ title: 'Erro ao carregar dados', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -115,7 +128,7 @@ export default function AdminProfilesPage() {
       toast({ title: 'Perfil atualizado!' });
       setIsDialogOpen(false);
       setEditingUser(null);
-      await fetchUsers();
+      await fetchData();
     } catch (error) {
       console.error('Error updating roles:', error);
       toast({ title: 'Erro ao atualizar perfil', variant: 'destructive' });
@@ -145,16 +158,15 @@ export default function AdminProfilesPage() {
     setSearchTerm('');
   }, []);
 
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return 'destructive';
-      case 'moderator':
-        return 'default';
-      default:
-        return 'secondary';
-    }
-  };
+  const getRoleLabel = useCallback((roleCode: string) => {
+    const role = roleTypes.find(r => r.des_codigo === roleCode);
+    return role?.des_nome || roleCode;
+  }, [roleTypes]);
+
+  const getRoleColor = useCallback((roleCode: string) => {
+    const role = roleTypes.find(r => r.des_codigo === roleCode);
+    return role?.des_cor || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+  }, [roleTypes]);
 
   if (!isAdmin) {
     return (
@@ -181,6 +193,10 @@ export default function AdminProfilesPage() {
             <TabsTrigger value="usuarios" className="gap-2">
               <Users className="h-4 w-4" />
               Usuários
+            </TabsTrigger>
+            <TabsTrigger value="tipos" className="gap-2">
+              <UserCog className="h-4 w-4" />
+              Tipos de Perfil
             </TabsTrigger>
             <TabsTrigger value="permissoes" className="gap-2">
               <Lock className="h-4 w-4" />
@@ -219,7 +235,7 @@ export default function AdminProfilesPage() {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={fetchUsers}
+                    onClick={fetchData}
                     disabled={isLoading}
                     title="Atualizar lista"
                   >
@@ -271,8 +287,8 @@ export default function AdminProfilesPage() {
                                 </Badge>
                               ) : (
                                 user.roles.map((role) => (
-                                  <Badge key={role} variant={getRoleBadgeVariant(role)}>
-                                    {availableRoles.find(r => r.value === role)?.label || role}
+                                  <Badge key={role} className={getRoleColor(role)}>
+                                    {getRoleLabel(role)}
                                   </Badge>
                                 ))
                               )}
@@ -294,6 +310,13 @@ export default function AdminProfilesPage() {
                   </TableBody>
                 </Table>
               </div>
+            </div>
+          </TabsContent>
+
+          {/* Aba de Tipos de Perfil */}
+          <TabsContent value="tipos">
+            <div className="glass-card p-6 rounded-xl">
+              <RoleTypesTab />
             </div>
           </TabsContent>
 
@@ -321,25 +344,29 @@ export default function AdminProfilesPage() {
 
               <div className="space-y-3">
                 <Label>Perfis de Acesso</Label>
-                {availableRoles.map((role) => (
+                {roleTypes.map((role) => (
                   <div
-                    key={role.value}
+                    key={role.des_codigo}
                     className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                      selectedRoles.includes(role.value)
+                      selectedRoles.includes(role.des_codigo)
                         ? 'border-primary bg-primary/5'
                         : 'border-border hover:bg-muted/50'
                     }`}
-                    onClick={() => toggleRole(role.value)}
+                    onClick={() => toggleRole(role.des_codigo)}
                   >
                     <Checkbox
-                      checked={selectedRoles.includes(role.value)}
-                      onCheckedChange={() => toggleRole(role.value)}
+                      checked={selectedRoles.includes(role.des_codigo)}
+                      onCheckedChange={() => toggleRole(role.des_codigo)}
                     />
                     <div className="flex-1">
-                      <p className="font-medium">{role.label}</p>
-                      <p className="text-sm text-muted-foreground">{role.description}</p>
+                      <div className="flex items-center gap-2">
+                        <Badge className={role.des_cor}>{role.des_nome}</Badge>
+                      </div>
+                      {role.des_descricao && (
+                        <p className="text-sm text-muted-foreground mt-1">{role.des_descricao}</p>
+                      )}
                     </div>
-                    {selectedRoles.includes(role.value) && (
+                    {selectedRoles.includes(role.des_codigo) && (
                       <Check className="h-4 w-4 text-primary" />
                     )}
                   </div>

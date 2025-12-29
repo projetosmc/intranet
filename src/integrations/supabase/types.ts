@@ -311,6 +311,45 @@ export type Database = {
           },
         ]
       }
+      tab_perfil_tipo: {
+        Row: {
+          cod_perfil_tipo: string
+          des_codigo: string
+          des_cor: string | null
+          des_descricao: string | null
+          des_nome: string
+          dta_atualizacao: string | null
+          dta_cadastro: string | null
+          ind_ativo: boolean | null
+          ind_sistema: boolean | null
+          num_ordem: number | null
+        }
+        Insert: {
+          cod_perfil_tipo?: string
+          des_codigo: string
+          des_cor?: string | null
+          des_descricao?: string | null
+          des_nome: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_ativo?: boolean | null
+          ind_sistema?: boolean | null
+          num_ordem?: number | null
+        }
+        Update: {
+          cod_perfil_tipo?: string
+          des_codigo?: string
+          des_cor?: string | null
+          des_descricao?: string | null
+          des_nome?: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_ativo?: boolean | null
+          ind_sistema?: boolean | null
+          num_ordem?: number | null
+        }
+        Relationships: []
+      }
       tab_perfil_usuario: {
         Row: {
           cod_usuario: string
@@ -371,6 +410,7 @@ export type Database = {
           dta_atualizacao: string | null
           dta_cadastro: string | null
           ind_pode_acessar: boolean
+          num_ordem: number | null
         }
         Insert: {
           cod_permissao?: string
@@ -380,6 +420,7 @@ export type Database = {
           dta_atualizacao?: string | null
           dta_cadastro?: string | null
           ind_pode_acessar?: boolean
+          num_ordem?: number | null
         }
         Update: {
           cod_permissao?: string
@@ -389,6 +430,7 @@ export type Database = {
           dta_atualizacao?: string | null
           dta_cadastro?: string | null
           ind_pode_acessar?: boolean
+          num_ordem?: number | null
         }
         Relationships: []
       }
