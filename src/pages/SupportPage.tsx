@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { HelpCircle, ExternalLink, MessageCircle, Book, Mail, Phone, FileQuestion } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { LinkifyText } from '@/components/ui/linkify-text';
 import { supabase } from '@/integrations/supabase/client';
 
 interface FAQ {
@@ -161,8 +162,8 @@ export default function SupportPage() {
                   <AccordionTrigger className="text-left hover:no-underline hover:text-primary">
                     {faq.des_pergunta}
                   </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground">
-                    {faq.des_resposta}
+                  <AccordionContent className="text-muted-foreground whitespace-pre-wrap">
+                    <LinkifyText text={faq.des_resposta} />
                   </AccordionContent>
                 </AccordionItem>
               ))}
