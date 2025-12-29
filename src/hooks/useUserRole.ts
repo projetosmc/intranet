@@ -78,89 +78,108 @@ export function useUserRole() {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
-  const [authReady, setAuthReady] = useState(false);
 
-  // Listen to auth state changes directly
+  // Fetch roles when userId changes
   useEffect(() => {
-    // Get initial session first
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const newUserId = session?.user?.id ?? null;
-      setUserId(newUserId);
-      setAuthReady(true);
-      
-      // Clear cache if user changed
-      if (!newUserId) {
-        clearCachedRoles();
-      }
-    });
+    let isMounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        const newUserId = session?.user?.id ?? null;
-        setUserId(newUserId);
-        setAuthReady(true);
-        
-        // Clear cache on sign out
-        if (event === 'SIGNED_OUT') {
-          clearCachedRoles();
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchRoles = useCallback(async (skipCache = false) => {
-    if (!authReady) {
-      return;
-    }
-
-    if (!userId) {
-      setRoles([]);
-      setIsLoading(false);
-      return;
-    }
-
-    // Check cache first
-    if (!skipCache) {
-      const cachedRoles = getCachedRoles(userId);
-      if (cachedRoles) {
+    const fetchRoles = async (uid: string) => {
+      // Check cache first
+      const cachedRoles = getCachedRoles(uid);
+      if (cachedRoles && isMounted) {
         setRoles(cachedRoles);
         setIsLoading(false);
         return;
       }
-    }
 
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('tab_usuario_role')
-        .select('des_role')
-        .eq('seq_usuario', userId);
+      try {
+        const { data, error } = await supabase
+          .from('tab_usuario_role')
+          .select('des_role')
+          .eq('seq_usuario', uid);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      const fetchedRoles = (data || []).map((r) => r.des_role as AppRole);
-      setRoles(fetchedRoles);
-      setCachedRoles(userId, fetchedRoles);
-    } catch (error) {
-      console.error('Error fetching roles:', error);
-      setRoles([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userId, authReady]);
+        if (isMounted) {
+          const fetchedRoles = (data || []).map((r) => r.des_role as AppRole);
+          setRoles(fetchedRoles);
+          setCachedRoles(uid, fetchedRoles);
+        }
+      } catch (error) {
+        console.error('Error fetching roles:', error);
+        if (isMounted) {
+          setRoles([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
 
-  useEffect(() => {
-    if (authReady) {
-      fetchRoles();
-    }
-  }, [authReady, fetchRoles]);
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!isMounted) return;
+      
+      const uid = session?.user?.id ?? null;
+      setUserId(uid);
+      
+      if (uid) {
+        fetchRoles(uid);
+      } else {
+        clearCachedRoles();
+        setRoles([]);
+        setIsLoading(false);
+      }
+    });
+
+    // Listen to auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (!isMounted) return;
+        
+        const newUserId = session?.user?.id ?? null;
+        setUserId(newUserId);
+        
+        if (event === 'SIGNED_OUT') {
+          clearCachedRoles();
+          setRoles([]);
+          setIsLoading(false);
+        } else if (newUserId) {
+          setIsLoading(true);
+          fetchRoles(newUserId);
+        } else {
+          setRoles([]);
+          setIsLoading(false);
+        }
+      }
+    );
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const invalidateCache = useCallback(() => {
     clearCachedRoles();
-    fetchRoles(true);
-  }, [fetchRoles]);
+    if (userId) {
+      setIsLoading(true);
+      // Trigger refetch
+      supabase
+        .from('tab_usuario_role')
+        .select('des_role')
+        .eq('seq_usuario', userId)
+        .then(({ data, error }) => {
+          if (!error) {
+            const fetchedRoles = (data || []).map((r) => r.des_role as AppRole);
+            setRoles(fetchedRoles);
+            setCachedRoles(userId, fetchedRoles);
+          }
+          setIsLoading(false);
+        });
+    }
+  }, [userId]);
 
   const isAdmin = roles.includes('admin');
   const isModerator = roles.includes('moderator') || isAdmin;
@@ -169,8 +188,8 @@ export function useUserRole() {
     roles,
     isAdmin,
     isModerator,
-    isLoading: !authReady || isLoading,
-    refetch: fetchRoles,
+    isLoading,
+    refetch: invalidateCache,
     invalidateCache,
   };
 }
