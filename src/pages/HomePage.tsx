@@ -1,16 +1,20 @@
+import { useMemo, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { Megaphone, ArrowRight, Calendar } from 'lucide-react';
+import { Megaphone, ArrowRight, Calendar, Clock, DoorOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnnouncementCard } from '@/components/announcements/AnnouncementCard';
 import { BannerCarousel } from '@/components/announcements/BannerCarousel';
 import { EventCalendar } from '@/components/calendar/EventCalendar';
 import { BirthdayList } from '@/components/birthday/BirthdayList';
-import { MCScene } from '@/components/3d/MCScene';
 import { useDbAnnouncements } from '@/hooks/useDbAnnouncements';
 import { useBirthdays } from '@/hooks/useBirthdays';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
+import { useUserReservations } from '@/hooks/useUserReservations';
+import { useNotifications } from '@/hooks/useNotifications';
 import { useUser } from '@/contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
+import { format, isToday, isTomorrow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -18,6 +22,15 @@ export default function HomePage() {
   const { activeAnnouncements, bannerAnnouncements } = useDbAnnouncements();
   const { birthdays, isLoading: birthdaysLoading } = useBirthdays();
   const { events: calendarEvents, addEvent, deleteEvent } = useCalendarEvents();
+  const { calendarEvents: reservationEvents, upcomingMeetings, isLoading: reservationsLoading } = useUserReservations();
+
+  // Ativar notificações para reuniões próximas
+  useNotifications(upcomingMeetings.map(m => ({
+    id: m.id,
+    roomName: m.roomName,
+    startTime: m.startTime,
+    date: m.date,
+  })));
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -26,27 +39,33 @@ export default function HomePage() {
     return 'Boa noite';
   };
 
-  // Combine birthday events with calendar events
-  const birthdayEvents = birthdays.map(b => ({
-    date: b.birthdayDate,
-    title: `🎂 ${b.fullName}`,
-    type: 'birthday'
-  }));
+  // Memoizar combinação de eventos para evitar re-renders
+  const allEvents = useMemo(() => {
+    const birthdayEvents = birthdays.map(b => ({
+      date: b.birthdayDate,
+      title: `🎂 ${b.fullName}`,
+      type: 'birthday'
+    }));
 
-  const allEvents = [
-    ...birthdayEvents,
-    ...calendarEvents.map(e => ({
+    const calEvents = calendarEvents.map(e => ({
       date: e.event_date,
       title: e.title,
       type: e.event_type,
       id: e.id
-    }))
-  ];
+    }));
+
+    return [...birthdayEvents, ...calEvents, ...reservationEvents];
+  }, [birthdays, calendarEvents, reservationEvents]);
+
+  // Formatar data da reunião
+  const formatMeetingDate = (date: Date) => {
+    if (isToday(date)) return 'Hoje';
+    if (isTomorrow(date)) return 'Amanhã';
+    return format(date, "dd/MM", { locale: ptBR });
+  };
 
   return (
     <div className="relative min-h-[calc(100vh-8rem)]">
-      <MCScene />
-
       <div className="space-y-6">
         {/* Hero Section */}
         <motion.section
@@ -64,6 +83,49 @@ export default function HomePage() {
             </p>
           </div>
         </motion.section>
+
+        {/* Próximas Reuniões - Mostrar se houver */}
+        {upcomingMeetings.length > 0 && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.05 }}
+          >
+            <div className="glass-card p-4 rounded-xl border border-primary/20 bg-primary/5">
+              <div className="flex items-center gap-2 mb-3">
+                <Clock className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold text-foreground">Próximas Reuniões</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {upcomingMeetings.slice(0, 3).map((meeting) => (
+                  <div
+                    key={meeting.id}
+                    className="flex items-center gap-3 p-3 bg-background/50 rounded-lg border border-border/50"
+                  >
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <DoorOpen className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{meeting.roomName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatMeetingDate(meeting.date)} às {meeting.startTime.slice(0, 5)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-2"
+                onClick={() => navigate('/reserva-salas')}
+              >
+                Ver todas as reservas
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </motion.section>
+        )}
 
         {/* Banner Carousel */}
         {bannerAnnouncements.length > 0 && (
