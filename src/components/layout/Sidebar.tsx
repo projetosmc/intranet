@@ -393,6 +393,8 @@ export function Sidebar() {
     // Se não tem filhos, verifica se o próprio item é acessível
     if (!menuItem.children || menuItem.children.length === 0) {
       if (menuItem.isAdminOnly && !isAdmin) return false;
+      // URLs externas (Fluig, etc.) são sempre acessíveis - não passam por permissões de tela
+      if (menuItem.path.startsWith('http')) return true;
       return canAccess(menuItem.path);
     }
     

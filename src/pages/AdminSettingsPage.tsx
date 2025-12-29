@@ -810,11 +810,26 @@ export default function AdminSettingsPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__none__">Nenhum (menu principal)</SelectItem>
-                          {parentItems.map(item => (
-                            <SelectItem key={item.cod_menu_item} value={item.cod_menu_item}>
-                              {item.des_nome}
-                            </SelectItem>
-                          ))}
+                          {/* Mostrar todos os menus que podem ser pais (exclui o próprio item em edição) */}
+                          {menuItems
+                            .filter(item => item.cod_menu_item !== editingItem?.cod_menu_item)
+                            .map(item => {
+                              // Calcular profundidade do item para indentação visual
+                              let depth = 0;
+                              let currentParent = item.seq_menu_pai;
+                              while (currentParent) {
+                                depth++;
+                                const parent = menuItems.find(m => m.cod_menu_item === currentParent);
+                                currentParent = parent?.seq_menu_pai || null;
+                              }
+                              const indent = '  '.repeat(depth);
+                              const prefix = depth > 0 ? '└ ' : '';
+                              return (
+                                <SelectItem key={item.cod_menu_item} value={item.cod_menu_item}>
+                                  {indent}{prefix}{item.des_nome}
+                                </SelectItem>
+                              );
+                            })}
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground mt-1">
