@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Fragment } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Fuse from 'fuse.js';
@@ -427,17 +427,25 @@ export function Sidebar() {
       return (
         <div className={cn(
           depth === 1 && "ml-2",
-          depth >= 2 && "ml-1"
+          depth >= 2 && "ml-1",
+          // Destaque visual para submenu expandido
+          expanded && depth === 0 && "bg-sidebar-accent/30 rounded-lg mb-1"
         )}>
           <button
-            onClick={() => toggleMenu(item.name)}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              toggleMenu(item.name);
+            }}
             className={cn(
               "w-full ripple-container group flex items-center justify-between gap-2 rounded-lg px-3 py-2 transition-all duration-200 relative overflow-hidden",
               // Nível 0 e 1: mesmo estilo (maiúsculas, mesma cor, sem ícone)
               (depth === 0 || depth === 1) && "text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70",
               // Nível 2+: estilo diferenciado
               depth >= 2 && "text-sm font-medium text-sidebar-foreground/80 pl-3",
-              "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+              "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+              // Destaque quando expandido
+              expanded && "text-sidebar-foreground"
             )}
           >
             <div className="flex items-center gap-2">
@@ -455,7 +463,7 @@ export function Sidebar() {
           <div
             className={cn(
               "overflow-hidden transition-all duration-300 ease-in-out",
-              depth === 0 && "space-y-0.5 mt-1",
+              depth === 0 && "space-y-0.5 mt-1 pb-1",
               depth === 1 && "space-y-0.5 ml-4 mt-1 border-l-2 border-sidebar-border/30 pl-2",
               depth >= 2 && "space-y-0.5 ml-3 mt-0.5 border-l border-sidebar-border/20 pl-2",
               expanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
@@ -659,9 +667,15 @@ export function Sidebar() {
               <div className="my-3 border-t border-sidebar-border" />
             )}
             
-            {/* Regular menu items */}
-            {visibleMenuItems.map((item) => (
-              <MenuItem key={item.id} item={item} />
+            {/* Regular menu items with separators between level 1 groups */}
+            {visibleMenuItems.map((item, index) => (
+              <React.Fragment key={item.id}>
+                {/* Divisória sutil entre grupos de nível 1 */}
+                {index > 0 && (
+                  <div className="my-2 mx-2 border-t border-sidebar-border/40" />
+                )}
+                <MenuItem item={item} />
+              </React.Fragment>
             ))}
           </>
         )}
