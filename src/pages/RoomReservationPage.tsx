@@ -362,9 +362,10 @@ export default function RoomReservationPage() {
   const selectedDayReservations = getReservationsForDate(selectedDate);
 
   return (
-    <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="flex items-center justify-between mb-6">
+    <div className="h-[calc(100vh-8rem)]">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <DoorOpen className="h-6 w-6 text-primary" />
             <h1 className="text-2xl font-bold text-foreground">Reserva de Salas</h1>
@@ -483,136 +484,179 @@ export default function RoomReservationPage() {
           </Dialog>
         </div>
 
-        {/* Calendar Section */}
-        <div className={cn(
-          "bg-card border border-border rounded-xl overflow-hidden transition-all duration-300",
-          isFullscreen && "fixed inset-4 z-50"
-        )}>
-          {/* Calendar Header */}
-          <div className="flex items-center justify-between p-4 border-b border-border">
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={handlePrevious}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="icon" onClick={handleNext}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleToday}>
-                Hoje
-              </Button>
-              <h2 className="text-lg font-semibold ml-2">
-                {format(currentDate, view === 'day' ? "d 'de' MMMM yyyy" : "MMMM yyyy", { locale: ptBR })}
-              </h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex border border-border rounded-lg overflow-hidden">
-                <Button
-                  variant={view === 'day' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  onClick={() => setView('day')}
-                  className="rounded-none"
-                >
-                  Dia
+        {/* Main Content - Split Layout */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
+          {/* Calendar - Compact */}
+          <div className={cn(
+            "lg:col-span-2 bg-card border border-border rounded-xl overflow-hidden flex flex-col",
+            isFullscreen && "fixed inset-4 z-50 lg:col-span-1"
+          )}>
+            {/* Calendar Header */}
+            <div className="flex items-center justify-between p-3 border-b border-border flex-shrink-0">
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handlePrevious}>
+                  <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant={view === 'week' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  onClick={() => setView('week')}
-                  className="rounded-none border-x border-border"
-                >
-                  Semana
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleNext}>
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
+                <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={handleToday}>
+                  Hoje
+                </Button>
+                <h2 className="text-sm font-semibold ml-2">
+                  {format(currentDate, view === 'day' ? "d 'de' MMMM yyyy" : "MMMM yyyy", { locale: ptBR })}
+                </h2>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="flex bg-muted rounded-md p-0.5">
+                  <Button
+                    variant={view === 'day' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setView('day')}
+                    className="h-7 px-2 text-xs"
+                  >
+                    <List className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant={view === 'week' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setView('week')}
+                    className="h-7 px-2 text-xs"
+                  >
+                    <Grid3X3 className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant={view === 'month' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setView('month')}
+                    className="h-7 px-2 text-xs"
+                  >
+                    <CalendarIcon className="h-3 w-3" />
+                  </Button>
+                </div>
                 <Button
-                  variant={view === 'month' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  onClick={() => setView('month')}
-                  className="rounded-none"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setIsFullscreen(!isFullscreen)}
                 >
-                  Mês
+                  {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                 </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsFullscreen(!isFullscreen)}
-              >
-                {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-              </Button>
             </div>
-          </div>
 
-          {/* Calendar Content */}
-          <div className={cn("p-4", isFullscreen && "h-[calc(100%-120px)] overflow-auto")}>
-            {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">Carregando...</div>
-            ) : (
-              <>
-                {view === 'month' && renderMonthView()}
-                {view === 'week' && renderWeekView()}
-                {view === 'day' && renderDayView()}
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Selected Day Reservations */}
-        <div className="bg-card border border-border rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <CalendarIcon className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold">
-              Reservas de {format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
-            </h3>
-          </div>
-
-          {selectedDayReservations.length === 0 ? (
-            <p className="text-muted-foreground text-sm">Nenhuma reserva para este dia</p>
-          ) : (
-            <div className="space-y-3">
-              {selectedDayReservations.map((reservation) => (
-                <motion.div
-                  key={reservation.cod_reserva}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {reservation.hra_inicio} - {reservation.hra_fim}
-                      </Badge>
-                      <span className="font-medium">
-                        {reservation.tab_sala_reuniao?.des_nome}
-                      </span>
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      <span>{reservation.des_nome_solicitante}</span>
-                      {reservation.tab_tipo_reuniao && (
-                        <span className="ml-2">• {reservation.tab_tipo_reuniao.des_nome}</span>
-                      )}
-                      <span className="ml-2">
-                        • <Users className="h-3 w-3 inline mr-1" />
-                        {reservation.num_participantes}
-                      </span>
-                    </div>
-                    {reservation.des_observacao && (
-                      <p className="text-xs text-muted-foreground mt-1">{reservation.des_observacao}</p>
-                    )}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => setDeleteReservationId(reservation.cod_reserva)}
-                    className="text-destructive hover:text-destructive"
+            {/* Calendar Content */}
+            <div className="flex-1 p-3 overflow-auto">
+              {isLoading ? (
+                <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+              ) : (
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={view}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </motion.div>
-              ))}
+                    {view === 'month' && renderMonthView()}
+                    {view === 'week' && renderWeekView()}
+                    {view === 'day' && renderDayView()}
+                  </motion.div>
+                </AnimatePresence>
+              )}
             </div>
-          )}
+          </div>
+
+          {/* Selected Day Details */}
+          <div className="bg-card border border-border rounded-xl p-4 flex flex-col min-h-0 overflow-hidden">
+            <div className="flex items-center gap-2 mb-3 flex-shrink-0">
+              <CalendarIcon className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-sm">
+                {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
+              </h3>
+            </div>
+
+            <div className="flex-1 overflow-auto">
+              {selectedDayReservations.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                  <DoorOpen className="h-10 w-10 text-muted-foreground/50 mb-2" />
+                  <p className="text-muted-foreground text-sm">Nenhuma reserva para este dia</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-3"
+                    onClick={() => {
+                      setReservationDate(selectedDate);
+                      setIsDialogOpen(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Reservar
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {selectedDayReservations.map((reservation) => (
+                    <motion.div
+                      key={reservation.cod_reserva}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-3 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant="outline" className="text-xs">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {reservation.hra_inicio.slice(0, 5)} - {reservation.hra_fim.slice(0, 5)}
+                            </Badge>
+                            <span className="font-medium text-sm truncate">
+                              {reservation.tab_sala_reuniao?.des_nome}
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1.5 space-y-0.5">
+                            <p className="truncate">{reservation.des_nome_solicitante}</p>
+                            <div className="flex items-center gap-2">
+                              {reservation.tab_tipo_reuniao && (
+                                <span>{reservation.tab_tipo_reuniao.des_nome}</span>
+                              )}
+                              <span className="flex items-center">
+                                <Users className="h-3 w-3 mr-0.5" />
+                                {reservation.num_participantes}
+                              </span>
+                            </div>
+                          </div>
+                          {reservation.des_observacao && (
+                            <p className="text-xs text-muted-foreground mt-1 italic truncate">
+                              {reservation.des_observacao}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive flex-shrink-0"
+                          onClick={() => setDeleteReservationId(reservation.cod_reserva)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </motion.div>
+
+      {/* Fullscreen Overlay */}
+      {isFullscreen && (
+        <div 
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
+          onClick={() => setIsFullscreen(false)}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteReservationId} onOpenChange={(open) => !open && setDeleteReservationId(null)}>
