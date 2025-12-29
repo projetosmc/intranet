@@ -427,9 +427,7 @@ export function Sidebar() {
       return (
         <div className={cn(
           depth === 1 && "ml-2",
-          depth >= 2 && "ml-1",
-          // Destaque visual para submenu expandido
-          expanded && depth === 0 && "bg-sidebar-accent/30 rounded-lg mb-1"
+          depth >= 2 && "ml-1"
         )}>
           <button
             type="button"
@@ -443,9 +441,7 @@ export function Sidebar() {
               (depth === 0 || depth === 1) && "text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70",
               // Nível 2+: estilo diferenciado
               depth >= 2 && "text-sm font-medium text-sidebar-foreground/80 pl-3",
-              "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-              // Destaque quando expandido
-              expanded && "text-sidebar-foreground"
+              "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
             )}
           >
             <div className="flex items-center gap-2">
@@ -463,7 +459,7 @@ export function Sidebar() {
           <div
             className={cn(
               "overflow-hidden transition-all duration-300 ease-in-out",
-              depth === 0 && "space-y-0.5 mt-1 pb-1",
+              depth === 0 && "space-y-0.5 mt-1",
               depth === 1 && "space-y-0.5 ml-4 mt-1 border-l-2 border-sidebar-border/30 pl-2",
               depth >= 2 && "space-y-0.5 ml-3 mt-0.5 border-l border-sidebar-border/20 pl-2",
               expanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
