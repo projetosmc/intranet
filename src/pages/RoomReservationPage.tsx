@@ -16,7 +16,8 @@ import {
   Edit,
   History,
   Timer,
-  Repeat
+  Repeat,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -129,6 +131,10 @@ export default function RoomReservationPage() {
   // Recurrence state
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('none');
   const [recurrenceCount, setRecurrenceCount] = useState('4');
+  
+  // Responsibility confirmation dialog state
+  const [showResponsibilityDialog, setShowResponsibilityDialog] = useState(false);
+  const [hasAcceptedResponsibility, setHasAcceptedResponsibility] = useState(false);
 
   // Derived state - selected room capacity
   const selectedRoomData = useMemo(() => 
@@ -182,42 +188,100 @@ export default function RoomReservationPage() {
     return isBefore(timeDate, now);
   };
 
-  // Calculate next available start time (current time + 10 minutes, rounded to next 30 min)
-  const getNextAvailableTime = (): { start: string; end: string } => {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() + 10); // Add 10 minutes
+  // Calculate next available start time based on existing reservations
+  const getSmartAvailableTime = (date: Date, roomId: string): { start: string; end: string } => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const roomReservations = reservations
+      .filter(r => r.seq_sala === roomId && r.dta_reserva === dateStr && !r.ind_cancelado)
+      .sort((a, b) => a.hra_inicio.localeCompare(b.hra_inicio));
     
-    // Round up to next 30 minute slot
-    const minutes = now.getMinutes();
-    if (minutes > 0 && minutes <= 30) {
-      now.setMinutes(30);
-    } else if (minutes > 30) {
-      now.setHours(now.getHours() + 1);
-      now.setMinutes(0);
+    const now = new Date();
+    let baseStartTime: Date;
+    
+    if (isToday(date)) {
+      // For today, start from current time + 5 minutes
+      baseStartTime = new Date(date);
+      baseStartTime.setHours(now.getHours(), now.getMinutes() + 5, 0, 0);
+    } else {
+      // For other dates, start from 08:00
+      baseStartTime = new Date(date);
+      baseStartTime.setHours(8, 0, 0, 0);
     }
     
-    const startHour = String(now.getHours()).padStart(2, '0');
-    const startMinute = String(now.getMinutes()).padStart(2, '0');
-    const startTimeStr = `${startHour}:${startMinute}`;
+    const baseTimeStr = `${String(baseStartTime.getHours()).padStart(2, '0')}:${String(baseStartTime.getMinutes()).padStart(2, '0')}`;
     
-    // End time is 1 hour after start
-    const endDate = new Date(now);
+    // If no reservations, return base time + 1 hour
+    if (roomReservations.length === 0) {
+      const endDate = new Date(baseStartTime);
+      endDate.setHours(endDate.getHours() + 1);
+      const endTimeStr = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+      return { start: baseTimeStr, end: endTimeStr };
+    }
+    
+    // Find the first available slot after occupied times
+    let startTimeStr = baseTimeStr;
+    let foundSlot = false;
+    
+    for (let i = 0; i < roomReservations.length; i++) {
+      const current = roomReservations[i];
+      const currentStart = current.hra_inicio.slice(0, 5);
+      const currentEnd = current.hra_fim.slice(0, 5);
+      const next = roomReservations[i + 1];
+      
+      // If base time is before or during this reservation
+      if (startTimeStr < currentEnd) {
+        // Start after this reservation ends + 5 minutes
+        const [endH, endM] = currentEnd.split(':').map(Number);
+        const afterEnd = new Date(date);
+        afterEnd.setHours(endH, endM + 5, 0, 0);
+        startTimeStr = `${String(afterEnd.getHours()).padStart(2, '0')}:${String(afterEnd.getMinutes()).padStart(2, '0')}`;
+        
+        // Calculate end time (default 1 hour, or 5 min before next meeting)
+        const defaultEnd = new Date(afterEnd);
+        defaultEnd.setHours(defaultEnd.getHours() + 1);
+        let endTimeStr = `${String(defaultEnd.getHours()).padStart(2, '0')}:${String(defaultEnd.getMinutes()).padStart(2, '0')}`;
+        
+        if (next) {
+          const nextStart = next.hra_inicio.slice(0, 5);
+          // If next meeting starts before default end time
+          if (nextStart < endTimeStr) {
+            // Set end time to 5 min before next meeting
+            const [nextH, nextM] = nextStart.split(':').map(Number);
+            const beforeNext = new Date(date);
+            beforeNext.setHours(nextH, nextM - 5, 0, 0);
+            endTimeStr = `${String(beforeNext.getHours()).padStart(2, '0')}:${String(beforeNext.getMinutes()).padStart(2, '0')}`;
+          }
+        }
+        
+        // Ensure end time is after start time
+        if (endTimeStr > startTimeStr) {
+          return { start: startTimeStr, end: endTimeStr };
+        }
+      }
+    }
+    
+    // If we haven't found a slot yet, start after the last reservation
+    const lastReservation = roomReservations[roomReservations.length - 1];
+    const [lastEndH, lastEndM] = lastReservation.hra_fim.slice(0, 5).split(':').map(Number);
+    const afterLast = new Date(date);
+    afterLast.setHours(lastEndH, lastEndM + 5, 0, 0);
+    startTimeStr = `${String(afterLast.getHours()).padStart(2, '0')}:${String(afterLast.getMinutes()).padStart(2, '0')}`;
+    
+    const endDate = new Date(afterLast);
     endDate.setHours(endDate.getHours() + 1);
-    const endHour = String(endDate.getHours()).padStart(2, '0');
-    const endMinute = String(endDate.getMinutes()).padStart(2, '0');
-    const endTimeStr = `${endHour}:${endMinute}`;
+    const endTimeStr = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
     
     return { start: startTimeStr, end: endTimeStr };
   };
 
-  // Handle date selection and auto-set time for today
+  // Handle date selection and auto-set time based on availability
   const handleReservationDateSelect = (date: Date | undefined) => {
     setReservationDate(date);
     setIsDatePopoverOpen(false);
     
-    // Auto-set next available time when selecting today's date
-    if (date && isToday(date) && !editingReservation) {
-      const { start, end } = getNextAvailableTime();
+    // Auto-set smart available time when selecting a date
+    if (date && selectedRoom && !editingReservation) {
+      const { start, end } = getSmartAvailableTime(date, selectedRoom);
       setStartTime(start);
       setEndTime(end);
     }
@@ -598,6 +662,34 @@ export default function RoomReservationPage() {
     setEditingReservation(null);
     setRecurrenceType('none');
     setRecurrenceCount('4');
+    setHasAcceptedResponsibility(false);
+  };
+  
+  // Handle reserve button click - show responsibility dialog first
+  const handleReserveButtonClick = () => {
+    if (!selectedRoom || !reservationDate || !startTime || !endTime) {
+      toast({ title: 'Preencha todos os campos obrigatórios', variant: 'destructive' });
+      return;
+    }
+    
+    if (startTime >= endTime) {
+      toast({ title: 'Hora de início deve ser anterior à hora de fim', variant: 'destructive' });
+      return;
+    }
+    
+    // For new reservations, show responsibility dialog
+    if (!editingReservation) {
+      setShowResponsibilityDialog(true);
+    } else {
+      // For edits, go straight to update
+      handleUpdateReservation();
+    }
+  };
+  
+  // Handle responsibility confirmation
+  const handleConfirmResponsibility = () => {
+    setShowResponsibilityDialog(false);
+    handleCreateReservation();
   };
 
   const getReservationsForDate = (date: Date) => {
@@ -1060,7 +1152,7 @@ export default function RoomReservationPage() {
                 )}
 
                 <Button 
-                  onClick={editingReservation ? handleUpdateReservation : handleCreateReservation} 
+                  onClick={handleReserveButtonClick} 
                   className="w-full"
                 >
                   {editingReservation ? 'Salvar Alterações' : 'Reservar Sala'}
@@ -1068,6 +1160,63 @@ export default function RoomReservationPage() {
               </div>
             </DialogContent>
           </Dialog>
+          
+          {/* Responsibility Confirmation Dialog */}
+          <AlertDialog open={showResponsibilityDialog} onOpenChange={setShowResponsibilityDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <DoorOpen className="h-5 w-5 text-primary" />
+                  Termo de Responsabilidade
+                </AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-3 text-left">
+                    <p>
+                      Ao reservar esta sala de reunião, você declara estar ciente e concorda com as seguintes responsabilidades:
+                    </p>
+                    <ul className="list-disc list-inside space-y-2 text-sm">
+                      <li>
+                        <strong>Integridade da sala:</strong> Você é responsável pela integridade da sala de reunião, incluindo todos os equipamentos, móveis e materiais disponíveis.
+                      </li>
+                      <li>
+                        <strong>Organização e limpeza:</strong> Ao término da reunião, a sala deve ser deixada organizada e limpa, pronta para o próximo uso.
+                      </li>
+                      <li>
+                        <strong>Manutenção:</strong> Em caso de necessidade de reparo ou qualquer problema identificado nos equipamentos ou instalações, você deve informar imediatamente a equipe de manutenção.
+                      </li>
+                      <li>
+                        <strong>Uso adequado:</strong> Os equipamentos devem ser utilizados de forma adequada e responsável.
+                      </li>
+                    </ul>
+                    
+                    <div className="flex items-start gap-3 pt-3 border-t border-border">
+                      <Checkbox
+                        id="accept-responsibility"
+                        checked={hasAcceptedResponsibility}
+                        onCheckedChange={(checked) => setHasAcceptedResponsibility(checked === true)}
+                        className="mt-0.5"
+                      />
+                      <label htmlFor="accept-responsibility" className="text-sm cursor-pointer leading-tight">
+                        Li e estou ciente de todas as instruções acima, e me comprometo a seguir as diretrizes de uso responsável da sala de reunião.
+                      </label>
+                    </div>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setHasAcceptedResponsibility(false)}>
+                  Cancelar
+                </AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleConfirmResponsibility}
+                  disabled={!hasAcceptedResponsibility}
+                  className={cn(!hasAcceptedResponsibility && "opacity-50 cursor-not-allowed")}
+                >
+                  Confirmar Reserva
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
 
         {/* Main Content - Split Layout */}
