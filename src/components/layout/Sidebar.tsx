@@ -8,7 +8,9 @@ import {
   ChevronDown,
   LucideIcon,
   Megaphone,
-  FileText
+  FileText,
+  HelpCircle,
+  Loader2
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -45,9 +47,16 @@ interface MenuItemType {
 interface SearchResult {
   id: string;
   title: string;
-  type: 'menu' | 'announcement';
+  type: 'menu' | 'announcement' | 'faq';
   path: string;
-  icon: 'menu' | 'announcement';
+  icon: 'menu' | 'announcement' | 'faq';
+}
+
+interface CachedFaq {
+  cod_faq: string;
+  des_pergunta: string;
+  des_resposta: string;
+  des_tags: string[];
 }
 
 const MENU_CACHE_KEY = 'mc_hub_menu_cache';
@@ -77,22 +86,32 @@ export function Sidebar() {
   const [isLoading, setIsLoading] = useState(true);
   const [allSubmenus, setAllSubmenus] = useState<DbMenuItem[]>([]);
   const [cachedAnnouncements, setCachedAnnouncements] = useState<Array<{cod_comunicado: string; des_titulo: string; des_resumo: string}>>([]);
+  const [cachedFaqs, setCachedFaqs] = useState<CachedFaq[]>([]);
 
-  // Carregar comunicados para busca
+  // Carregar comunicados e FAQs para busca
   useEffect(() => {
-    const loadAnnouncements = async () => {
+    const loadSearchData = async () => {
       try {
-        const { data } = await supabase
-          .from('tab_comunicado')
-          .select('cod_comunicado, des_titulo, des_resumo')
-          .eq('ind_ativo', true)
-          .limit(50);
-        setCachedAnnouncements(data || []);
+        const [announcementsRes, faqsRes] = await Promise.all([
+          supabase
+            .from('tab_comunicado')
+            .select('cod_comunicado, des_titulo, des_resumo')
+            .eq('ind_ativo', true)
+            .limit(50),
+          supabase
+            .from('tab_faq')
+            .select('cod_faq, des_pergunta, des_resposta, des_tags')
+            .eq('ind_ativo', true)
+            .limit(50)
+        ]);
+        
+        setCachedAnnouncements(announcementsRes.data || []);
+        setCachedFaqs((faqsRes.data || []) as CachedFaq[]);
       } catch (error) {
-        console.error('Error loading announcements:', error);
+        console.error('Error loading search data:', error);
       }
     };
-    loadAnnouncements();
+    loadSearchData();
   }, []);
 
   useEffect(() => {
@@ -240,6 +259,8 @@ export function Sidebar() {
   // Busca instantânea usando useMemo - sem debounce
   // Filtra apenas telas que o usuário tem permissão de acessar
   const searchResults = useMemo(() => {
+    // Se ainda está carregando permissões, não mostrar resultados
+    if (permissionsLoading) return [];
     if (!searchQuery.trim()) return [];
     
     const results: SearchResult[] = [];
@@ -284,8 +305,28 @@ export function Sidebar() {
       }
     });
 
+    // Buscar em FAQs - verifica pergunta, resposta e tags
+    // FAQs são acessíveis via página de suporte
+    if (canAccess('/suporte')) {
+      cachedFaqs.forEach(faq => {
+        const questionMatch = faq.des_pergunta.toLowerCase().includes(lowerQuery);
+        const answerMatch = faq.des_resposta?.toLowerCase().includes(lowerQuery);
+        const tagMatch = faq.des_tags?.some(tag => tag.toLowerCase().includes(lowerQuery));
+        
+        if (questionMatch || answerMatch || tagMatch) {
+          results.push({
+            id: faq.cod_faq,
+            title: faq.des_pergunta,
+            type: 'faq',
+            path: '/suporte',
+            icon: 'faq'
+          });
+        }
+      });
+    }
+
     return results.slice(0, 8);
-  }, [searchQuery, allSubmenus, cachedAnnouncements, isAdmin, canAccess]);
+  }, [searchQuery, allSubmenus, cachedAnnouncements, cachedFaqs, isAdmin, canAccess, permissionsLoading]);
 
   const handleResultClick = useCallback((result: SearchResult) => {
     navigate(result.path);
@@ -437,7 +478,20 @@ export function Sidebar() {
         </div>
 
         {/* Search Results Dropdown */}
-        {showResults && searchResults.length > 0 && (
+        {showResults && permissionsLoading && searchQuery.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-3 z-50"
+          >
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Carregando...</span>
+            </div>
+          </motion.div>
+        )}
+
+        {showResults && !permissionsLoading && searchResults.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -449,15 +503,19 @@ export function Sidebar() {
                 onClick={() => handleResultClick(result)}
                 className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors flex items-center gap-2"
               >
-                {result.type === 'menu' ? (
+                {result.type === 'menu' && (
                   <FileText className="h-4 w-4 text-primary shrink-0" />
-                ) : (
+                )}
+                {result.type === 'announcement' && (
                   <Megaphone className="h-4 w-4 text-primary shrink-0" />
+                )}
+                {result.type === 'faq' && (
+                  <HelpCircle className="h-4 w-4 text-primary shrink-0" />
                 )}
                 <div className="truncate">
                   <span className="font-medium text-foreground">{result.title}</span>
                   <span className="text-muted-foreground ml-2 text-xs">
-                    ({result.type === 'menu' ? 'Menu' : 'Comunicado'})
+                    ({result.type === 'menu' ? 'Menu' : result.type === 'announcement' ? 'Comunicado' : 'FAQ'})
                   </span>
                 </div>
               </button>
@@ -465,7 +523,7 @@ export function Sidebar() {
           </motion.div>
         )}
 
-        {showResults && searchQuery.length > 0 && searchResults.length === 0 && (
+        {showResults && !permissionsLoading && searchQuery.length > 0 && searchResults.length === 0 && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
