@@ -15,6 +15,7 @@ interface PixelImageProps {
   pixelFadeInDuration?: number;
   maxAnimationDelay?: number;
   colorRevealDelay?: number;
+  blurPlaceholder?: boolean;
 }
 
 const gridConfigs: Record<GridType, { rows: number; cols: number }> = {
@@ -34,6 +35,19 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
+// Gerar placeholder blur de baixa qualidade
+function getBlurDataURL(src: string): string {
+  // Para URLs do Unsplash, usar parâmetros de qualidade baixa
+  if (src.includes('unsplash.com')) {
+    return src.replace(/&w=\d+/, '&w=20').replace(/&q=\d+/, '&q=10') + '&blur=20';
+  }
+  // Para URLs do Supabase Storage
+  if (src.includes('supabase')) {
+    return src + '?width=20&quality=10';
+  }
+  return src;
+}
+
 export function PixelImage({
   src,
   alt = "",
@@ -44,11 +58,13 @@ export function PixelImage({
   pixelFadeInDuration = 1000,
   maxAnimationDelay = 1200,
   colorRevealDelay = 1500,
+  blurPlaceholder = true,
 }: PixelImageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [showColor, setShowColor] = useState(!grayscaleAnimation);
   const [isInView, setIsInView] = useState(false);
+  const [blurSrc, setBlurSrc] = useState<string | null>(null);
 
   const { rows, cols } = customGrid || gridConfigs[grid];
   const totalPieces = rows * cols;
@@ -62,7 +78,13 @@ export function PixelImage({
     );
   }, [totalPieces, maxAnimationDelay]);
 
-  // Intersection Observer
+  // Carregar blur placeholder
+  useEffect(() => {
+    if (!blurPlaceholder || !src) return;
+    setBlurSrc(getBlurDataURL(src));
+  }, [src, blurPlaceholder]);
+
+  // Intersection Observer com lazy loading
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -71,7 +93,7 @@ export function PixelImage({
           observer.disconnect();
         }
       },
-      { threshold: 0.1, rootMargin: "50px" }
+      { threshold: 0.1, rootMargin: "100px" }
     );
 
     if (containerRef.current) {
@@ -97,11 +119,12 @@ export function PixelImage({
     setIsLoaded(true);
   }, []);
 
-  // Preload da imagem
+  // Preload da imagem com lazy loading
   useEffect(() => {
     if (!isInView) return;
 
     const img = new Image();
+    img.loading = 'lazy';
     img.onload = handleImageLoad;
     img.src = src;
   }, [src, isInView, handleImageLoad]);
@@ -115,9 +138,24 @@ export function PixelImage({
       )}
       style={{ aspectRatio: `${cols}/${rows}` }}
     >
+      {/* Blur placeholder */}
+      {blurPlaceholder && blurSrc && !isLoaded && (
+        <div
+          className="absolute inset-0 transition-opacity duration-500"
+          style={{
+            backgroundImage: `url(${blurSrc})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            filter: 'blur(20px)',
+            transform: 'scale(1.1)',
+            opacity: isInView ? 1 : 0,
+          }}
+        />
+      )}
+
       {/* Grid de peças pixeladas */}
       <div
-        className="grid w-full h-full"
+        className="grid w-full h-full relative z-10"
         style={{
           gridTemplateColumns: `repeat(${cols}, 1fr)`,
           gridTemplateRows: `repeat(${rows}, 1fr)`,
@@ -153,13 +191,20 @@ export function PixelImage({
         })}
       </div>
 
-      {/* Skeleton enquanto carrega */}
-      {!isLoaded && (
+      {/* Skeleton enquanto carrega (fallback se não tiver blur) */}
+      {!isLoaded && !blurPlaceholder && (
         <div className="absolute inset-0 bg-muted animate-pulse" />
       )}
 
-      {/* Alt text para acessibilidade */}
-      <span className="sr-only">{alt}</span>
+      {/* Imagem oculta para lazy loading nativo */}
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        className="sr-only"
+        onLoad={handleImageLoad}
+      />
     </div>
   );
 }
