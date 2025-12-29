@@ -1,4 +1,3 @@
-import { forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { Announcement } from '@/types/announcements';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -12,8 +11,7 @@ interface AnnouncementCardProps {
   delay?: number;
 }
 
-export const AnnouncementCard = forwardRef<HTMLElement, AnnouncementCardProps>(
-  function AnnouncementCard({ announcement, onClick, delay = 0 }, ref) {
+export function AnnouncementCard({ announcement, onClick, delay = 0 }: AnnouncementCardProps) {
   const placeholderImage = 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&q=80&w=1160';
 
   const getInitials = (name: string) => {
@@ -75,4 +73,4 @@ export const AnnouncementCard = forwardRef<HTMLElement, AnnouncementCardProps>(
       </div>
     </motion.article>
   );
-});
+}

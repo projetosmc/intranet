@@ -129,14 +129,20 @@ export function PixelImage({
     img.src = src;
   }, [src, isInView, handleImageLoad]);
 
+  // Calcular posição do background de forma segura
+  const getBackgroundPosition = (col: number, row: number) => {
+    const xPos = cols > 1 ? (col / (cols - 1)) * 100 : 50;
+    const yPos = rows > 1 ? (row / (rows - 1)) * 100 : 50;
+    return `${xPos}% ${yPos}%`;
+  };
+
   return (
     <div
       ref={containerRef}
       className={cn(
-        "relative w-full overflow-hidden rounded-lg",
+        "relative w-full h-full overflow-hidden rounded-lg",
         className
       )}
-      style={{ aspectRatio: `${cols}/${rows}` }}
     >
       {/* Blur placeholder */}
       {blurPlaceholder && blurSrc && !isLoaded && (
@@ -181,7 +187,7 @@ export function PixelImage({
                 style={{
                   backgroundImage: isInView ? `url(${src})` : undefined,
                   backgroundSize: `${cols * 100}% ${rows * 100}%`,
-                  backgroundPosition: `${(col / (cols - 1)) * 100}% ${(row / (rows - 1)) * 100}%`,
+                  backgroundPosition: getBackgroundPosition(col, row),
                   filter: grayscaleAnimation && !showColor ? "grayscale(100%)" : "grayscale(0%)",
                   transition: `filter 800ms ease-out`,
                 }}
