@@ -43,29 +43,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Auth state
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Roles state
   const [roles, setRoles] = useState<AppRole[]>([]);
-  const [rolesLoading, setRolesLoading] = useState(true);
   
   // Permissions state
   const [permissions, setPermissions] = useState<ScreenPermission[]>([]);
-  const [permissionsLoading, setPermissionsLoading] = useState(true);
 
   const isAdmin = roles.includes('admin');
   const isModerator = roles.includes('moderator') || isAdmin;
 
   // Fetch roles for a user
-  const fetchRoles = useCallback(async (userId: string) => {
+  const fetchRoles = useCallback(async (userId: string): Promise<AppRole[]> => {
     try {
       // Check cache
       const cached = localStorage.getItem(ROLES_CACHE_KEY);
       if (cached) {
         const data = JSON.parse(cached);
         if (data.userId === userId && Date.now() - data.timestamp < CACHE_DURATION) {
-          setRoles(data.roles);
-          setRolesLoading(false);
           return data.roles as AppRole[];
         }
       }
@@ -78,7 +74,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
 
       const fetchedRoles = (data || []).map((r) => r.des_role as AppRole);
-      setRoles(fetchedRoles);
       
       // Cache
       localStorage.setItem(ROLES_CACHE_KEY, JSON.stringify({
@@ -90,28 +85,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return fetchedRoles;
     } catch (error) {
       console.error('Error fetching roles:', error);
-      setRoles([]);
       return [];
-    } finally {
-      setRolesLoading(false);
     }
   }, []);
 
   // Fetch permissions based on roles
-  const fetchPermissions = useCallback(async (userRoles: AppRole[], userIsAdmin: boolean) => {
+  const fetchPermissions = useCallback(async (userRoles: AppRole[], userIsAdmin: boolean): Promise<ScreenPermission[]> => {
     try {
       // Admin has access to everything
       if (userIsAdmin) {
-        setPermissions([]);
-        setPermissionsLoading(false);
-        return;
+        return [];
       }
 
       // No roles
       if (userRoles.length === 0) {
-        setPermissions([]);
-        setPermissionsLoading(false);
-        return;
+        return [];
       }
 
       // Check cache
@@ -122,9 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           JSON.stringify(data.roles.sort()) === JSON.stringify(userRoles.sort()) &&
           Date.now() - data.timestamp < CACHE_DURATION
         ) {
-          setPermissions(data.permissions);
-          setPermissionsLoading(false);
-          return;
+          return data.permissions as ScreenPermission[];
         }
       }
 
@@ -136,7 +122,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
 
       const fetchedPermissions = (data || []) as ScreenPermission[];
-      setPermissions(fetchedPermissions);
 
       // Cache
       localStorage.setItem(PERMISSIONS_CACHE_KEY, JSON.stringify({
@@ -144,24 +129,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         permissions: fetchedPermissions,
         timestamp: Date.now(),
       }));
+
+      return fetchedPermissions;
     } catch (error) {
       console.error('Error fetching permissions:', error);
-      setPermissions([]);
-    } finally {
-      setPermissionsLoading(false);
+      return [];
     }
   }, []);
+
+  // Load user data (roles and permissions)
+  const loadUserData = useCallback(async (userId: string) => {
+    const userRoles = await fetchRoles(userId);
+    setRoles(userRoles);
+    const userIsAdmin = userRoles.includes('admin');
+    const userPermissions = await fetchPermissions(userRoles, userIsAdmin);
+    setPermissions(userPermissions);
+  }, [fetchRoles, fetchPermissions]);
 
   // Initialize auth and load data
   useEffect(() => {
     let isMounted = true;
+    let initialLoadDone = false;
 
-    // Set up auth state listener FIRST (as per Supabase best practices)
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
         if (!isMounted) return;
 
-        // Only synchronous state updates here - no async calls in callback!
+        // Update session state synchronously
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
@@ -170,57 +165,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem(PERMISSIONS_CACHE_KEY);
           setRoles([]);
           setPermissions([]);
-          setRolesLoading(false);
-          setPermissionsLoading(false);
-        } else if (newSession?.user) {
-          // Defer Supabase calls with setTimeout to prevent deadlock
-          setRolesLoading(true);
-          setPermissionsLoading(true);
+          setIsLoading(false);
+        } else if (event === 'SIGNED_IN' && newSession?.user && initialLoadDone) {
+          // Only reload data on SIGNED_IN if initial load is done
+          // This prevents double loading on initial page load
           setTimeout(() => {
             if (!isMounted) return;
-            fetchRoles(newSession.user.id).then((userRoles) => {
-              if (!isMounted) return;
-              const userIsAdmin = userRoles.includes('admin');
-              fetchPermissions(userRoles, userIsAdmin);
-            });
+            loadUserData(newSession.user.id);
           }, 0);
         }
       }
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+    supabase.auth.getSession().then(async ({ data: { session: initialSession } }) => {
       if (!isMounted) return;
       
       setSession(initialSession);
       setUser(initialSession?.user ?? null);
       
       if (initialSession?.user) {
-        fetchRoles(initialSession.user.id).then((userRoles) => {
-          if (!isMounted) return;
-          const userIsAdmin = userRoles.includes('admin');
-          fetchPermissions(userRoles, userIsAdmin);
-          setAuthLoading(false);
-        }).catch(() => {
-          if (isMounted) {
-            setAuthLoading(false);
-            setRolesLoading(false);
-            setPermissionsLoading(false);
-          }
-        });
+        await loadUserData(initialSession.user.id);
       } else {
         setRoles([]);
-        setRolesLoading(false);
         setPermissions([]);
-        setPermissionsLoading(false);
-        setAuthLoading(false);
       }
+      
+      initialLoadDone = true;
+      setIsLoading(false);
     }).catch((error) => {
       console.error('Error getting session:', error);
       if (isMounted) {
-        setAuthLoading(false);
-        setRolesLoading(false);
-        setPermissionsLoading(false);
+        initialLoadDone = true;
+        setIsLoading(false);
       }
     });
 
@@ -228,7 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchRoles, fetchPermissions]);
+  }, [loadUserData]);
 
   // Auth methods
   const signIn = useCallback(async (email: string, password: string) => {
@@ -282,17 +259,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(PERMISSIONS_CACHE_KEY);
     
     if (user) {
-      setRolesLoading(true);
-      setPermissionsLoading(true);
-      fetchRoles(user.id).then((userRoles) => {
-        const userIsAdmin = userRoles.includes('admin');
-        fetchPermissions(userRoles, userIsAdmin);
+      setIsLoading(true);
+      loadUserData(user.id).finally(() => {
+        setIsLoading(false);
       });
     }
-  }, [user, fetchRoles, fetchPermissions]);
-
-  // Combined loading state
-  const isLoading = authLoading || rolesLoading || permissionsLoading;
+  }, [user, loadUserData]);
 
   return (
     <AuthContext.Provider
