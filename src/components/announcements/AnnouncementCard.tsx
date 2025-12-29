@@ -2,7 +2,7 @@ import { forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { Announcement } from '@/types/announcements';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { OptimizedImage } from '@/components/ui/optimized-image';
+import { PixelImage } from '@/components/ui/pixel-image';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -29,11 +29,17 @@ export const AnnouncementCard = forwardRef<HTMLElement, AnnouncementCardProps>(
       className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-card border border-border"
       onClick={onClick}
     >
-      <OptimizedImage
-        src={announcement.imageUrl || placeholderImage}
-        alt={announcement.title}
-        aspectRatio="card"
-      />
+      <div className="h-40 overflow-hidden">
+        <PixelImage
+          src={announcement.imageUrl || placeholderImage}
+          alt={announcement.title}
+          customGrid={{ rows: 4, cols: 6 }}
+          grayscaleAnimation
+          pixelFadeInDuration={600}
+          maxAnimationDelay={800}
+          className="w-full h-full"
+        />
+      </div>
 
       <div className="p-4">
         <time 
