@@ -1,16 +1,42 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
+const MAX_LOADING_TIME = 10000; // 10 seconds max loading time
+
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading } = useAuthContext();
   const location = useLocation();
+  const [showLoading, setShowLoading] = useState(true);
+  const [forceShow, setForceShow] = useState(false);
 
-  if (isLoading) {
+  // Handle loading state with timeout fallback
+  useEffect(() => {
+    if (!isLoading) {
+      setShowLoading(false);
+      return;
+    }
+
+    // Set a timeout to force show content after MAX_LOADING_TIME
+    const timeout = setTimeout(() => {
+      console.warn('ProtectedRoute: Loading timeout reached, forcing content display');
+      setForceShow(true);
+    }, MAX_LOADING_TIME);
+
+    return () => clearTimeout(timeout);
+  }, [isLoading]);
+
+  // If loading timed out, show content anyway (if authenticated)
+  if (forceShow && isAuthenticated) {
+    return <>{children}</>;
+  }
+
+  if (isLoading && showLoading && !forceShow) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <motion.div

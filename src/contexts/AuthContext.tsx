@@ -149,9 +149,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Initialize auth and load data
   useEffect(() => {
     let isMounted = true;
-    let initialLoadDone = false;
+    let isInitialized = false;
 
-    // Set up auth state listener FIRST
+    const initializeAuth = async () => {
+      try {
+        // Get the current session
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          setIsLoading(false);
+          isInitialized = true;
+          return;
+        }
+        
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+        
+        if (initialSession?.user) {
+          await loadUserData(initialSession.user.id);
+        } else {
+          setRoles([]);
+          setPermissions([]);
+        }
+        
+        setIsLoading(false);
+        isInitialized = true;
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        if (isMounted) {
+          setIsLoading(false);
+          isInitialized = true;
+        }
+      }
+    };
+
+    // Initialize auth first
+    initializeAuth();
+
+    // Set up auth state listener AFTER initialization starts
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
         if (!isMounted) return;
@@ -160,46 +198,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
+        // Handle specific events
         if (event === 'SIGNED_OUT') {
           localStorage.removeItem(ROLES_CACHE_KEY);
           localStorage.removeItem(PERMISSIONS_CACHE_KEY);
           setRoles([]);
           setPermissions([]);
-          setIsLoading(false);
-        } else if (event === 'SIGNED_IN' && newSession?.user && initialLoadDone) {
-          // Only reload data on SIGNED_IN if initial load is done
-          // This prevents double loading on initial page load
+          // Only set isLoading to false if already initialized
+          if (isInitialized) {
+            setIsLoading(false);
+          }
+        } else if (event === 'SIGNED_IN' && newSession?.user && isInitialized) {
+          // Only reload data on SIGNED_IN if already initialized
+          // Use setTimeout to prevent deadlock
           setTimeout(() => {
             if (!isMounted) return;
             loadUserData(newSession.user.id);
           }, 0);
         }
+        // Ignore TOKEN_REFRESHED and other events to prevent unnecessary reloads
       }
     );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(async ({ data: { session: initialSession } }) => {
-      if (!isMounted) return;
-      
-      setSession(initialSession);
-      setUser(initialSession?.user ?? null);
-      
-      if (initialSession?.user) {
-        await loadUserData(initialSession.user.id);
-      } else {
-        setRoles([]);
-        setPermissions([]);
-      }
-      
-      initialLoadDone = true;
-      setIsLoading(false);
-    }).catch((error) => {
-      console.error('Error getting session:', error);
-      if (isMounted) {
-        initialLoadDone = true;
-        setIsLoading(false);
-      }
-    });
 
     return () => {
       isMounted = false;
