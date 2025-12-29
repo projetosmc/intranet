@@ -305,6 +305,7 @@ export default function AdminAnnouncementsPage() {
               <TableHead>Título</TableHead>
               <TableHead>Data</TableHead>
               <TableHead className="text-center">Views</TableHead>
+              <TableHead className="text-center">Comentários</TableHead>
               <TableHead className="text-center">Fixado</TableHead>
               <TableHead className="text-center">Ativo</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -371,6 +372,16 @@ export default function AdminAnnouncementsPage() {
                         <Users className="h-3 w-3" />
                         <span>{announcement.viewsCount || 0}</span>
                       </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {announcement.allowComments ? (
+                        <div className="flex items-center justify-center gap-1 text-muted-foreground">
+                          <MessageCircle className="h-3 w-3" />
+                          <span>{announcement.commentsCount || 0}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground/50">-</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
                       <Button

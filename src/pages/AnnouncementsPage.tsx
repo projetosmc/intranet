@@ -76,7 +76,7 @@ export default function AnnouncementsPage() {
               </div>
             </div>
 
-            {selectedAnnouncement.templateType === 'banner' && selectedAnnouncement.imageUrl && (
+            {selectedAnnouncement.imageUrl && (
               <div className="rounded-xl overflow-hidden mb-6">
                 <img
                   src={selectedAnnouncement.imageUrl}
@@ -122,7 +122,7 @@ export default function AnnouncementsPage() {
 
             {/* Seção de comentários - apenas para comunicados simples */}
             {selectedAnnouncement.templateType === 'simple' && selectedAnnouncement.allowComments && (
-              <CommentSection announcementId={selectedAnnouncement.id} />
+              <CommentSection announcementId={selectedAnnouncement.id} announcementTitle={selectedAnnouncement.title} />
             )}
           </article>
         </motion.div>

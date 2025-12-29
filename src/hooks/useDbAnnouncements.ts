@@ -56,6 +56,15 @@ export function useDbAnnouncements() {
 
           viewsCount = viewCount || 0;
 
+          // Buscar contagem de comentários
+          let commentsCount = 0;
+          const { count: commentCount } = await supabase
+            .from('tab_comunicado_comentario')
+            .select('*', { count: 'exact', head: true })
+            .eq('seq_comunicado', item.cod_comunicado);
+
+          commentsCount = commentCount || 0;
+
           if (item.des_tipo_template === 'poll') {
             const { data: optionsData } = await supabase
               .from('tab_enquete_opcao')
@@ -108,6 +117,7 @@ export function useDbAnnouncements() {
             startDate: item.dta_inicio || undefined,
             endDate: item.dta_fim || undefined,
             viewsCount,
+            commentsCount,
             allowComments: item.ind_permite_comentarios ?? false,
           };
         })

@@ -513,6 +513,42 @@ export type Database = {
           },
         ]
       }
+      tab_notificacao: {
+        Row: {
+          cod_notificacao: string
+          des_link: string | null
+          des_mensagem: string
+          des_tipo: string
+          des_titulo: string
+          dta_cadastro: string | null
+          ind_lida: boolean | null
+          seq_usuario: string
+          seq_usuario_origem: string | null
+        }
+        Insert: {
+          cod_notificacao?: string
+          des_link?: string | null
+          des_mensagem: string
+          des_tipo: string
+          des_titulo: string
+          dta_cadastro?: string | null
+          ind_lida?: boolean | null
+          seq_usuario: string
+          seq_usuario_origem?: string | null
+        }
+        Update: {
+          cod_notificacao?: string
+          des_link?: string | null
+          des_mensagem?: string
+          des_tipo?: string
+          des_titulo?: string
+          dta_cadastro?: string | null
+          ind_lida?: boolean | null
+          seq_usuario?: string
+          seq_usuario_origem?: string | null
+        }
+        Relationships: []
+      }
       tab_perfil_tipo: {
         Row: {
           cod_perfil_tipo: string

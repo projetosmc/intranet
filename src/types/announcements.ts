@@ -43,5 +43,6 @@ export interface Announcement {
   startDate?: string;
   endDate?: string;
   viewsCount?: number;
+  commentsCount?: number;
   allowComments?: boolean;
 }
