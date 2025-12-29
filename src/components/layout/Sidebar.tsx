@@ -388,6 +388,21 @@ export function Sidebar() {
     (!item.isAdminOnly || isAdmin) && !topItemNames.includes(item.name)
   );
 
+  // Função recursiva para verificar se um item ou seus descendentes são visíveis
+  const hasVisibleDescendants = useCallback((menuItem: MenuItemType): boolean => {
+    // Se não tem filhos, verifica se o próprio item é acessível
+    if (!menuItem.children || menuItem.children.length === 0) {
+      if (menuItem.isAdminOnly && !isAdmin) return false;
+      return canAccess(menuItem.path);
+    }
+    
+    // Se tem filhos, verifica se pelo menos um descendente é visível
+    return menuItem.children.some(child => {
+      if (child.isAdminOnly && !isAdmin) return false;
+      return hasVisibleDescendants(child);
+    });
+  }, [isAdmin, canAccess]);
+
   // Componente recursivo para renderizar menus de N níveis
   const MenuItem = ({ item, depth = 0 }: { item: MenuItemType; depth?: number }) => {
     const Icon = item.icon;
@@ -398,15 +413,11 @@ export function Sidebar() {
     const isSubChild = depth > 1;
     const isDeepChild = depth > 2;
 
-    // Filter children based on admin status AND screen permissions recursively
-    // Submenus (items with children) should NOT be filtered by canAccess - only leaf items should
+    // Filter children based on admin status AND visibility of descendants
     const visibleChildren = item.children?.filter(child => {
       if (child.isAdminOnly && !isAdmin) return false;
-      // If child has children (is a submenu), don't filter by screen permissions
-      // Only filter leaf items (actual screens) by canAccess
-      const hasGrandchildren = child.children && child.children.length > 0;
-      if (!hasGrandchildren && !canAccess(child.path)) return false;
-      return true;
+      // Um submenu é visível se tiver pelo menos um descendente visível
+      return hasVisibleDescendants(child);
     });
 
     // Menu com filhos - renderiza como dropdown expansível
