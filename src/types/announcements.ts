@@ -1,5 +1,6 @@
 export type TemplateType = 'simple' | 'banner' | 'poll';
 export type PollType = 'single' | 'multiple';
+export type PopupMode = 'imediato' | 'proximo_login';
 
 export interface PollOption {
   id: string;
@@ -47,4 +48,5 @@ export interface Announcement {
   allowComments?: boolean;
   isUrgent?: boolean;
   isPopup?: boolean;
+  popupMode?: PopupMode;
 }

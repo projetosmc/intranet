@@ -114,6 +114,7 @@ export type Database = {
           cod_comunicado: string
           des_conteudo: string
           des_imagem_url: string | null
+          des_popup_modo: string | null
           des_resumo: string
           des_tipo_enquete: string | null
           des_tipo_template: string | null
@@ -134,6 +135,7 @@ export type Database = {
           cod_comunicado?: string
           des_conteudo: string
           des_imagem_url?: string | null
+          des_popup_modo?: string | null
           des_resumo: string
           des_tipo_enquete?: string | null
           des_tipo_template?: string | null
@@ -154,6 +156,7 @@ export type Database = {
           cod_comunicado?: string
           des_conteudo?: string
           des_imagem_url?: string | null
+          des_popup_modo?: string | null
           des_resumo?: string
           des_tipo_enquete?: string | null
           des_tipo_template?: string | null

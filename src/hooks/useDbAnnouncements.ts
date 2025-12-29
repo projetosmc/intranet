@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Announcement, PollOption, TemplateType, PollType, AnnouncementAuthor } from '@/types/announcements';
+import { Announcement, PollOption, TemplateType, PollType, AnnouncementAuthor, PopupMode } from '@/types/announcements';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -121,6 +121,7 @@ export function useDbAnnouncements() {
             allowComments: item.ind_permite_comentarios ?? false,
             isUrgent: item.ind_urgente ?? false,
             isPopup: item.ind_popup ?? false,
+            popupMode: (item.des_popup_modo as PopupMode) || 'proximo_login',
           };
         })
       );
@@ -194,6 +195,7 @@ export function useDbAnnouncements() {
           ind_permite_comentarios: announcement.allowComments ?? false,
           ind_urgente: announcement.isUrgent ?? false,
           ind_popup: announcement.isPopup ?? false,
+          des_popup_modo: announcement.popupMode || 'proximo_login',
         })
         .select()
         .single();
@@ -252,6 +254,7 @@ export function useDbAnnouncements() {
       if (updates.allowComments !== undefined) dbUpdates.ind_permite_comentarios = updates.allowComments;
       if (updates.isUrgent !== undefined) dbUpdates.ind_urgente = updates.isUrgent;
       if (updates.isPopup !== undefined) dbUpdates.ind_popup = updates.isPopup;
+      if (updates.popupMode !== undefined) dbUpdates.des_popup_modo = updates.popupMode;
 
       const { error } = await supabase
         .from('tab_comunicado')

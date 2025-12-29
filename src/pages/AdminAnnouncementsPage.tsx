@@ -41,7 +41,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useDbAnnouncements } from '@/hooks/useDbAnnouncements';
-import { Announcement, TemplateType, PollType } from '@/types/announcements';
+import { Announcement, TemplateType, PollType, PopupMode } from '@/types/announcements';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -67,6 +67,7 @@ type FormData = {
   allowComments: boolean;
   isUrgent: boolean;
   isPopup: boolean;
+  popupMode: PopupMode;
 };
 
 type FormErrors = Partial<Record<keyof AnnouncementFormData, string>>;
@@ -90,6 +91,7 @@ const initialFormData: FormData = {
   allowComments: false,
   isUrgent: false,
   isPopup: false,
+  popupMode: 'proximo_login',
 };
 
 const templateIcons = {
@@ -149,6 +151,7 @@ export default function AdminAnnouncementsPage() {
       allowComments: announcement.allowComments ?? false,
       isUrgent: announcement.isUrgent ?? false,
       isPopup: announcement.isPopup ?? false,
+      popupMode: announcement.popupMode || 'proximo_login',
     });
     setActiveTab('edit');
     setIsDialogOpen(true);
@@ -246,6 +249,7 @@ export default function AdminAnnouncementsPage() {
       allowComments: formData.templateType === 'simple' ? formData.allowComments : false,
       isUrgent: formData.isUrgent,
       isPopup: formData.isPopup,
+      popupMode: formData.popupMode,
     };
 
     const pollOptions = formData.templateType === 'poll'
@@ -685,16 +689,51 @@ export default function AdminAnnouncementsPage() {
                         Marcar como urgente
                       </Label>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id="isPopup"
-                        checked={formData.isPopup}
-                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isPopup: checked }))}
-                      />
-                      <Label htmlFor="isPopup" className="flex items-center gap-2">
-                        <Bell className="h-4 w-4" />
-                        Exibir como popup ao abrir o sistema
-                      </Label>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="isPopup"
+                          checked={formData.isPopup}
+                          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isPopup: checked }))}
+                        />
+                        <Label htmlFor="isPopup" className="flex items-center gap-2">
+                          <Bell className="h-4 w-4" />
+                          Exibir como popup
+                        </Label>
+                      </div>
+                      
+                      {formData.isPopup && (
+                        <div className="ml-6 space-y-2">
+                          <Label className="text-sm text-muted-foreground">Quando exibir?</Label>
+                          <Select
+                            value={formData.popupMode}
+                            onValueChange={(value: PopupMode) => setFormData(prev => ({ ...prev, popupMode: value }))}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="proximo_login">
+                                <span className="flex items-center gap-2">
+                                  <Clock className="h-4 w-4" />
+                                  No próximo login do usuário
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="imediato">
+                                <span className="flex items-center gap-2">
+                                  <Users className="h-4 w-4" />
+                                  Imediatamente para todos logados
+                                </span>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">
+                            {formData.popupMode === 'imediato' 
+                              ? 'O popup aparecerá instantaneamente para todos os usuários que estão logados.'
+                              : 'O popup aparecerá quando o usuário fizer login. Se não marcar "não mostrar novamente", continuará aparecendo em cada login.'}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
