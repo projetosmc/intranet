@@ -15,7 +15,8 @@ import {
   Grid3X3,
   Edit,
   History,
-  Timer
+  Timer,
+  Repeat
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,8 +50,12 @@ import {
   isBefore,
   startOfDay,
   differenceInMinutes,
+  addWeeks as addWeeksDate,
+  addMonths as addMonthsDate,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+type RecurrenceType = 'none' | 'weekly' | 'monthly';
 
 interface MeetingRoom {
   cod_sala: string;
@@ -120,6 +125,10 @@ export default function RoomReservationPage() {
   const [selectedMeetingType, setSelectedMeetingType] = useState<string>('');
   const [participantsCount, setParticipantsCount] = useState('1');
   const [notes, setNotes] = useState('');
+  
+  // Recurrence state
+  const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('none');
+  const [recurrenceCount, setRecurrenceCount] = useState('4');
 
   // Derived state - selected room capacity
   const selectedRoomData = useMemo(() => 
@@ -261,12 +270,32 @@ export default function RoomReservationPage() {
       return;
     }
 
-    // Check for time conflicts
-    const conflictingReservation = checkTimeConflict(selectedRoom, reservationDate, startTime, endTime);
-    if (conflictingReservation) {
+    // Generate all dates for recurrence
+    const datesToReserve: Date[] = [reservationDate];
+    if (recurrenceType !== 'none') {
+      const count = parseInt(recurrenceCount) || 1;
+      for (let i = 1; i < count; i++) {
+        if (recurrenceType === 'weekly') {
+          datesToReserve.push(addWeeksDate(reservationDate, i));
+        } else if (recurrenceType === 'monthly') {
+          datesToReserve.push(addMonthsDate(reservationDate, i));
+        }
+      }
+    }
+
+    // Check for time conflicts on all dates
+    const conflictDates: string[] = [];
+    for (const date of datesToReserve) {
+      const conflict = checkTimeConflict(selectedRoom, date, startTime, endTime);
+      if (conflict) {
+        conflictDates.push(format(date, 'dd/MM/yyyy'));
+      }
+    }
+
+    if (conflictDates.length > 0) {
       toast({ 
         title: 'Conflito de horário', 
-        description: `Já existe uma reserva nesta sala das ${conflictingReservation.hra_inicio.slice(0, 5)} às ${conflictingReservation.hra_fim.slice(0, 5)}.`,
+        description: `Já existem reservas nos seguintes dias: ${conflictDates.slice(0, 3).join(', ')}${conflictDates.length > 3 ? ` e mais ${conflictDates.length - 3}` : ''}.`,
         variant: 'destructive' 
       });
       return;
@@ -276,22 +305,28 @@ export default function RoomReservationPage() {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error('Usuário não autenticado');
 
-      const reservation = {
+      // Create reservations for all dates
+      const reservationsToCreate = datesToReserve.map(date => ({
         seq_sala: selectedRoom,
-        seq_usuario: userData.user.id,
-        des_nome_solicitante: user?.name || userData.user.email || 'Usuário',
-        dta_reserva: format(reservationDate, 'yyyy-MM-dd'),
+        seq_usuario: userData.user!.id,
+        des_nome_solicitante: user?.name || userData.user!.email || 'Usuário',
+        dta_reserva: format(date, 'yyyy-MM-dd'),
         hra_inicio: startTime,
         hra_fim: endTime,
         seq_tipo_reuniao: selectedMeetingType || null,
         num_participantes: participants,
-        des_observacao: notes || null,
-      };
+        des_observacao: recurrenceType !== 'none' 
+          ? `${notes || ''}${notes ? ' | ' : ''}Reserva recorrente (${recurrenceType === 'weekly' ? 'semanal' : 'mensal'})`.trim()
+          : (notes || null),
+      }));
 
-      const { error } = await supabase.from('tab_reserva_sala').insert(reservation);
+      const { error } = await supabase.from('tab_reserva_sala').insert(reservationsToCreate);
       if (error) throw error;
 
-      toast({ title: 'Reserva criada com sucesso!' });
+      const message = datesToReserve.length > 1 
+        ? `${datesToReserve.length} reservas criadas com sucesso!`
+        : 'Reserva criada com sucesso!';
+      toast({ title: message });
       setIsDialogOpen(false);
       resetForm();
       await fetchData();
@@ -515,6 +550,8 @@ export default function RoomReservationPage() {
     setParticipantsCount('1');
     setNotes('');
     setEditingReservation(null);
+    setRecurrenceType('none');
+    setRecurrenceCount('4');
   };
 
   const getReservationsForDate = (date: Date) => {
@@ -898,6 +935,64 @@ export default function RoomReservationPage() {
                     </p>
                   )}
                 </div>
+
+                {/* Recurrence options - only for new reservations */}
+                {!editingReservation && (
+                  <div className="space-y-3 border border-border rounded-lg p-3">
+                    <div className="flex items-center gap-2">
+                      <Repeat className="h-4 w-4 text-muted-foreground" />
+                      <Label className="font-medium">Recorrência</Label>
+                    </div>
+                    <Select value={recurrenceType} onValueChange={(v) => setRecurrenceType(v as RecurrenceType)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a recorrência" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Reserva única</SelectItem>
+                        <SelectItem value="weekly">Repetir semanalmente</SelectItem>
+                        <SelectItem value="monthly">Repetir mensalmente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    {recurrenceType !== 'none' && (
+                      <div className="space-y-2">
+                        <Label className="text-sm text-muted-foreground">
+                          Número de ocorrências (incluindo a primeira)
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <Input 
+                            type="number" 
+                            value={recurrenceCount} 
+                            onChange={(e) => setRecurrenceCount(e.target.value)} 
+                            min={2}
+                            max={12}
+                            className="w-20"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            {recurrenceType === 'weekly' ? 'semanas' : 'meses'}
+                          </span>
+                        </div>
+                        {reservationDate && parseInt(recurrenceCount) > 1 && (
+                          <div className="text-xs text-muted-foreground bg-muted/50 rounded p-2 mt-2">
+                            <p className="font-medium mb-1">Datas das reservas:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {Array.from({ length: Math.min(parseInt(recurrenceCount) || 2, 12) }, (_, i) => {
+                                const date = recurrenceType === 'weekly' 
+                                  ? addWeeksDate(reservationDate, i)
+                                  : addMonthsDate(reservationDate, i);
+                                return (
+                                  <Badge key={i} variant="outline" className="text-xs">
+                                    {format(date, 'dd/MM/yy')}
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <Label className="mb-1.5 block">Observações</Label>
