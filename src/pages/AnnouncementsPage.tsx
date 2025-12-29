@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AnnouncementCard } from '@/components/announcements/AnnouncementCard';
 import { PollCard } from '@/components/announcements/PollCard';
+import { AnnouncementsPageSkeleton } from '@/components/announcements/AnnouncementSkeleton';
 import { useDbAnnouncements } from '@/hooks/useDbAnnouncements';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -151,11 +152,7 @@ export default function AnnouncementsPage() {
         </motion.div>
       )}
 
-      {isLoading && (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      )}
+      {isLoading && <AnnouncementsPageSkeleton />}
     </div>
   );
 }
