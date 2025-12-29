@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, Plus, Pencil, Trash2, GripVertical, ExternalLink, Menu, FileText, ChevronDown, ChevronRight, Link, FolderOpen } from 'lucide-react';
+import { Settings, Plus, Pencil, Trash2, GripVertical, ExternalLink, Menu, FileText, ChevronDown, ChevronRight, Link, FolderOpen, Tag, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,6 +48,7 @@ interface MenuItem {
   num_ordem: number;
   ind_admin_only: boolean;
   ind_ativo: boolean;
+  des_tags: string[];
 }
 
 const availableIcons = [
@@ -75,6 +76,8 @@ export default function AdminSettingsPage() {
   const [pathType, setPathType] = useState<'internal' | 'external'>('internal');
   const [selectedPath, setSelectedPath] = useState<string>('');
   const [deactivateConfirm, setDeactivateConfirm] = useState<{ id: string; name: string; activeSubmenus: number } | null>(null);
+  const [editingTags, setEditingTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState('');
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -217,6 +220,7 @@ export default function AdminSettingsPage() {
         ind_admin_only: adminOnly,
         num_ordem: orderValue,
         ind_ativo: true,
+        des_tags: editingTags,
       };
 
       if (editingItem) {
@@ -598,6 +602,15 @@ export default function AdminSettingsPage() {
             </span>
           )}
           <span className="text-sm text-muted-foreground">{item.des_caminho}</span>
+          {item.des_tags && item.des_tags.length > 0 && (
+            <div className="flex items-center gap-1">
+              <Tag className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">
+                {item.des_tags.slice(0, 2).join(', ')}
+                {item.des_tags.length > 2 && ` +${item.des_tags.length - 2}`}
+              </span>
+            </div>
+          )}
           {item.ind_nova_aba && (
             <ExternalLink className="h-3 w-3 text-muted-foreground" />
           )}
@@ -621,6 +634,8 @@ export default function AdminSettingsPage() {
               const isExternal = item.des_caminho?.startsWith('http');
               setPathType(isExternal ? 'external' : 'internal');
               setSelectedPath(isExternal ? '' : item.des_caminho || '');
+              setEditingTags(item.des_tags || []);
+              setNewTag('');
               setIsDialogOpen(true); 
             }}
           >
@@ -700,6 +715,8 @@ export default function AdminSettingsPage() {
                   setSelectedIcon('Circle');
                   setPathType('internal');
                   setSelectedPath('');
+                  setEditingTags([]);
+                  setNewTag('');
                 } else if (editingItem) {
                   setSelectedParentId(editingItem.seq_menu_pai || '__none__');
                   setNamePreview(editingItem.des_nome);
@@ -707,6 +724,7 @@ export default function AdminSettingsPage() {
                   const isExternal = editingItem.des_caminho?.startsWith('http');
                   setPathType(isExternal ? 'external' : 'internal');
                   setSelectedPath(isExternal ? '' : editingItem.des_caminho || '');
+                  setEditingTags(editingItem.des_tags || []);
                 }
               }}>
                 <DialogTrigger asChild>
@@ -716,6 +734,8 @@ export default function AdminSettingsPage() {
                     setSelectedIcon('Circle'); 
                     setPathType('internal');
                     setSelectedPath('');
+                    setEditingTags([]);
+                    setNewTag('');
                   }}>
                     <Plus className="h-4 w-4 mr-2" />
                     Novo Item
@@ -906,6 +926,68 @@ export default function AdminSettingsPage() {
                         </Select>
                       </div>
                     )}
+
+                    {/* Tags de Busca */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Tag className="h-4 w-4" />
+                        Tags de Busca
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Adicione palavras-chave para facilitar a localização deste item na busca
+                      </p>
+                      <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-muted/30 rounded-lg">
+                        {editingTags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full"
+                          >
+                            {tag}
+                            <button
+                              type="button"
+                              onClick={() => setEditingTags(prev => prev.filter((_, i) => i !== index))}
+                              className="hover:bg-primary/20 rounded-full p-0.5"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ))}
+                        {editingTags.length === 0 && (
+                          <span className="text-xs text-muted-foreground">Nenhuma tag adicionada</span>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          value={newTag}
+                          onChange={(e) => setNewTag(e.target.value)}
+                          placeholder="Digite uma tag e pressione Enter"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const tag = newTag.trim().toLowerCase();
+                              if (tag && !editingTags.includes(tag)) {
+                                setEditingTags(prev => [...prev, tag]);
+                                setNewTag('');
+                              }
+                            }
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const tag = newTag.trim().toLowerCase();
+                            if (tag && !editingTags.includes(tag)) {
+                              setEditingTags(prev => [...prev, tag]);
+                              setNewTag('');
+                            }
+                          }}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
 
                     <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                       <div>

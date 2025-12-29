@@ -267,6 +267,7 @@ export type Database = {
           des_caminho: string
           des_icone: string | null
           des_nome: string
+          des_tags: string[] | null
           dta_atualizacao: string
           dta_cadastro: string
           ind_admin_only: boolean | null
@@ -280,6 +281,7 @@ export type Database = {
           des_caminho: string
           des_icone?: string | null
           des_nome: string
+          des_tags?: string[] | null
           dta_atualizacao?: string
           dta_cadastro?: string
           ind_admin_only?: boolean | null
@@ -293,6 +295,7 @@ export type Database = {
           des_caminho?: string
           des_icone?: string | null
           des_nome?: string
+          des_tags?: string[] | null
           dta_atualizacao?: string
           dta_cadastro?: string
           ind_admin_only?: boolean | null
