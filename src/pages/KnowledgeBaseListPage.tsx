@@ -437,11 +437,11 @@ export default function KnowledgeBaseListPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [activeTab, setActiveTab] = useState('all');
   
-  // Filtros
-  const [filterCategory, setFilterCategory] = useState<string>('');
-  const [filterType, setFilterType] = useState<string>('');
-  const [filterSystem, setFilterSystem] = useState<string>('');
-  const [filterStatus, setFilterStatus] = useState<string>('');
+  // Filtros - usando "all" como valor padrão pois SelectItem não aceita string vazia
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [filterSystem, setFilterSystem] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
 
   useEffect(() => {
     if (isLoading) {
@@ -455,10 +455,10 @@ export default function KnowledgeBaseListPage() {
 
   const filteredArticles = useMemo(() => {
     return searchArticles(searchTerm, {
-      categoryId: filterCategory || undefined,
-      type: filterType as any || undefined,
-      system: filterSystem || undefined,
-      status: filterStatus as any || undefined,
+      categoryId: filterCategory !== 'all' ? filterCategory : undefined,
+      type: filterType !== 'all' ? filterType as any : undefined,
+      system: filterSystem !== 'all' ? filterSystem : undefined,
+      status: filterStatus !== 'all' ? filterStatus as any : undefined,
     });
   }, [searchTerm, filterCategory, filterType, filterSystem, filterStatus, searchArticles]);
 
@@ -467,13 +467,13 @@ export default function KnowledgeBaseListPage() {
   const recentArticles = useMemo(() => getRecent(6), [getRecent]);
   const favoriteArticles = useMemo(() => getFavorites(), [getFavorites]);
 
-  const hasFilters = filterCategory || filterType || filterSystem || filterStatus;
+  const hasFilters = filterCategory !== 'all' || filterType !== 'all' || filterSystem !== 'all' || filterStatus !== 'all';
 
   const clearFilters = () => {
-    setFilterCategory('');
-    setFilterType('');
-    setFilterSystem('');
-    setFilterStatus('');
+    setFilterCategory('all');
+    setFilterType('all');
+    setFilterSystem('all');
+    setFilterStatus('all');
   };
 
   const handleSearch = (value: string) => {
@@ -563,7 +563,7 @@ export default function KnowledgeBaseListPage() {
             <SelectValue placeholder="Categoria" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todas categorias</SelectItem>
+            <SelectItem value="all">Todas categorias</SelectItem>
             {categories.map(cat => (
               <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
             ))}
@@ -575,7 +575,7 @@ export default function KnowledgeBaseListPage() {
             <SelectValue placeholder="Tipo" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos tipos</SelectItem>
+            <SelectItem value="all">Todos tipos</SelectItem>
             {ARTICLE_TYPES.map(type => (
               <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
             ))}
@@ -587,7 +587,7 @@ export default function KnowledgeBaseListPage() {
             <SelectValue placeholder="Sistema" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos sistemas</SelectItem>
+            <SelectItem value="all">Todos sistemas</SelectItem>
             {systems.map(sys => (
               <SelectItem key={sys} value={sys}>{sys}</SelectItem>
             ))}
@@ -600,7 +600,7 @@ export default function KnowledgeBaseListPage() {
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos status</SelectItem>
+              <SelectItem value="all">Todos status</SelectItem>
               {ARTICLE_STATUS.map(status => (
                 <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
               ))}
