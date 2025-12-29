@@ -126,6 +126,8 @@ export type Database = {
           ind_ativo: boolean | null
           ind_fixado: boolean | null
           ind_permite_comentarios: boolean | null
+          ind_popup: boolean | null
+          ind_urgente: boolean | null
           seq_usuario_publicacao: string | null
         }
         Insert: {
@@ -144,6 +146,8 @@ export type Database = {
           ind_ativo?: boolean | null
           ind_fixado?: boolean | null
           ind_permite_comentarios?: boolean | null
+          ind_popup?: boolean | null
+          ind_urgente?: boolean | null
           seq_usuario_publicacao?: string | null
         }
         Update: {
@@ -162,6 +166,8 @@ export type Database = {
           ind_ativo?: boolean | null
           ind_fixado?: boolean | null
           ind_permite_comentarios?: boolean | null
+          ind_popup?: boolean | null
+          ind_urgente?: boolean | null
           seq_usuario_publicacao?: string | null
         }
         Relationships: []
@@ -207,6 +213,35 @@ export type Database = {
           },
           {
             foreignKeyName: "tab_comunicado_comentario_seq_comunicado_fkey"
+            columns: ["seq_comunicado"]
+            isOneToOne: false
+            referencedRelation: "tab_comunicado"
+            referencedColumns: ["cod_comunicado"]
+          },
+        ]
+      }
+      tab_comunicado_popup_visto: {
+        Row: {
+          cod_popup_visto: string
+          dta_cadastro: string
+          seq_comunicado: string
+          seq_usuario: string
+        }
+        Insert: {
+          cod_popup_visto?: string
+          dta_cadastro?: string
+          seq_comunicado: string
+          seq_usuario: string
+        }
+        Update: {
+          cod_popup_visto?: string
+          dta_cadastro?: string
+          seq_comunicado?: string
+          seq_usuario?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tab_comunicado_popup_visto_seq_comunicado_fkey"
             columns: ["seq_comunicado"]
             isOneToOne: false
             referencedRelation: "tab_comunicado"

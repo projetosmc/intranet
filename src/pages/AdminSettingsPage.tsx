@@ -711,14 +711,22 @@ export default function AdminSettingsPage() {
         </div>
 
         <Tabs defaultValue="menu">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="menu" className="flex items-center gap-2">
               <Menu className="h-4 w-4" />
-              Menu do Sidebar
+              Menu
+            </TabsTrigger>
+            <TabsTrigger value="rooms" className="flex items-center gap-2">
+              <LucideIcons.DoorOpen className="h-4 w-4" />
+              Reservas
+            </TabsTrigger>
+            <TabsTrigger value="systems" className="flex items-center gap-2">
+              <LucideIcons.Activity className="h-4 w-4" />
+              Sistemas
             </TabsTrigger>
             <TabsTrigger value="audit" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              Logs de Auditoria
+              Auditoria
             </TabsTrigger>
           </TabsList>
 
