@@ -120,9 +120,12 @@ export type Database = {
           des_titulo: string
           dta_atualizacao: string | null
           dta_cadastro: string | null
+          dta_fim: string | null
+          dta_inicio: string | null
           dta_publicacao: string | null
           ind_ativo: boolean | null
           ind_fixado: boolean | null
+          seq_usuario_publicacao: string | null
         }
         Insert: {
           cod_comunicado?: string
@@ -134,9 +137,12 @@ export type Database = {
           des_titulo: string
           dta_atualizacao?: string | null
           dta_cadastro?: string | null
+          dta_fim?: string | null
+          dta_inicio?: string | null
           dta_publicacao?: string | null
           ind_ativo?: boolean | null
           ind_fixado?: boolean | null
+          seq_usuario_publicacao?: string | null
         }
         Update: {
           cod_comunicado?: string
@@ -148,11 +154,43 @@ export type Database = {
           des_titulo?: string
           dta_atualizacao?: string | null
           dta_cadastro?: string | null
+          dta_fim?: string | null
+          dta_inicio?: string | null
           dta_publicacao?: string | null
           ind_ativo?: boolean | null
           ind_fixado?: boolean | null
+          seq_usuario_publicacao?: string | null
         }
         Relationships: []
+      }
+      tab_comunicado_visualizacao: {
+        Row: {
+          cod_visualizacao: string
+          dta_cadastro: string
+          seq_comunicado: string
+          seq_usuario: string
+        }
+        Insert: {
+          cod_visualizacao?: string
+          dta_cadastro?: string
+          seq_comunicado: string
+          seq_usuario: string
+        }
+        Update: {
+          cod_visualizacao?: string
+          dta_cadastro?: string
+          seq_comunicado?: string
+          seq_usuario?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tab_comunicado_visualizacao_seq_comunicado_fkey"
+            columns: ["seq_comunicado"]
+            isOneToOne: false
+            referencedRelation: "tab_comunicado"
+            referencedColumns: ["cod_comunicado"]
+          },
+        ]
       }
       tab_config_suporte: {
         Row: {

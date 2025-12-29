@@ -8,6 +8,12 @@ export interface PollOption {
   userVoted?: boolean;
 }
 
+export interface AnnouncementAuthor {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+}
+
 export interface Announcement {
   id: string;
   title: string;
@@ -20,4 +26,8 @@ export interface Announcement {
   imageUrl?: string;
   pollType?: PollType;
   pollOptions?: PollOption[];
+  author?: AnnouncementAuthor;
+  startDate?: string;
+  endDate?: string;
+  viewsCount?: number;
 }

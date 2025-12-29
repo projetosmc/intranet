@@ -1,42 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Announcement, PollOption, TemplateType, PollType } from '@/types/announcements';
+import { Announcement, PollOption, TemplateType, PollType, AnnouncementAuthor } from '@/types/announcements';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
 /**
  * Hook para gerenciamento de comunicados/anúncios
- * 
- * Tabela principal: tab_comunicado
- * Colunas:
- * - cod_comunicado (PK): UUID do comunicado
- * - des_titulo: Título do comunicado
- * - des_resumo: Resumo breve
- * - des_conteudo: Conteúdo completo (markdown)
- * - des_tipo_template: Tipo de template ('simple' | 'banner' | 'poll')
- * - des_imagem_url: URL da imagem (para banners)
- * - des_tipo_enquete: Tipo de enquete ('single' | 'multiple')
- * - ind_ativo: Indica se está ativo
- * - ind_fixado: Indica se está fixado no topo
- * - dta_publicacao: Data de publicação
- * - dta_cadastro: Data de criação
- * - dta_atualizacao: Data de atualização
- * 
- * Tabela relacionada: tab_enquete_opcao (opções de enquete)
- * - cod_opcao (PK): UUID da opção
- * - seq_comunicado: FK para tab_comunicado
- * - des_texto_opcao: Texto da opção
- * - dta_cadastro: Data de criação
- * 
- * Tabela relacionada: tab_enquete_voto (votos de enquete)
- * - cod_voto (PK): UUID do voto
- * - seq_opcao: FK para tab_enquete_opcao
- * - seq_usuario: ID do usuário que votou
- * - dta_cadastro: Data do voto
- * 
- * Storage: bucket 'announcements' para imagens de banner
- * 
- * RLS: Admins podem gerenciar, usuários autenticados podem ver ativos
  */
 export function useDbAnnouncements() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -55,10 +24,37 @@ export function useDbAnnouncements() {
 
       if (error) throw error;
 
-      // Fetch poll options for poll type announcements
+      // Fetch poll options and author info for announcements
       const announcementsWithPolls: Announcement[] = await Promise.all(
-        (data || []).map(async (item) => {
+        (data || []).map(async (item: any) => {
           let pollOptions: PollOption[] = [];
+          let author: AnnouncementAuthor | undefined;
+          let viewsCount = 0;
+
+          // Buscar autor
+          if (item.seq_usuario_publicacao) {
+            const { data: profileData } = await supabase
+              .from('tab_perfil_usuario')
+              .select('cod_usuario, des_nome_completo, des_avatar_url')
+              .eq('cod_usuario', item.seq_usuario_publicacao)
+              .single();
+
+            if (profileData) {
+              author = {
+                id: profileData.cod_usuario,
+                name: profileData.des_nome_completo || 'Usuário',
+                avatarUrl: profileData.des_avatar_url || undefined,
+              };
+            }
+          }
+
+          // Buscar contagem de visualizações
+          const { count: viewCount } = await supabase
+            .from('tab_comunicado_visualizacao')
+            .select('*', { count: 'exact', head: true })
+            .eq('seq_comunicado', item.cod_comunicado);
+
+          viewsCount = viewCount || 0;
 
           if (item.des_tipo_template === 'poll') {
             const { data: optionsData } = await supabase
@@ -108,6 +104,10 @@ export function useDbAnnouncements() {
             imageUrl: item.des_imagem_url || undefined,
             pollType: (item.des_tipo_enquete as PollType) || undefined,
             pollOptions,
+            author,
+            startDate: item.dta_inicio || undefined,
+            endDate: item.dta_fim || undefined,
+            viewsCount,
           };
         })
       );
@@ -158,10 +158,12 @@ export function useDbAnnouncements() {
   }, [toast]);
 
   const addAnnouncement = useCallback(async (
-    announcement: Omit<Announcement, 'id' | 'publishedAt' | 'pollOptions'>,
+    announcement: Omit<Announcement, 'id' | 'publishedAt' | 'pollOptions' | 'author' | 'viewsCount'>,
     pollOptions?: string[]
   ) => {
     try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
       const { data, error } = await supabase
         .from('tab_comunicado')
         .insert({
@@ -173,6 +175,9 @@ export function useDbAnnouncements() {
           des_tipo_template: announcement.templateType,
           des_imagem_url: announcement.imageUrl,
           des_tipo_enquete: announcement.pollType,
+          seq_usuario_publicacao: currentUser?.id,
+          dta_inicio: announcement.startDate || null,
+          dta_fim: announcement.endDate || null,
         })
         .select()
         .single();
@@ -226,6 +231,8 @@ export function useDbAnnouncements() {
       if (updates.templateType !== undefined) dbUpdates.des_tipo_template = updates.templateType;
       if (updates.imageUrl !== undefined) dbUpdates.des_imagem_url = updates.imageUrl;
       if (updates.pollType !== undefined) dbUpdates.des_tipo_enquete = updates.pollType;
+      if (updates.startDate !== undefined) dbUpdates.dta_inicio = updates.startDate || null;
+      if (updates.endDate !== undefined) dbUpdates.dta_fim = updates.endDate || null;
 
       const { error } = await supabase
         .from('tab_comunicado')
@@ -263,6 +270,21 @@ export function useDbAnnouncements() {
       });
     }
   }, [toast, fetchAnnouncements]);
+
+  const registerView = useCallback(async (announcementId: string) => {
+    if (!user) return;
+    
+    try {
+      await supabase
+        .from('tab_comunicado_visualizacao')
+        .upsert({
+          seq_comunicado: announcementId,
+          seq_usuario: user.id,
+        }, { onConflict: 'seq_comunicado,seq_usuario' });
+    } catch (error) {
+      console.error('Error registering view:', error);
+    }
+  }, [user]);
 
   const deleteAnnouncement = useCallback(async (id: string) => {
     try {
@@ -333,6 +355,7 @@ export function useDbAnnouncements() {
     deleteAnnouncement,
     uploadImage,
     vote,
+    registerView,
     refetch: fetchAnnouncements,
   };
 }

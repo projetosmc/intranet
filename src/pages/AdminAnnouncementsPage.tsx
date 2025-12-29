@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Pencil, Trash2, Pin, PinOff, Eye, EyeOff, Upload, Image, FileText, BarChart3, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Pin, PinOff, Eye, EyeOff, Upload, Image, FileText, BarChart3, X, Users, Clock, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -58,6 +58,12 @@ type FormData = {
   imageUrl?: string;
   pollType?: PollType;
   pollOptions: string[];
+  startDate?: string;
+  startTime?: string;
+  endDate?: string;
+  endTime?: string;
+  hasSchedule: boolean;
+  hasEndDate: boolean;
 };
 
 type FormErrors = Partial<Record<keyof AnnouncementFormData, string>>;
@@ -72,6 +78,12 @@ const initialFormData: FormData = {
   imageUrl: undefined,
   pollType: 'single',
   pollOptions: ['', ''],
+  startDate: '',
+  startTime: '',
+  endDate: '',
+  endTime: '',
+  hasSchedule: false,
+  hasEndDate: false,
 };
 
 const templateIcons = {
@@ -108,6 +120,10 @@ export default function AdminAnnouncementsPage() {
 
   const handleOpenEdit = (announcement: Announcement) => {
     setEditingId(announcement.id);
+    
+    const startDateTime = announcement.startDate ? new Date(announcement.startDate) : null;
+    const endDateTime = announcement.endDate ? new Date(announcement.endDate) : null;
+    
     setFormData({
       title: announcement.title,
       summary: announcement.summary,
@@ -118,6 +134,12 @@ export default function AdminAnnouncementsPage() {
       imageUrl: announcement.imageUrl,
       pollType: announcement.pollType || 'single',
       pollOptions: announcement.pollOptions?.map((o) => o.optionText) || ['', ''],
+      startDate: startDateTime ? startDateTime.toISOString().split('T')[0] : '',
+      startTime: startDateTime ? startDateTime.toTimeString().slice(0, 5) : '',
+      endDate: endDateTime ? endDateTime.toISOString().split('T')[0] : '',
+      endTime: endDateTime ? endDateTime.toTimeString().slice(0, 5) : '',
+      hasSchedule: !!announcement.startDate,
+      hasEndDate: !!announcement.endDate,
     });
     setActiveTab('edit');
     setIsDialogOpen(true);
@@ -189,6 +211,18 @@ export default function AdminAnnouncementsPage() {
 
     setFormErrors({});
 
+    // Montar datas de agendamento
+    let startDate: string | undefined;
+    let endDate: string | undefined;
+    
+    if (formData.hasSchedule && formData.startDate && formData.startTime) {
+      startDate = new Date(`${formData.startDate}T${formData.startTime}`).toISOString();
+    }
+    
+    if (formData.hasSchedule && formData.hasEndDate && formData.endDate && formData.endTime) {
+      endDate = new Date(`${formData.endDate}T${formData.endTime}`).toISOString();
+    }
+
     const announcementData = {
       title: formData.title,
       summary: formData.summary,
@@ -198,6 +232,8 @@ export default function AdminAnnouncementsPage() {
       templateType: formData.templateType,
       imageUrl: formData.imageUrl,
       pollType: formData.templateType === 'poll' ? formData.pollType : undefined,
+      startDate,
+      endDate,
     };
 
     const pollOptions = formData.templateType === 'poll'
@@ -263,8 +299,8 @@ export default function AdminAnnouncementsPage() {
             <TableRow>
               <TableHead>Tipo</TableHead>
               <TableHead>Título</TableHead>
-              <TableHead>Resumo</TableHead>
               <TableHead>Data</TableHead>
+              <TableHead className="text-center">Views</TableHead>
               <TableHead className="text-center">Fixado</TableHead>
               <TableHead className="text-center">Ativo</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -273,13 +309,13 @@ export default function AdminAnnouncementsPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   Carregando...
                 </TableCell>
               </TableRow>
             ) : announcements.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   Nenhum comunicado cadastrado
                 </TableCell>
               </TableRow>
@@ -311,13 +347,14 @@ export default function AdminAnnouncementsPage() {
                         <span className="line-clamp-1">{announcement.title}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="max-w-xs">
-                      <span className="line-clamp-1 text-muted-foreground">
-                        {announcement.summary}
-                      </span>
-                    </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {format(new Date(announcement.publishedAt), "dd/MM/yyyy", { locale: ptBR })}
+                      {format(new Date(announcement.publishedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-1 text-muted-foreground">
+                        <Users className="h-3 w-3" />
+                        <span>{announcement.viewsCount || 0}</span>
+                      </div>
                     </TableCell>
                     <TableCell className="text-center">
                       <Button
@@ -564,6 +601,74 @@ export default function AdminAnnouncementsPage() {
                     </div>
                   </>
                 )}
+
+                {/* Agendamento */}
+                <div className="space-y-4 p-4 border border-border rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="hasSchedule"
+                      checked={formData.hasSchedule}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, hasSchedule: checked }))}
+                    />
+                    <Label htmlFor="hasSchedule" className="flex items-center gap-2">
+                      <CalendarClock className="h-4 w-4" />
+                      Agendar publicação
+                    </Label>
+                  </div>
+                  
+                  {formData.hasSchedule && (
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Data início</Label>
+                          <Input
+                            type="date"
+                            value={formData.startDate}
+                            onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Hora início</Label>
+                          <Input
+                            type="time"
+                            value={formData.startTime}
+                            onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="hasEndDate"
+                          checked={formData.hasEndDate}
+                          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, hasEndDate: checked }))}
+                        />
+                        <Label htmlFor="hasEndDate">Definir data fim</Label>
+                      </div>
+                      
+                      {formData.hasEndDate && (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Data fim</Label>
+                            <Input
+                              type="date"
+                              value={formData.endDate}
+                              onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Hora fim</Label>
+                            <Input
+                              type="time"
+                              value={formData.endTime}
+                              onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
 
                 <div className="flex items-center gap-6">
                   <div className="flex items-center gap-2">
