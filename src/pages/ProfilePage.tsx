@@ -12,6 +12,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
+import { AvatarCropModal } from '@/components/profile/AvatarCropModal';
 
 // Schema de validação
 const profileSchema = z.object({
@@ -57,6 +58,10 @@ export default function ProfilePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [touched, setTouched] = useState<Set<string>>(new Set());
+  
+  // Avatar crop modal state
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -122,19 +127,46 @@ export default function ProfilePage() {
     validateField(field, value);
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Arquivo inválido',
+        description: 'Por favor, selecione uma imagem.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Criar URL temporária para preview e crop
+    const imageUrl = URL.createObjectURL(file);
+    setImageToCrop(imageUrl);
+    setCropModalOpen(true);
+    
+    // Limpar input para permitir selecionar o mesmo arquivo novamente
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleCroppedImage = async (croppedBlob: Blob) => {
+    if (!user) return;
+
     setIsUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}.${fileExt}`;
+      const fileName = `${user.id}.jpg`;
       const filePath = `avatars/${fileName}`;
 
+      // Upload do blob recortado
       const { error: uploadError } = await supabase.storage
         .from('announcements')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, croppedBlob, { 
+          upsert: true,
+          contentType: 'image/jpeg'
+        });
 
       if (uploadError) throw uploadError;
 
@@ -142,7 +174,8 @@ export default function ProfilePage() {
         .from('announcements')
         .getPublicUrl(filePath);
 
-      const newAvatarUrl = data.publicUrl;
+      // Adicionar timestamp para forçar atualização do cache
+      const newAvatarUrl = `${data.publicUrl}?t=${Date.now()}`;
 
       const { error: updateError } = await supabase
         .from('tab_perfil_usuario')
@@ -168,6 +201,11 @@ export default function ProfilePage() {
       });
     } finally {
       setIsUploading(false);
+      // Limpar URL temporária
+      if (imageToCrop) {
+        URL.revokeObjectURL(imageToCrop);
+        setImageToCrop(null);
+      }
     }
   };
 
@@ -269,7 +307,7 @@ export default function ProfilePage() {
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              onChange={handleAvatarUpload}
+              onChange={handleAvatarSelect}
               className="hidden"
             />
             <Button
@@ -463,6 +501,22 @@ export default function ProfilePage() {
           </div>
         </div>
       </motion.div>
+
+      {/* Avatar Crop Modal */}
+      {imageToCrop && (
+        <AvatarCropModal
+          open={cropModalOpen}
+          onOpenChange={(open) => {
+            setCropModalOpen(open);
+            if (!open && imageToCrop) {
+              URL.revokeObjectURL(imageToCrop);
+              setImageToCrop(null);
+            }
+          }}
+          imageSrc={imageToCrop}
+          onCropComplete={handleCroppedImage}
+        />
+      )}
     </div>
   );
 }

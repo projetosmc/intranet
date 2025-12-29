@@ -35,7 +35,9 @@ export function useUserReservations() {
       }
 
       // Buscar reservas do usuário com joins otimizados
-      const today = new Date().toISOString().split('T')[0];
+      // Usar formato YYYY-MM-DD sem timezone para evitar problemas de fuso
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       
       const { data, error } = await supabase
         .from('tab_reserva_sala')
@@ -48,27 +50,36 @@ export function useUserReservations() {
           des_observacao,
           num_participantes,
           seq_tipo_reuniao,
+          ind_cancelado,
           tab_sala_reuniao!inner(des_nome),
           tab_tipo_reuniao(des_nome)
         `)
         .eq('seq_usuario', user.id)
-        .gte('dta_reserva', today)
+        .eq('ind_cancelado', false) // Filtrar reservas canceladas
+        .gte('dta_reserva', todayStr)
         .order('dta_reserva')
         .order('hra_inicio');
 
       if (error) throw error;
 
-      const formattedReservations: UserReservation[] = (data || []).map((r: any) => ({
-        id: r.cod_reserva,
-        roomId: r.seq_sala,
-        roomName: r.tab_sala_reuniao?.des_nome || 'Sala',
-        date: new Date(r.dta_reserva),
-        startTime: r.hra_inicio,
-        endTime: r.hra_fim,
-        meetingTypeName: r.tab_tipo_reuniao?.des_nome,
-        notes: r.des_observacao,
-        participants: r.num_participantes || 1,
-      }));
+      const formattedReservations: UserReservation[] = (data || []).map((r: any) => {
+        // Criar a data evitando problemas de fuso horário
+        // dta_reserva vem como 'YYYY-MM-DD', adicionar T00:00:00 para interpretar como local
+        const [year, month, day] = r.dta_reserva.split('-').map(Number);
+        const reservationDate = new Date(year, month - 1, day);
+        
+        return {
+          id: r.cod_reserva,
+          roomId: r.seq_sala,
+          roomName: r.tab_sala_reuniao?.des_nome || 'Sala',
+          date: reservationDate,
+          startTime: r.hra_inicio,
+          endTime: r.hra_fim,
+          meetingTypeName: r.tab_tipo_reuniao?.des_nome,
+          notes: r.des_observacao,
+          participants: r.num_participantes || 1,
+        };
+      });
 
       setReservations(formattedReservations);
     } catch (error) {
@@ -86,7 +97,7 @@ export function useUserReservations() {
   // Memoizar eventos para o calendário
   const calendarEvents = useMemo(() => {
     return reservations.map(r => ({
-      date: r.date,
+      date: r.date, // Já é um objeto Date correto
       title: `🏢 ${r.startTime.slice(0, 5)} - ${r.roomName}`,
       type: 'reservation',
       id: r.id,
