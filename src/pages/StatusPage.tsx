@@ -1,24 +1,18 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, CheckCircle, AlertTriangle, XCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-interface SystemStatus {
+interface System {
+  id: string;
   name: string;
   status: 'operational' | 'degraded' | 'down';
-  lastCheck: string;
+  last_check: string;
 }
-
-const systems: SystemStatus[] = [
-  { name: 'Portal Requisição de Despesas', status: 'operational', lastCheck: 'Há 2 min' },
-  { name: 'Portal Regra de Preço', status: 'operational', lastCheck: 'Há 2 min' },
-  { name: 'Portal Cliente', status: 'operational', lastCheck: 'Há 2 min' },
-  { name: 'Pré-fatura', status: 'operational', lastCheck: 'Há 2 min' },
-  { name: 'Auditoria Preço x Bomba', status: 'degraded', lastCheck: 'Há 5 min' },
-  { name: 'SAC - Atendimento', status: 'operational', lastCheck: 'Há 2 min' },
-  { name: 'RH - Portal do Colaborador', status: 'operational', lastCheck: 'Há 2 min' },
-  { name: 'Banco de Dados Principal', status: 'operational', lastCheck: 'Há 1 min' },
-];
 
 const statusConfig = {
   operational: {
@@ -42,8 +36,49 @@ const statusConfig = {
 };
 
 export default function StatusPage() {
-  const allOperational = systems.every(s => s.status === 'operational');
-  const hasIssues = systems.some(s => s.status !== 'operational');
+  const [systems, setSystems] = useState<System[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchSystems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('systems')
+        .select('id, name, status, last_check')
+        .eq('active', true)
+        .order('sort_order');
+
+      if (error) throw error;
+      setSystems((data || []).map(d => ({
+        ...d,
+        status: d.status as 'operational' | 'degraded' | 'down'
+      })));
+    } catch (error) {
+      console.error('Error fetching systems:', error);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSystems();
+  }, []);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchSystems();
+  };
+
+  const allOperational = systems.length > 0 && systems.every(s => s.status === 'operational');
+
+  const formatLastCheck = (dateString: string) => {
+    try {
+      return formatDistanceToNow(new Date(dateString), { locale: ptBR, addSuffix: false });
+    } catch {
+      return 'Desconhecido';
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -57,8 +92,8 @@ export default function StatusPage() {
             <Activity className="h-6 w-6 text-primary" />
             <h1 className="text-2xl font-bold text-foreground">Status dos Sistemas</h1>
           </div>
-          <Button variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
         </div>
@@ -75,7 +110,11 @@ export default function StatusPage() {
         className={`glass-card p-6 border-l-4 ${allOperational ? 'border-l-success' : 'border-l-warning'}`}
       >
         <div className="flex items-center gap-4">
-          {allOperational ? (
+          {isLoading ? (
+            <div className="text-muted-foreground">Carregando...</div>
+          ) : systems.length === 0 ? (
+            <div className="text-muted-foreground">Nenhum sistema cadastrado</div>
+          ) : allOperational ? (
             <>
               <CheckCircle className="h-8 w-8 text-success" />
               <div>
@@ -96,36 +135,38 @@ export default function StatusPage() {
       </motion.div>
 
       {/* Systems List */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.2 }}
-        className="glass-card divide-y divide-border"
-      >
-        {systems.map((system, index) => {
-          const config = statusConfig[system.status];
-          const Icon = config.icon;
+      {!isLoading && systems.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
+          className="glass-card divide-y divide-border"
+        >
+          {systems.map((system, index) => {
+            const config = statusConfig[system.status];
+            const Icon = config.icon;
 
-          return (
-            <motion.div
-              key={system.name}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.2, delay: 0.1 + index * 0.03 }}
-              className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <Icon className={`h-5 w-5 ${config.color}`} />
-                <span className="font-medium text-foreground">{system.name}</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-muted-foreground">{system.lastCheck}</span>
-                <Badge variant={config.variant}>{config.label}</Badge>
-              </div>
-            </motion.div>
-          );
-        })}
-      </motion.div>
+            return (
+              <motion.div
+                key={system.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.2, delay: 0.1 + index * 0.03 }}
+                className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Icon className={`h-5 w-5 ${config.color}`} />
+                  <span className="font-medium text-foreground">{system.name}</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-muted-foreground">Há {formatLastCheck(system.last_check)}</span>
+                  <Badge variant={config.variant}>{config.label}</Badge>
+                </div>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      )}
 
       {/* Incident History */}
       <motion.div
