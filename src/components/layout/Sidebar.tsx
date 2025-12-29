@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -8,8 +8,7 @@ import {
   ChevronDown,
   LucideIcon,
   Megaphone,
-  FileText,
-  RefreshCw
+  FileText
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -50,7 +49,7 @@ interface SearchResult {
 }
 
 const MENU_CACHE_KEY = 'mc_hub_menu_cache';
-const MENU_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const MENU_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours - only refreshes on login
 
 interface MenuCache {
   items: DbMenuItem[];
@@ -500,20 +499,9 @@ export function Sidebar() {
         )}
       </nav>
 
-      {/* Footer with version and refresh */}
+      {/* Footer with version */}
       <div className="p-3 border-t border-sidebar-border">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => {
-              clearMenuCache();
-              toast({ title: 'Menu atualizado!' });
-            }}
-            className="flex items-center gap-1 text-xs text-sidebar-foreground/50 hover:text-primary transition-colors"
-            title="Atualizar menu"
-          >
-            <RefreshCw className="h-3 w-3" />
-            Atualizar
-          </button>
+        <div className="flex items-center justify-end">
           <span className="text-xs text-sidebar-foreground/50">v1.0.0</span>
         </div>
       </div>
