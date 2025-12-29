@@ -16,12 +16,9 @@ import KnowledgeBasePage from "./pages/KnowledgeBasePage";
 import KnowledgeBaseListPage from "./pages/KnowledgeBaseListPage";
 import KnowledgeBaseDetailPage from "./pages/KnowledgeBaseDetailPage";
 import KnowledgeBaseEditorPage from "./pages/KnowledgeBaseEditorPage";
+import KnowledgeBaseAdminPage from "./pages/KnowledgeBaseAdminPage";
 import AdminSettingsPage from "./pages/AdminSettingsPage";
 import AdminAnnouncementsPage from "./pages/AdminAnnouncementsPage";
-import AdminUsersPage from "./pages/AdminUsersPage";
-import AdminAuditLogsPage from "./pages/AdminAuditLogsPage";
-import AdminSystemsPage from "./pages/AdminSystemsPage";
-import AdminRoomConfigPage from "./pages/AdminRoomConfigPage";
 import AdminProfilesPage from "./pages/AdminProfilesPage";
 import AuthPage from "./pages/AuthPage";
 import SetupAdminPage from "./pages/SetupAdminPage";
@@ -56,13 +53,14 @@ const App = () => (
               {/* Rotas administrativas com verificação de permissão */}
               <Route path="/admin/configuracoes" element={<PermissionRoute><AdminSettingsPage /></PermissionRoute>} />
               <Route path="/admin/comunicados" element={<PermissionRoute><AdminAnnouncementsPage /></PermissionRoute>} />
-              <Route path="/admin/usuarios" element={<PermissionRoute><AdminUsersPage /></PermissionRoute>} />
-              <Route path="/admin/auditoria" element={<PermissionRoute><AdminAuditLogsPage /></PermissionRoute>} />
-              <Route path="/admin/sistemas" element={<PermissionRoute><AdminSystemsPage /></PermissionRoute>} />
-              {/* Redireciona /admin/faqs para /suporte */}
-              <Route path="/admin/faqs" element={<Navigate to="/suporte" replace />} />
-              <Route path="/admin/reserva-salas" element={<PermissionRoute><AdminRoomConfigPage /></PermissionRoute>} />
               <Route path="/admin/perfis" element={<PermissionRoute><AdminProfilesPage /></PermissionRoute>} />
+              <Route path="/admin/base-conhecimento" element={<PermissionRoute><KnowledgeBaseAdminPage /></PermissionRoute>} />
+              {/* Redireciona rotas antigas para as novas */}
+              <Route path="/admin/usuarios" element={<Navigate to="/admin/perfis" replace />} />
+              <Route path="/admin/auditoria" element={<Navigate to="/admin/configuracoes" replace />} />
+              <Route path="/admin/sistemas" element={<Navigate to="/admin/configuracoes" replace />} />
+              <Route path="/admin/reserva-salas" element={<Navigate to="/admin/configuracoes" replace />} />
+              <Route path="/admin/faqs" element={<Navigate to="/suporte" replace />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

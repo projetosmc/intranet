@@ -5,6 +5,7 @@ import { Topbar } from './Topbar';
 import { PageTransition } from './PageTransition';
 import { GlobalLoadingIndicator } from './GlobalLoadingIndicator';
 import { GlobalLoadingProvider, useGlobalLoading } from '@/contexts/GlobalLoadingContext';
+import { UrgentAnnouncementPopup } from '@/components/announcements/UrgentAnnouncementPopup';
 
 function MainLayoutContent() {
   const location = useLocation();
@@ -14,6 +15,9 @@ function MainLayoutContent() {
     <div className="min-h-screen bg-background">
       <GlobalLoadingIndicator isLoading={isLoading} />
       <Sidebar />
+      
+      {/* Popup de comunicados urgentes */}
+      <UrgentAnnouncementPopup />
       
       <div
         className="flex flex-col min-h-screen"
