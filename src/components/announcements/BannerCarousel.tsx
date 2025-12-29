@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Announcement } from '@/types/announcements';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,15 +10,33 @@ interface BannerCarouselProps {
   banners: Announcement[];
 }
 
+// Otimizar URL de imagem
+const getOptimizedBannerUrl = (url: string | null): string => {
+  if (!url) return '/placeholder.svg';
+  
+  if (url.includes('unsplash.com')) {
+    return `${url}&w=1200&q=80&fm=webp`;
+  }
+  
+  if (url.includes('supabase.co/storage')) {
+    return url.includes('?') ? `${url}&width=1200&quality=80` : `${url}?width=1200&quality=80`;
+  }
+  
+  return url;
+};
+
 export function BannerCarousel({ banners }: BannerCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const navigate = useNavigate();
 
   const nextSlide = useCallback(() => {
+    setImageLoaded(false);
     setCurrentIndex((prev) => (prev + 1) % banners.length);
   }, [banners.length]);
 
   const prevSlide = useCallback(() => {
+    setImageLoaded(false);
     setCurrentIndex((prev) => (prev - 1 + banners.length) % banners.length);
   }, [banners.length]);
 
@@ -31,26 +50,33 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   if (banners.length === 0) return null;
 
   const currentBanner = banners[currentIndex];
+  const bannerImageUrl = getOptimizedBannerUrl(currentBanner.imageUrl);
 
   return (
     <div className="relative w-full rounded-2xl overflow-hidden bg-card border border-border shadow-lg">
       {/* Main Carousel Container */}
-      <div className="relative aspect-[21/9] md:aspect-[3/1]">
+      <div className="relative aspect-[21/9] md:aspect-[3/1] bg-muted">
+        {!imageLoaded && (
+          <Skeleton className="absolute inset-0 w-full h-full" />
+        )}
         <AnimatePresence mode="wait">
           <motion.div
             key={currentBanner.id}
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            animate={{ opacity: imageLoaded ? 1 : 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
             className="absolute inset-0 cursor-pointer"
             onClick={() => navigate(`/comunicados/${currentBanner.id}`)}
           >
             <img
-              src={currentBanner.imageUrl || ''}
+              src={bannerImageUrl}
               alt={currentBanner.title}
               className="absolute inset-0 w-full h-full object-cover"
-              loading="lazy"
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
+              onLoad={() => setImageLoaded(true)}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
             

@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -13,44 +14,48 @@ interface PermissionRouteProps {
  * Usa a tabela tab_permissao_tela para verificar se o usuário
  * tem acesso à rota atual baseado em seus perfis (roles)
  */
-export function PermissionRoute({ children }: PermissionRouteProps) {
-  const { isAuthenticated, isLoading, canAccess, getScreenName } = useAuthContext();
-  const { toast } = useToast();
-  const location = useLocation();
-  const hasShownToast = useRef(false);
+export const PermissionRoute = forwardRef<HTMLDivElement, PermissionRouteProps>(
+  function PermissionRoute({ children }, _ref) {
+    const { isAuthenticated, isLoading, canAccess, getScreenName } = useAuthContext();
+    const { toast } = useToast();
+    const location = useLocation();
+    const hasShownToast = useRef(false);
 
-  const hasAccess = canAccess(location.pathname);
+    const hasAccess = canAccess(location.pathname);
 
-  useEffect(() => {
-    if (!isLoading && isAuthenticated && !hasAccess && !hasShownToast.current) {
-      hasShownToast.current = true;
-      const screenName = getScreenName(location.pathname);
-      toast({
-        title: 'Acesso negado',
-        description: screenName 
-          ? `Você não tem permissão para acessar "${screenName}".`
-          : 'Você não tem permissão para acessar esta página.',
-        variant: 'destructive',
-      });
+    useEffect(() => {
+      if (!isLoading && isAuthenticated && !hasAccess && !hasShownToast.current) {
+        hasShownToast.current = true;
+        const screenName = getScreenName(location.pathname);
+        toast({
+          title: 'Acesso negado',
+          description: screenName 
+            ? `Você não tem permissão para acessar "${screenName}".`
+            : 'Você não tem permissão para acessar esta página.',
+          variant: 'destructive',
+        });
+      }
+    }, [isLoading, isAuthenticated, hasAccess, toast, getScreenName, location.pathname]);
+
+    // Reset toast flag quando navegar para outra página
+    useEffect(() => {
+      return () => {
+        hasShownToast.current = false;
+      };
+    }, [location.pathname]);
+
+    // Parent ProtectedRoute already handles loading, so no need to show loading here
+    // Just check authentication (should already be authenticated due to parent route)
+    if (!isAuthenticated) {
+      return <Navigate to="/auth" state={{ from: location }} replace />;
     }
-  }, [isLoading, isAuthenticated, hasAccess, toast, getScreenName, location.pathname]);
 
-  // Reset toast flag quando navegar para outra página
-  useEffect(() => {
-    return () => {
-      hasShownToast.current = false;
-    };
-  }, [location.pathname]);
+    if (!hasAccess) {
+      return <Navigate to="/" replace />;
+    }
 
-  // Parent ProtectedRoute already handles loading, so no need to show loading here
-  // Just check authentication (should already be authenticated due to parent route)
-  if (!isAuthenticated) {
-    return <Navigate to="/auth" state={{ from: location }} replace />;
+    return <>{children}</>;
   }
+);
 
-  if (!hasAccess) {
-    return <Navigate to="/" replace />;
-  }
-
-  return <>{children}</>;
-}
+PermissionRoute.displayName = 'PermissionRoute';
