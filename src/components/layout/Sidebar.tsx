@@ -13,6 +13,7 @@ import {
 import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/contexts/UserContext';
+import { useScreenPermission } from '@/hooks/useScreenPermission';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -68,6 +69,7 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isAdmin } = useUser();
+  const { canAccess, isLoading: permissionsLoading } = useScreenPermission();
   const [searchQuery, setSearchQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuItemType[]>([]);
@@ -236,6 +238,7 @@ export function Sidebar() {
   };
 
   // Busca instantânea usando useMemo - sem debounce
+  // Filtra apenas telas que o usuário tem permissão de acessar
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
     
@@ -246,6 +249,9 @@ export function Sidebar() {
     allSubmenus.forEach(menu => {
       // Check if it's admin only and user is not admin
       if (menu.ind_admin_only && !isAdmin) return;
+      
+      // Verificar se o usuário tem permissão para acessar esta rota
+      if (!canAccess(menu.des_caminho)) return;
       
       const nameMatch = menu.des_nome.toLowerCase().includes(lowerQuery);
       const tagMatch = menu.des_tags?.some(tag => tag.toLowerCase().includes(lowerQuery));
@@ -262,6 +268,7 @@ export function Sidebar() {
     });
 
     // Buscar em comunicados (já carregados em memória)
+    // Comunicados são acessíveis a todos os usuários autenticados
     cachedAnnouncements.forEach(ann => {
       const titleMatch = ann.des_titulo.toLowerCase().includes(lowerQuery);
       const summaryMatch = ann.des_resumo?.toLowerCase().includes(lowerQuery);
@@ -278,7 +285,7 @@ export function Sidebar() {
     });
 
     return results.slice(0, 8);
-  }, [searchQuery, allSubmenus, cachedAnnouncements, isAdmin]);
+  }, [searchQuery, allSubmenus, cachedAnnouncements, isAdmin, canAccess]);
 
   const handleResultClick = useCallback((result: SearchResult) => {
     navigate(result.path);
