@@ -741,6 +741,17 @@ export default function AdminSettingsPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    clearMenuCache();
+                    toast({ title: 'Cache do menu limpo!', description: 'Recarregue a página para ver as alterações.' });
+                  }}
+                >
+                  <LucideIcons.RefreshCw className="h-4 w-4 mr-2" />
+                  Limpar Cache
+                </Button>
                 <Dialog open={isDialogOpen} onOpenChange={(o) => {
                 setIsDialogOpen(o); 
                 if (!o) {
