@@ -13,6 +13,7 @@ import { useUser } from '@/contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { systemSchema, validateForm } from '@/lib/validations';
 import {
   DndContext,
   closestCenter,
@@ -72,6 +73,7 @@ export default function AdminSystemsPage() {
   const [editingSystem, setEditingSystem] = useState<System | null>(null);
   const [deleteSystemId, setDeleteSystemId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -106,11 +108,31 @@ export default function AdminSystemsPage() {
   };
 
   const handleSave = async (formData: FormData) => {
+    const rawData = {
+      name: formData.get('name') as string,
+      status: formData.get('status') as 'operational' | 'degraded' | 'partial_outage' | 'major_outage',
+      order: parseInt(formData.get('sort_order') as string) || 0,
+      active: true,
+    };
+
+    // Validar com Zod
+    const validation = validateForm(systemSchema, rawData);
+    
+    if ('errors' in validation) {
+      setFormErrors(validation.errors);
+      const firstError = Object.values(validation.errors)[0];
+      toast({ title: 'Erro de validação', description: firstError, variant: 'destructive' });
+      return;
+    }
+
+    setFormErrors({});
+    const validData = validation.data;
+
     const system = {
-      des_nome: formData.get('name') as string,
-      des_status: formData.get('status') as 'operational' | 'degraded' | 'down',
-      num_ordem: parseInt(formData.get('sort_order') as string) || 0,
-      ind_ativo: true,
+      des_nome: validData.name,
+      des_status: validData.status,
+      num_ordem: validData.order,
+      ind_ativo: validData.active,
       dta_ultima_verificacao: new Date().toISOString(),
     };
 
@@ -314,7 +336,10 @@ export default function AdminSystemsPage() {
           </div>
           <Dialog open={isDialogOpen} onOpenChange={(o) => { 
             setIsDialogOpen(o); 
-            if (!o) setEditingSystem(null);
+            if (!o) {
+              setEditingSystem(null);
+              setFormErrors({});
+            }
           }}>
             <DialogTrigger asChild>
               <Button size="sm">
@@ -333,8 +358,13 @@ export default function AdminSystemsPage() {
                     name="name" 
                     defaultValue={editingSystem?.des_nome} 
                     required 
+                    maxLength={100}
                     placeholder="Ex: Portal Cliente"
+                    className={formErrors.name ? 'border-destructive' : ''}
                   />
+                  {formErrors.name && (
+                    <p className="text-sm text-destructive mt-1">{formErrors.name}</p>
+                  )}
                 </div>
 
                 <div>
