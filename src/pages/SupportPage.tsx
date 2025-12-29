@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { useUser } from '@/contexts/UserContext';
+import { useFeaturePermission } from '@/hooks/useFeaturePermission';
 import { toast } from '@/hooks/use-toast';
 
 interface FAQ {
@@ -43,7 +43,7 @@ const getIconComponent = (iconName: string): LucideIcon => {
 };
 
 export default function SupportPage() {
-  const { isAdmin } = useUser();
+  const { canEditSupport } = useFeaturePermission();
   const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [supportLinks, setSupportLinks] = useState<SupportConfig[]>([]);
   const [contacts, setContacts] = useState<SupportConfig[]>([]);
@@ -193,7 +193,7 @@ export default function SupportPage() {
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground">Links Úteis</h2>
-          {isAdmin && (
+          {canEditSupport && (
             <Button size="sm" variant="outline" onClick={() => handleNewItem('link')}>
               <Plus className="h-4 w-4 mr-1" />
               Novo Link
@@ -211,7 +211,7 @@ export default function SupportPage() {
                 transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
                 className="glass-card p-6 hover-lift group relative"
               >
-                {isAdmin && (
+                {canEditSupport && (
                   <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button size="icon-sm" variant="ghost" onClick={() => handleEditItem(link)}>
                       <Pencil className="h-3.5 w-3.5" />
@@ -251,7 +251,7 @@ export default function SupportPage() {
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground">Contato Direto</h2>
-          {isAdmin && (
+          {canEditSupport && (
             <Button size="sm" variant="outline" onClick={() => handleNewItem('contact')}>
               <Plus className="h-4 w-4 mr-1" />
               Novo Contato
@@ -266,7 +266,7 @@ export default function SupportPage() {
               
               return (
                 <div key={contact.cod_config} className="flex items-center gap-4 group relative">
-                  {isAdmin && (
+                  {canEditSupport && (
                     <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button size="icon-sm" variant="ghost" onClick={() => handleEditItem(contact)}>
                         <Pencil className="h-3.5 w-3.5" />

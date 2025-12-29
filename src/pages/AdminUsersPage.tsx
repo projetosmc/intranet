@@ -7,9 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -148,45 +146,6 @@ export default function AdminUsersPage() {
     } catch (error) {
       console.error('Error updating role:', error);
       toast({ title: 'Erro ao atualizar permissões', variant: 'destructive' });
-    }
-  };
-
-  const handleUpdateProfile = async (userId: string, data: Partial<UserProfile>) => {
-    const currentUser = users.find(u => u.cod_usuario === userId);
-    
-    try {
-      const { error } = await supabase
-        .from('tab_perfil_usuario')
-        .update({
-          des_unidade: data.des_unidade,
-          des_departamento: data.des_departamento,
-          des_cargo: data.des_cargo,
-          des_telefone: data.des_telefone,
-        })
-        .eq('cod_usuario', userId);
-
-      if (error) throw error;
-
-      await logAudit({
-        action: 'profile_updated',
-        entity_type: 'profile',
-        entity_id: userId,
-        target_user_id: userId,
-        old_value: {
-          des_unidade: currentUser?.des_unidade,
-          des_departamento: currentUser?.des_departamento,
-          des_cargo: currentUser?.des_cargo,
-          des_telefone: currentUser?.des_telefone,
-        },
-        new_value: data,
-      });
-
-      await fetchUsers();
-      setIsEditDialogOpen(false);
-      toast({ title: 'Perfil atualizado' });
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast({ title: 'Erro ao atualizar perfil', variant: 'destructive' });
     }
   };
 
@@ -389,91 +348,49 @@ export default function AdminUsersPage() {
       </motion.div>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Gerenciar Usuário</DialogTitle>
+            <DialogTitle>Gerenciar Permissões</DialogTitle>
           </DialogHeader>
           
           {selectedUser && (
-            <Tabs defaultValue="profile">
-              <TabsList className="w-full">
-                <TabsTrigger value="profile" className="flex-1">Perfil</TabsTrigger>
-                <TabsTrigger value="permissions" className="flex-1">Permissões</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="profile" className="space-y-4 mt-4">
-                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={selectedUser.des_avatar_url} />
-                    <AvatarFallback className="bg-primary/10 text-primary">
-                      {getInitials(selectedUser.des_nome_completo)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{selectedUser.des_nome_completo}</p>
-                    <p className="text-sm text-muted-foreground">{selectedUser.des_email}</p>
-                  </div>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={selectedUser.des_avatar_url} />
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {getInitials(selectedUser.des_nome_completo)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{selectedUser.des_nome_completo}</p>
+                  <p className="text-sm text-muted-foreground">{selectedUser.des_email}</p>
                 </div>
+              </div>
 
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.currentTarget);
-                  handleUpdateProfile(selectedUser.cod_usuario, {
-                    des_unidade: formData.get('unit') as string,
-                    des_departamento: formData.get('department') as string,
-                    des_cargo: formData.get('job_title') as string,
-                    des_telefone: formData.get('phone') as string,
-                  });
-                }} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3">
+                {(['admin', 'moderator', 'user'] as const).map(role => (
+                  <div key={role} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div>
-                      <Label>Unidade</Label>
-                      <Input name="unit" defaultValue={selectedUser.des_unidade || ''} />
+                      <p className="font-medium capitalize">
+                        {role === 'admin' ? 'Administrador' : role === 'moderator' ? 'Moderador' : 'Usuário'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {role === 'admin' 
+                          ? 'Acesso total ao sistema' 
+                          : role === 'moderator' 
+                          ? 'Pode moderar conteúdo' 
+                          : 'Acesso básico'}
+                      </p>
                     </div>
-                    <div>
-                      <Label>Departamento</Label>
-                      <Input name="department" defaultValue={selectedUser.des_departamento || ''} />
-                    </div>
+                    <Switch
+                      checked={selectedUser.roles.includes(role)}
+                      onCheckedChange={(checked) => handleUpdateRole(selectedUser.cod_usuario, role, checked)}
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Cargo</Label>
-                      <Input name="job_title" defaultValue={selectedUser.des_cargo || ''} />
-                    </div>
-                    <div>
-                      <Label>Telefone</Label>
-                      <Input name="phone" defaultValue={selectedUser.des_telefone || ''} />
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full">Salvar Perfil</Button>
-                </form>
-              </TabsContent>
-
-              <TabsContent value="permissions" className="space-y-4 mt-4">
-                <div className="space-y-3">
-                  {(['admin', 'moderator', 'user'] as const).map(role => (
-                    <div key={role} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div>
-                        <p className="font-medium capitalize">
-                          {role === 'admin' ? 'Administrador' : role === 'moderator' ? 'Moderador' : 'Usuário'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {role === 'admin' 
-                            ? 'Acesso total ao sistema' 
-                            : role === 'moderator' 
-                            ? 'Pode moderar conteúdo' 
-                            : 'Acesso básico'}
-                        </p>
-                      </div>
-                      <Switch
-                        checked={selectedUser.roles.includes(role)}
-                        onCheckedChange={(checked) => handleUpdateRole(selectedUser.cod_usuario, role, checked)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
-            </Tabs>
+                ))}
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>
