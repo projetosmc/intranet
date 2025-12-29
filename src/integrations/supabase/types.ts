@@ -14,6 +14,101 @@ export type Database = {
   }
   public: {
     Tables: {
+      tab_base_conhecimento: {
+        Row: {
+          cod_item: string
+          des_arquivo_nome: string
+          des_arquivo_url: string
+          des_descricao: string | null
+          des_nome_usuario_atualizacao: string
+          des_tipo: string
+          des_titulo: string
+          dta_atualizacao: string
+          dta_cadastro: string
+          ind_ativo: boolean | null
+          num_tamanho_bytes: number | null
+          num_versao: number
+          seq_usuario_atualizacao: string
+          seq_usuario_criacao: string
+        }
+        Insert: {
+          cod_item?: string
+          des_arquivo_nome: string
+          des_arquivo_url: string
+          des_descricao?: string | null
+          des_nome_usuario_atualizacao: string
+          des_tipo: string
+          des_titulo: string
+          dta_atualizacao?: string
+          dta_cadastro?: string
+          ind_ativo?: boolean | null
+          num_tamanho_bytes?: number | null
+          num_versao?: number
+          seq_usuario_atualizacao: string
+          seq_usuario_criacao: string
+        }
+        Update: {
+          cod_item?: string
+          des_arquivo_nome?: string
+          des_arquivo_url?: string
+          des_descricao?: string | null
+          des_nome_usuario_atualizacao?: string
+          des_tipo?: string
+          des_titulo?: string
+          dta_atualizacao?: string
+          dta_cadastro?: string
+          ind_ativo?: boolean | null
+          num_tamanho_bytes?: number | null
+          num_versao?: number
+          seq_usuario_atualizacao?: string
+          seq_usuario_criacao?: string
+        }
+        Relationships: []
+      }
+      tab_base_conhecimento_versao: {
+        Row: {
+          cod_versao: string
+          des_arquivo_nome: string
+          des_arquivo_url: string
+          des_nome_usuario: string
+          dta_cadastro: string
+          num_tamanho_bytes: number | null
+          num_versao: number
+          seq_item: string
+          seq_usuario: string
+        }
+        Insert: {
+          cod_versao?: string
+          des_arquivo_nome: string
+          des_arquivo_url: string
+          des_nome_usuario: string
+          dta_cadastro?: string
+          num_tamanho_bytes?: number | null
+          num_versao: number
+          seq_item: string
+          seq_usuario: string
+        }
+        Update: {
+          cod_versao?: string
+          des_arquivo_nome?: string
+          des_arquivo_url?: string
+          des_nome_usuario?: string
+          dta_cadastro?: string
+          num_tamanho_bytes?: number | null
+          num_versao?: number
+          seq_item?: string
+          seq_usuario?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tab_base_conhecimento_versao_seq_item_fkey"
+            columns: ["seq_item"]
+            isOneToOne: false
+            referencedRelation: "tab_base_conhecimento"
+            referencedColumns: ["cod_item"]
+          },
+        ]
+      }
       tab_comunicado: {
         Row: {
           cod_comunicado: string

@@ -32,8 +32,7 @@ export const announcementSchema = z.object({
   imageUrl: z
     .string()
     .url({ message: 'URL da imagem inválida' })
-    .optional()
-    .or(z.literal('')),
+    .min(1, { message: 'Imagem é obrigatória' }),
   pollType: z.enum(['single', 'multiple']).optional(),
   pollOptions: z
     .array(z.string().trim().max(200, { message: 'Opção deve ter no máximo 200 caracteres' }))
