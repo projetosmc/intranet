@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { UserProvider } from "@/contexts/UserContext";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -17,7 +17,6 @@ import AdminAnnouncementsPage from "./pages/AdminAnnouncementsPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminAuditLogsPage from "./pages/AdminAuditLogsPage";
 import AdminSystemsPage from "./pages/AdminSystemsPage";
-import AdminFaqsPage from "./pages/AdminFaqsPage";
 import AdminRoomConfigPage from "./pages/AdminRoomConfigPage";
 import AdminProfilesPage from "./pages/AdminProfilesPage";
 import AuthPage from "./pages/AuthPage";
@@ -51,7 +50,8 @@ const App = () => (
               <Route path="/admin/usuarios" element={<PermissionRoute><AdminUsersPage /></PermissionRoute>} />
               <Route path="/admin/auditoria" element={<PermissionRoute><AdminAuditLogsPage /></PermissionRoute>} />
               <Route path="/admin/sistemas" element={<PermissionRoute><AdminSystemsPage /></PermissionRoute>} />
-              <Route path="/admin/faqs" element={<PermissionRoute><AdminFaqsPage /></PermissionRoute>} />
+              {/* Redireciona /admin/faqs para /suporte */}
+              <Route path="/admin/faqs" element={<Navigate to="/suporte" replace />} />
               <Route path="/admin/reserva-salas" element={<PermissionRoute><AdminRoomConfigPage /></PermissionRoute>} />
               <Route path="/admin/perfis" element={<PermissionRoute><AdminProfilesPage /></PermissionRoute>} />
             </Route>
