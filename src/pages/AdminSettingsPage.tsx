@@ -16,6 +16,7 @@ import { toast } from '@/hooks/use-toast';
 import { clearMenuCache } from '@/components/layout/Sidebar';
 import * as LucideIcons from 'lucide-react';
 import { AuditLogsTab } from '@/components/admin/AuditLogsTab';
+import { menuItemSchema, validateForm, type MenuItemFormData } from '@/lib/validations';
 import {
   DndContext,
   closestCenter,
@@ -111,12 +112,39 @@ export default function AdminSettingsPage() {
 
   const handleSave = async (formData: FormData) => {
     const parentId = (formData.get('parent_id') as string) === '__none__' ? null : (formData.get('parent_id') as string) || null;
-    const pathValue = formData.get('path') as string;
+    const pathValue = (formData.get('path') as string)?.trim();
     
-    const rawName = formData.get('name') as string;
+    const rawName = (formData.get('name') as string)?.trim();
     const formattedName = parentId ? toTitleCase(rawName) : rawName.toUpperCase();
     
     const finalPath = parentId ? pathValue : (pathValue || `/${rawName.toLowerCase().replace(/\s+/g, '-')}`);
+    const iconValue = (formData.get('icon') as string)?.trim() || 'Circle';
+    const orderValue = parseInt(formData.get('sort_order') as string) || 0;
+    const openInNewTab = formData.get('open_mode') === 'new_tab';
+    const adminOnly = formData.get('is_admin_only') === 'on';
+
+    // Validar com Zod
+    const validation = validateForm(menuItemSchema, {
+      name: formattedName,
+      path: finalPath,
+      icon: iconValue,
+      order: orderValue,
+      parentId: parentId,
+      adminOnly,
+      openInNewTab,
+      active: true,
+    });
+
+    if (!validation.success) {
+      const validationResult = validation as { success: false; errors: Record<string, string> };
+      const firstError = Object.values(validationResult.errors)[0];
+      toast({
+        title: 'Erro de validação',
+        description: String(firstError),
+        variant: 'destructive',
+      });
+      return;
+    }
     
     const isDuplicate = menuItems.some(item => 
       item.des_nome.toLowerCase() === formattedName.toLowerCase() && 
@@ -135,11 +163,11 @@ export default function AdminSettingsPage() {
     const item = {
       des_nome: formattedName,
       des_caminho: finalPath,
-      des_icone: formData.get('icon') as string,
+      des_icone: iconValue,
       seq_menu_pai: parentId,
-      ind_nova_aba: formData.get('open_mode') === 'new_tab',
-      ind_admin_only: formData.get('is_admin_only') === 'on',
-      num_ordem: parseInt(formData.get('sort_order') as string) || 0,
+      ind_nova_aba: openInNewTab,
+      ind_admin_only: adminOnly,
+      num_ordem: orderValue,
       ind_ativo: true,
     };
 

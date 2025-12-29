@@ -44,6 +44,8 @@ import { Announcement, TemplateType, PollType } from '@/types/announcements';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { announcementSchema, validateForm, type AnnouncementFormData } from '@/lib/validations';
+import { toast } from '@/hooks/use-toast';
 
 type FormData = {
   title: string;
@@ -56,6 +58,8 @@ type FormData = {
   pollType?: PollType;
   pollOptions: string[];
 };
+
+type FormErrors = Partial<Record<keyof AnnouncementFormData, string>>;
 
 const initialFormData: FormData = {
   title: '',
@@ -88,12 +92,14 @@ export default function AdminAnnouncementsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleOpenCreate = () => {
     setEditingId(null);
     setFormData(initialFormData);
+    setFormErrors({});
     setIsDialogOpen(true);
   };
 
@@ -152,9 +158,32 @@ export default function AdminAnnouncementsPage() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.title.trim() || !formData.summary.trim()) {
+    // Validar com Zod
+    const validation = validateForm(announcementSchema, {
+      title: formData.title,
+      summary: formData.summary,
+      content: formData.content,
+      pinned: formData.pinned,
+      active: formData.active,
+      templateType: formData.templateType,
+      imageUrl: formData.imageUrl || undefined,
+      pollType: formData.templateType === 'poll' ? formData.pollType : undefined,
+      pollOptions: formData.templateType === 'poll' ? formData.pollOptions.filter(o => o.trim()) : undefined,
+    });
+
+    if (!validation.success) {
+      const validationResult = validation as { success: false; errors: Record<string, string> };
+      setFormErrors(validationResult.errors as FormErrors);
+      const firstError = Object.values(validationResult.errors)[0];
+      toast({
+        title: 'Erro de validação',
+        description: String(firstError),
+        variant: 'destructive',
+      });
       return;
     }
+
+    setFormErrors({});
 
     const announcementData = {
       title: formData.title,
@@ -379,7 +408,12 @@ export default function AdminAnnouncementsPage() {
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 placeholder="Título do comunicado"
+                maxLength={200}
+                className={formErrors.title ? 'border-destructive' : ''}
               />
+              {formErrors.title && (
+                <p className="text-sm text-destructive">{formErrors.title}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="summary">Resumo</Label>
@@ -388,7 +422,12 @@ export default function AdminAnnouncementsPage() {
                 value={formData.summary}
                 onChange={(e) => setFormData(prev => ({ ...prev, summary: e.target.value }))}
                 placeholder="Breve resumo do comunicado"
+                maxLength={500}
+                className={formErrors.summary ? 'border-destructive' : ''}
               />
+              {formErrors.summary && (
+                <p className="text-sm text-destructive">{formErrors.summary}</p>
+              )}
             </div>
 
             {formData.templateType !== 'poll' && (
