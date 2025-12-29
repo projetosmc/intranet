@@ -2,6 +2,7 @@ import { forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { Announcement } from '@/types/announcements';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { OptimizedImage } from '@/components/ui/optimized-image';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -28,12 +29,10 @@ export const AnnouncementCard = forwardRef<HTMLElement, AnnouncementCardProps>(
       className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-card border border-border"
       onClick={onClick}
     >
-      <img
-        alt={announcement.title}
+      <OptimizedImage
         src={announcement.imageUrl || placeholderImage}
-        loading="lazy"
-        decoding="async"
-        className="h-40 w-full object-cover bg-muted"
+        alt={announcement.title}
+        aspectRatio="card"
       />
 
       <div className="p-4">
