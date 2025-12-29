@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { HelpCircle, Plus, Pencil, Trash2, GripVertical } from 'lucide-react';
+import { HelpCircle, Plus, Pencil, Trash2, GripVertical, Tag, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,6 +40,7 @@ interface FAQ {
   des_resposta: string;
   num_ordem: number;
   ind_ativo: boolean;
+  des_tags: string[];
 }
 
 export default function AdminFaqsPage() {
@@ -53,6 +54,33 @@ export default function AdminFaqsPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [answerHtml, setAnswerHtml] = useState('');
+  const [editingTags, setEditingTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState('');
+
+  // Sugestões de tags populares baseadas nas tags existentes
+  const popularTags = useMemo(() => {
+    const tagCount: Record<string, number> = {};
+    faqs.forEach(faq => {
+      (faq.des_tags || []).forEach(tag => {
+        tagCount[tag] = (tagCount[tag] || 0) + 1;
+      });
+    });
+    
+    return Object.entries(tagCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([tag]) => tag);
+  }, [faqs]);
+
+  // Sugestões filtradas baseadas no que o usuário está digitando
+  const filteredSuggestions = useMemo(() => {
+    if (!newTag.trim()) return popularTags.filter(tag => !editingTags.includes(tag));
+    
+    const search = newTag.toLowerCase().trim();
+    return popularTags
+      .filter(tag => tag.includes(search) && !editingTags.includes(tag))
+      .slice(0, 5);
+  }, [newTag, popularTags, editingTags]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -112,6 +140,7 @@ export default function AdminFaqsPage() {
       des_resposta: validData.answer,
       num_ordem: validData.order,
       ind_ativo: validData.active,
+      des_tags: editingTags,
     };
 
     try {
@@ -133,6 +162,8 @@ export default function AdminFaqsPage() {
       setIsDialogOpen(false);
       setEditingFaq(null);
       setAnswerHtml('');
+      setEditingTags([]);
+      setNewTag('');
       await fetchFaqs();
     } catch (error) {
       console.error('Error saving FAQ:', error);
@@ -252,7 +283,18 @@ export default function AdminFaqsPage() {
           <GripVertical className={`h-4 w-4 transition-colors ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
         </motion.div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium truncate">{faq.des_pergunta}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-medium truncate">{faq.des_pergunta}</p>
+            {faq.des_tags && faq.des_tags.length > 0 && (
+              <div className="flex items-center gap-1 shrink-0">
+                <Tag className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  {faq.des_tags.slice(0, 2).join(', ')}
+                  {faq.des_tags.length > 2 && ` +${faq.des_tags.length - 2}`}
+                </span>
+              </div>
+            )}
+          </div>
           <div className="text-sm text-muted-foreground line-clamp-2">
             <RichTextContent html={faq.des_resposta} className="[&_a]:text-primary [&_a]:underline" />
           </div>
@@ -268,6 +310,8 @@ export default function AdminFaqsPage() {
             onClick={() => { 
               setEditingFaq(faq); 
               setAnswerHtml(faq.des_resposta);
+              setEditingTags(faq.des_tags || []);
+              setNewTag('');
               setIsDialogOpen(true); 
             }}
           >
@@ -318,8 +362,11 @@ export default function AdminFaqsPage() {
               setEditingFaq(null);
               setFormErrors({});
               setAnswerHtml('');
+              setEditingTags([]);
+              setNewTag('');
             } else if (editingFaq) {
               setAnswerHtml(editingFaq.des_resposta);
+              setEditingTags(editingFaq.des_tags || []);
             }
           }}>
             <DialogTrigger asChild>
@@ -360,6 +407,95 @@ export default function AdminFaqsPage() {
                   />
                   {formErrors.answer && (
                     <p className="text-sm text-destructive mt-1">{formErrors.answer}</p>
+                  )}
+                </div>
+
+                {/* Tags de Busca */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Tag className="h-4 w-4" />
+                    Tags de Busca
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Adicione palavras-chave para facilitar a localização desta FAQ na busca
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-muted/30 rounded-lg">
+                    {editingTags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full"
+                      >
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => setEditingTags(prev => prev.filter((_, i) => i !== index))}
+                          className="hover:bg-primary/20 rounded-full p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                    {editingTags.length === 0 && (
+                      <span className="text-xs text-muted-foreground">Nenhuma tag adicionada</span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      placeholder="Digite uma tag e pressione Enter"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const tag = newTag.trim().toLowerCase();
+                          if (tag && !editingTags.includes(tag)) {
+                            setEditingTags(prev => [...prev, tag]);
+                            setNewTag('');
+                          }
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const tag = newTag.trim().toLowerCase();
+                        if (tag && !editingTags.includes(tag)) {
+                          setEditingTags(prev => [...prev, tag]);
+                          setNewTag('');
+                        }
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  {/* Sugestões de tags populares */}
+                  {filteredSuggestions.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">
+                        {newTag.trim() ? 'Sugestões:' : 'Tags populares:'}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {filteredSuggestions.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => {
+                              if (!editingTags.includes(tag)) {
+                                setEditingTags(prev => [...prev, tag]);
+                                setNewTag('');
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground text-xs rounded-full transition-colors"
+                          >
+                            <Plus className="h-2.5 w-2.5" />
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
 

@@ -194,6 +194,7 @@ export type Database = {
           cod_faq: string
           des_pergunta: string
           des_resposta: string
+          des_tags: string[] | null
           dta_atualizacao: string | null
           dta_cadastro: string | null
           ind_ativo: boolean | null
@@ -203,6 +204,7 @@ export type Database = {
           cod_faq?: string
           des_pergunta: string
           des_resposta: string
+          des_tags?: string[] | null
           dta_atualizacao?: string | null
           dta_cadastro?: string | null
           ind_ativo?: boolean | null
@@ -212,6 +214,7 @@ export type Database = {
           cod_faq?: string
           des_pergunta?: string
           des_resposta?: string
+          des_tags?: string[] | null
           dta_atualizacao?: string | null
           dta_cadastro?: string | null
           ind_ativo?: boolean | null
