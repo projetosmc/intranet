@@ -24,7 +24,9 @@ export function AnnouncementCard({ announcement, onClick, delay = 0 }: Announcem
       <img
         alt={announcement.title}
         src={announcement.imageUrl || placeholderImage}
-        className="h-40 w-full object-cover"
+        loading="lazy"
+        decoding="async"
+        className="h-40 w-full object-cover bg-muted"
       />
 
       <div className="p-4">

@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Plus, Pencil, Trash2, Users, Check, X } from 'lucide-react';
+import { Shield, Pencil, Check, Search, X, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useUser } from '@/contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
@@ -129,10 +128,20 @@ export default function AdminProfilesPage() {
     );
   };
 
-  const filteredUsers = users.filter(user =>
-    user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Memoized filtered users for better performance
+  const filteredUsers = useMemo(() => {
+    if (!searchTerm.trim()) return users;
+    const lowerSearch = searchTerm.toLowerCase();
+    return users.filter(user =>
+      user.fullName.toLowerCase().includes(lowerSearch) ||
+      user.email.toLowerCase().includes(lowerSearch) ||
+      user.roles.some(role => role.toLowerCase().includes(lowerSearch))
+    );
+  }, [users, searchTerm]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchTerm('');
+  }, []);
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
@@ -168,20 +177,49 @@ export default function AdminProfilesPage() {
         </div>
 
         <div className="glass-card p-6 rounded-xl">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
             <div>
               <h2 className="text-lg font-semibold">Usuários e Permissões</h2>
               <p className="text-sm text-muted-foreground">
                 Gerencie os perfis de acesso dos usuários do sistema
               </p>
             </div>
-            <Input
-              placeholder="Buscar usuário..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-xs"
-            />
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:flex-initial">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome, email ou perfil..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 pr-9 w-full sm:w-80"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={handleClearSearch}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={fetchUsers}
+                disabled={isLoading}
+                title="Atualizar lista"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
           </div>
+          
+          {/* Results count */}
+          {searchTerm && (
+            <p className="text-sm text-muted-foreground mb-3">
+              {filteredUsers.length} usuário{filteredUsers.length !== 1 ? 's' : ''} encontrado{filteredUsers.length !== 1 ? 's' : ''}
+            </p>
+          )}
 
           <div className="border border-border rounded-lg overflow-hidden">
             <Table>

@@ -8,13 +8,15 @@ import {
   ChevronDown,
   LucideIcon,
   Megaphone,
-  FileText
+  FileText,
+  RefreshCw
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/contexts/UserContext';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface DbMenuItem {
   cod_menu_item: string;
@@ -498,10 +500,21 @@ export function Sidebar() {
         )}
       </nav>
 
-      {/* Footer with version */}
+      {/* Footer with version and refresh */}
       <div className="p-3 border-t border-sidebar-border">
-        <div className="text-center text-xs text-sidebar-foreground/50">
-          v1.0.0
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => {
+              clearMenuCache();
+              toast({ title: 'Menu atualizado!' });
+            }}
+            className="flex items-center gap-1 text-xs text-sidebar-foreground/50 hover:text-primary transition-colors"
+            title="Atualizar menu"
+          >
+            <RefreshCw className="h-3 w-3" />
+            Atualizar
+          </button>
+          <span className="text-xs text-sidebar-foreground/50">v1.0.0</span>
         </div>
       </div>
     </aside>
