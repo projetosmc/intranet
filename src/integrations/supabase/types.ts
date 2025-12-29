@@ -192,9 +192,11 @@ export type Database = {
       tab_faq: {
         Row: {
           cod_faq: string
+          des_imagem_url: string | null
           des_pergunta: string
           des_resposta: string
           des_tags: string[] | null
+          des_video_url: string | null
           dta_atualizacao: string | null
           dta_cadastro: string | null
           ind_ativo: boolean | null
@@ -202,9 +204,11 @@ export type Database = {
         }
         Insert: {
           cod_faq?: string
+          des_imagem_url?: string | null
           des_pergunta: string
           des_resposta: string
           des_tags?: string[] | null
+          des_video_url?: string | null
           dta_atualizacao?: string | null
           dta_cadastro?: string | null
           ind_ativo?: boolean | null
@@ -212,9 +216,11 @@ export type Database = {
         }
         Update: {
           cod_faq?: string
+          des_imagem_url?: string | null
           des_pergunta?: string
           des_resposta?: string
           des_tags?: string[] | null
+          des_video_url?: string | null
           dta_atualizacao?: string | null
           dta_cadastro?: string | null
           ind_ativo?: boolean | null
