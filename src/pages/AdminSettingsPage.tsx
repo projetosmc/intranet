@@ -74,6 +74,7 @@ export default function AdminSettingsPage() {
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
   const [pathType, setPathType] = useState<'internal' | 'external'>('internal');
   const [selectedPath, setSelectedPath] = useState<string>('');
+  const [deactivateConfirm, setDeactivateConfirm] = useState<{ id: string; name: string; activeSubmenus: number } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -266,7 +267,23 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const handleToggleActive = async (id: string, active: boolean) => {
+  const handleToggleActive = async (id: string, active: boolean, skipConfirm = false) => {
+    // Se for desativar um menu pai com submenus ativos, pedir confirmação
+    if (active && !skipConfirm) {
+      const children = menuItems.filter(m => m.seq_menu_pai === id);
+      const activeChildren = children.filter(c => c.ind_ativo);
+      
+      if (activeChildren.length > 0) {
+        const item = menuItems.find(m => m.cod_menu_item === id);
+        setDeactivateConfirm({ 
+          id, 
+          name: item?.des_nome || 'Menu', 
+          activeSubmenus: activeChildren.length 
+        });
+        return;
+      }
+    }
+
     try {
       const { error } = await supabase
         .from('tab_menu_item')
@@ -280,6 +297,12 @@ export default function AdminSettingsPage() {
       console.error('Error toggling menu item:', error);
       toast({ title: 'Erro ao atualizar item', variant: 'destructive' });
     }
+  };
+
+  const confirmDeactivateParent = async () => {
+    if (!deactivateConfirm) return;
+    await handleToggleActive(deactivateConfirm.id, true, true);
+    setDeactivateConfirm(null);
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -469,7 +492,9 @@ export default function AdminSettingsPage() {
     } = useSortable({ id: item.cod_menu_item });
 
     const isOver = overId === item.cod_menu_item && !isDragging;
-    const childCount = menuItems.filter(m => m.seq_menu_pai === item.cod_menu_item).length;
+    const children = menuItems.filter(m => m.seq_menu_pai === item.cod_menu_item);
+    const childCount = children.length;
+    const activeChildCount = children.filter(c => c.ind_ativo).length;
     const hasChildren = !isChild && childCount > 0;
     const isExpanded = expandedMenus.has(item.cod_menu_item);
 
@@ -531,8 +556,14 @@ export default function AdminSettingsPage() {
           {getIconComponent(item.des_icone)}
           <span className="font-medium">{item.des_nome}</span>
           {hasChildren && (
-            <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">
-              {childCount} submenu{childCount > 1 ? 's' : ''}
+            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+              activeChildCount === childCount 
+                ? 'bg-green-500/10 text-green-600' 
+                : activeChildCount === 0 
+                  ? 'bg-muted text-muted-foreground' 
+                  : 'bg-yellow-500/10 text-yellow-600'
+            }`}>
+              {activeChildCount}/{childCount} ativo{activeChildCount !== 1 ? 's' : ''}
             </span>
           )}
           <span className="text-sm text-muted-foreground">{item.des_caminho}</span>
@@ -961,6 +992,25 @@ export default function AdminSettingsPage() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deactivateConfirm} onOpenChange={(open) => !open && setDeactivateConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desativar menu com submenus ativos</AlertDialogTitle>
+            <AlertDialogDescription>
+              O menu <strong>"{deactivateConfirm?.name}"</strong> possui <strong>{deactivateConfirm?.activeSubmenus}</strong> submenu{(deactivateConfirm?.activeSubmenus || 0) > 1 ? 's' : ''} ativo{(deactivateConfirm?.activeSubmenus || 0) > 1 ? 's' : ''}. 
+              Ao desativar o menu pai, os submenus continuarão ativos mas não serão exibidos.
+              Deseja continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeactivateParent} className="bg-yellow-600 text-white hover:bg-yellow-700">
+              Desativar mesmo assim
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
