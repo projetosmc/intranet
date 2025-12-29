@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { User, Camera, Mail, Save, Shield, LogOut, Cake, Building2, Briefcase, Phone, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MaskedInput } from '@/components/ui/masked-input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -82,24 +83,6 @@ export default function ProfilePage() {
     }
   }, [user]);
 
-  // Função para formatar telefone
-  const formatPhone = (value: string): string => {
-    // Remove tudo que não for número
-    const numbers = value.replace(/\D/g, '');
-    
-    // Limita a 11 dígitos
-    const limited = numbers.slice(0, 11);
-    
-    // Aplica a máscara
-    if (limited.length <= 2) {
-      return limited.length > 0 ? `(${limited}` : '';
-    } else if (limited.length <= 7) {
-      return `(${limited.slice(0, 2)}) ${limited.slice(2)}`;
-    } else {
-      return `(${limited.slice(0, 2)}) ${limited.slice(2, 7)}-${limited.slice(7)}`;
-    }
-  };
-
   // Validação em tempo real
   const validateField = (field: string, value: string) => {
     const data = { fullName, phone, unit, department, jobTitle, [field]: value };
@@ -127,8 +110,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handlePhoneChange = (value: string) => {
-    const formatted = formatPhone(value);
+  const handlePhoneChange = (formatted: string) => {
     setPhone(formatted);
     if (touched.has('phone')) {
       validateField('phone', formatted);
@@ -448,13 +430,12 @@ export default function ProfilePage() {
               <Phone className="h-4 w-4" />
               Telefone
             </Label>
-            <Input
+            <MaskedInput
               id="phone"
+              mask="phone"
               value={phone}
-              onChange={(e) => handlePhoneChange(e.target.value)}
+              onChange={(formatted) => handlePhoneChange(formatted)}
               onBlur={() => handleFieldBlur('phone', phone)}
-              placeholder="(11) 99999-9999"
-              maxLength={15}
               className={errors.phone ? 'border-destructive focus-visible:ring-destructive' : ''}
             />
             {errors.phone && (
