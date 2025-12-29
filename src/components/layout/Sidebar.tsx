@@ -399,9 +399,13 @@ export function Sidebar() {
     const isDeepChild = depth > 2;
 
     // Filter children based on admin status AND screen permissions recursively
+    // Submenus (items with children) should NOT be filtered by canAccess - only leaf items should
     const visibleChildren = item.children?.filter(child => {
       if (child.isAdminOnly && !isAdmin) return false;
-      if (!canAccess(child.path)) return false;
+      // If child has children (is a submenu), don't filter by screen permissions
+      // Only filter leaf items (actual screens) by canAccess
+      const hasGrandchildren = child.children && child.children.length > 0;
+      if (!hasGrandchildren && !canAccess(child.path)) return false;
       return true;
     });
 
