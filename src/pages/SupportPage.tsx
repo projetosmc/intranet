@@ -19,6 +19,8 @@ interface FAQ {
   cod_faq: string;
   des_pergunta: string;
   des_resposta: string;
+  des_imagem_url: string | null;
+  des_video_url: string | null;
 }
 
 interface SupportConfig {
@@ -66,7 +68,7 @@ export default function SupportPage() {
       const [faqResult, configResult] = await Promise.all([
         supabase
           .from('tab_faq')
-          .select('cod_faq, des_pergunta, des_resposta')
+          .select('cod_faq, des_pergunta, des_resposta, des_imagem_url, des_video_url')
           .eq('ind_ativo', true)
           .order('num_ordem'),
         supabase
@@ -79,7 +81,7 @@ export default function SupportPage() {
       if (faqResult.error) throw faqResult.error;
       if (configResult.error) throw configResult.error;
 
-      setFaqs(faqResult.data || []);
+      setFaqs((faqResult.data || []) as FAQ[]);
       
       const configs = configResult.data || [];
       setSupportLinks(configs.filter(c => c.des_tipo === 'link'));
@@ -317,8 +319,32 @@ export default function SupportPage() {
                   <AccordionTrigger className="text-left hover:no-underline hover:text-primary">
                     {faq.des_pergunta}
                   </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground">
+                  <AccordionContent className="text-muted-foreground space-y-4">
                     <RichTextContent html={faq.des_resposta} />
+                    
+                    {/* Imagem da FAQ */}
+                    {faq.des_imagem_url && (
+                      <div className="mt-4">
+                        <img 
+                          src={faq.des_imagem_url} 
+                          alt="Ilustração" 
+                          className="max-w-full max-h-80 rounded-lg border object-contain"
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Vídeo da FAQ */}
+                    {faq.des_video_url && (
+                      <div className="mt-4">
+                        <video 
+                          src={faq.des_video_url} 
+                          controls
+                          className="w-full max-h-96 rounded-lg border"
+                        >
+                          Seu navegador não suporta a reprodução de vídeos.
+                        </video>
+                      </div>
+                    )}
                   </AccordionContent>
                 </AccordionItem>
               ))}

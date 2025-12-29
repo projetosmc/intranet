@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { HelpCircle, Plus, Pencil, Trash2, GripVertical, Tag, X } from 'lucide-react';
+import { HelpCircle, Plus, Pencil, Trash2, GripVertical, Tag, X, Upload, Image, Video, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,6 +41,8 @@ interface FAQ {
   num_ordem: number;
   ind_ativo: boolean;
   des_tags: string[];
+  des_imagem_url: string | null;
+  des_video_url: string | null;
 }
 
 export default function AdminFaqsPage() {
@@ -56,6 +58,12 @@ export default function AdminFaqsPage() {
   const [answerHtml, setAnswerHtml] = useState('');
   const [editingTags, setEditingTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Sugestões de tags populares baseadas nas tags existentes
   const popularTags = useMemo(() => {
@@ -102,12 +110,98 @@ export default function AdminFaqsPage() {
         .order('num_ordem');
 
       if (error) throw error;
-      setFaqs(data || []);
+      setFaqs((data || []) as FAQ[]);
     } catch (error) {
       console.error('Error fetching FAQs:', error);
       toast({ title: 'Erro ao carregar FAQs', variant: 'destructive' });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Arquivo inválido', description: 'Selecione uma imagem válida.', variant: 'destructive' });
+      return;
+    }
+
+    // Validar tamanho (max 5MB para imagens)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Arquivo muito grande', description: 'A imagem deve ter no máximo 5MB.', variant: 'destructive' });
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('faqs')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('faqs')
+        .getPublicUrl(filePath);
+
+      setImageUrl(publicUrl);
+      toast({ title: 'Imagem enviada!' });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast({ title: 'Erro ao enviar imagem', variant: 'destructive' });
+    } finally {
+      setIsUploadingImage(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('video/')) {
+      toast({ title: 'Arquivo inválido', description: 'Selecione um vídeo válido.', variant: 'destructive' });
+      return;
+    }
+
+    // Validar tamanho (max 50MB para vídeos)
+    if (file.size > 50 * 1024 * 1024) {
+      toast({ title: 'Arquivo muito grande', description: 'O vídeo deve ter no máximo 50MB.', variant: 'destructive' });
+      return;
+    }
+
+    setIsUploadingVideo(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `videos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('faqs')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('faqs')
+        .getPublicUrl(filePath);
+
+      setVideoUrl(publicUrl);
+      toast({ title: 'Vídeo enviado!' });
+    } catch (error) {
+      console.error('Error uploading video:', error);
+      toast({ title: 'Erro ao enviar vídeo', variant: 'destructive' });
+    } finally {
+      setIsUploadingVideo(false);
+      if (videoInputRef.current) videoInputRef.current.value = '';
     }
   };
 
@@ -141,6 +235,8 @@ export default function AdminFaqsPage() {
       num_ordem: validData.order,
       ind_ativo: validData.active,
       des_tags: editingTags,
+      des_imagem_url: imageUrl,
+      des_video_url: videoUrl,
     };
 
     try {
@@ -164,6 +260,8 @@ export default function AdminFaqsPage() {
       setAnswerHtml('');
       setEditingTags([]);
       setNewTag('');
+      setImageUrl(null);
+      setVideoUrl(null);
       await fetchFaqs();
     } catch (error) {
       console.error('Error saving FAQ:', error);
@@ -295,6 +393,18 @@ export default function AdminFaqsPage() {
               </div>
             )}
           </div>
+          <div className="flex items-center gap-2">
+            {faq.des_imagem_url && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-500/10 text-blue-600 text-xs rounded">
+                <Image className="h-3 w-3" />
+              </span>
+            )}
+            {faq.des_video_url && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-purple-500/10 text-purple-600 text-xs rounded">
+                <Video className="h-3 w-3" />
+              </span>
+            )}
+          </div>
           <div className="text-sm text-muted-foreground line-clamp-2">
             <RichTextContent html={faq.des_resposta} className="[&_a]:text-primary [&_a]:underline" />
           </div>
@@ -312,6 +422,8 @@ export default function AdminFaqsPage() {
               setAnswerHtml(faq.des_resposta);
               setEditingTags(faq.des_tags || []);
               setNewTag('');
+              setImageUrl(faq.des_imagem_url);
+              setVideoUrl(faq.des_video_url);
               setIsDialogOpen(true); 
             }}
           >
@@ -364,9 +476,13 @@ export default function AdminFaqsPage() {
               setAnswerHtml('');
               setEditingTags([]);
               setNewTag('');
+              setImageUrl(null);
+              setVideoUrl(null);
             } else if (editingFaq) {
               setAnswerHtml(editingFaq.des_resposta);
               setEditingTags(editingFaq.des_tags || []);
+              setImageUrl(editingFaq.des_imagem_url);
+              setVideoUrl(editingFaq.des_video_url);
             }
           }}>
             <DialogTrigger asChild>
@@ -497,6 +613,114 @@ export default function AdminFaqsPage() {
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Upload de Mídia */}
+                <div className="space-y-4">
+                  <Label className="flex items-center gap-2">
+                    <Image className="h-4 w-4" />
+                    Mídia (opcional)
+                  </Label>
+                  
+                  {/* Upload de Imagem */}
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Imagem ilustrativa (max 5MB)</p>
+                    <input
+                      type="file"
+                      ref={imageInputRef}
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                    {imageUrl ? (
+                      <div className="relative group">
+                        <img 
+                          src={imageUrl} 
+                          alt="Preview" 
+                          className="w-full max-h-40 object-cover rounded-lg border"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => setImageUrl(null)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => imageInputRef.current?.click()}
+                        disabled={isUploadingImage}
+                      >
+                        {isUploadingImage ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Enviando...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Enviar Imagem
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Upload de Vídeo */}
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Vídeo tutorial (max 50MB - MP4, WebM)</p>
+                    <input
+                      type="file"
+                      ref={videoInputRef}
+                      accept="video/mp4,video/webm,video/ogg"
+                      onChange={handleVideoUpload}
+                      className="hidden"
+                    />
+                    {videoUrl ? (
+                      <div className="relative group">
+                        <video 
+                          src={videoUrl} 
+                          controls
+                          className="w-full max-h-48 rounded-lg border"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => setVideoUrl(null)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => videoInputRef.current?.click()}
+                        disabled={isUploadingVideo}
+                      >
+                        {isUploadingVideo ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Enviando...
+                          </>
+                        ) : (
+                          <>
+                            <Video className="h-4 w-4 mr-2" />
+                            Enviar Vídeo
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <Input 
