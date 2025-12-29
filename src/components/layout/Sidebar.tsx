@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -27,6 +27,7 @@ interface DbMenuItem {
   num_ordem: number;
   ind_admin_only: boolean;
   ind_ativo: boolean;
+  des_tags: string[];
 }
 
 interface MenuItemType {
@@ -72,8 +73,25 @@ export function Sidebar() {
   const [menuItems, setMenuItems] = useState<MenuItemType[]>([]);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [allSubmenus, setAllSubmenus] = useState<DbMenuItem[]>([]);
+  const [cachedAnnouncements, setCachedAnnouncements] = useState<Array<{cod_comunicado: string; des_titulo: string; des_resumo: string}>>([]);
+
+  // Carregar comunicados para busca
+  useEffect(() => {
+    const loadAnnouncements = async () => {
+      try {
+        const { data } = await supabase
+          .from('tab_comunicado')
+          .select('cod_comunicado, des_titulo, des_resumo')
+          .eq('ind_ativo', true)
+          .limit(50);
+        setCachedAnnouncements(data || []);
+      } catch (error) {
+        console.error('Error loading announcements:', error);
+      }
+    };
+    loadAnnouncements();
+  }, []);
 
   useEffect(() => {
     fetchMenuItems();
@@ -147,6 +165,7 @@ export function Sidebar() {
         num_ordem: d.num_ordem,
         ind_admin_only: d.ind_admin_only,
         ind_ativo: d.ind_ativo,
+        des_tags: d.des_tags || [],
       }));
       setCachedMenus(items);
       setAllSubmenus(items.filter(item => item.seq_menu_pai));
@@ -216,22 +235,22 @@ export function Sidebar() {
     );
   };
 
-  // Search function for submenus and announcements
-  const handleSearch = async (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
+  // Busca instantânea usando useMemo - sem debounce
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    
     const results: SearchResult[] = [];
-    const lowerQuery = query.toLowerCase();
+    const lowerQuery = searchQuery.toLowerCase();
 
-    // Search in submenus
+    // Buscar em todos os menus (incluindo submenus) - verifica nome e tags
     allSubmenus.forEach(menu => {
-      if (menu.des_nome.toLowerCase().includes(lowerQuery)) {
-        // Check if it's admin only and user is not admin
-        if (menu.ind_admin_only && !isAdmin) return;
-        
+      // Check if it's admin only and user is not admin
+      if (menu.ind_admin_only && !isAdmin) return;
+      
+      const nameMatch = menu.des_nome.toLowerCase().includes(lowerQuery);
+      const tagMatch = menu.des_tags?.some(tag => tag.toLowerCase().includes(lowerQuery));
+      
+      if (nameMatch || tagMatch) {
         results.push({
           id: menu.cod_menu_item,
           title: menu.des_nome,
@@ -242,47 +261,30 @@ export function Sidebar() {
       }
     });
 
-    // Search in announcements (title and summary/description)
-    try {
-      const { data: announcements } = await supabase
-        .from('tab_comunicado')
-        .select('cod_comunicado, des_titulo, des_resumo')
-        .eq('ind_ativo', true)
-        .or(`des_titulo.ilike.%${query}%,des_resumo.ilike.%${query}%`)
-        .limit(5);
-
-      if (announcements) {
-        announcements.forEach(ann => {
-          results.push({
-            id: ann.cod_comunicado,
-            title: ann.des_titulo,
-            type: 'announcement',
-            path: '/comunicados',
-            icon: 'announcement'
-          });
+    // Buscar em comunicados (já carregados em memória)
+    cachedAnnouncements.forEach(ann => {
+      const titleMatch = ann.des_titulo.toLowerCase().includes(lowerQuery);
+      const summaryMatch = ann.des_resumo?.toLowerCase().includes(lowerQuery);
+      
+      if (titleMatch || summaryMatch) {
+        results.push({
+          id: ann.cod_comunicado,
+          title: ann.des_titulo,
+          type: 'announcement',
+          path: '/comunicados',
+          icon: 'announcement'
         });
       }
-    } catch (error) {
-      console.error('Error searching announcements:', error);
-    }
+    });
 
-    setSearchResults(results.slice(0, 8));
-  };
+    return results.slice(0, 8);
+  }, [searchQuery, allSubmenus, cachedAnnouncements, isAdmin]);
 
-  const handleResultClick = (result: SearchResult) => {
+  const handleResultClick = useCallback((result: SearchResult) => {
     navigate(result.path);
     setSearchQuery('');
     setShowResults(false);
-    setSearchResults([]);
-  };
-
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      handleSearch(searchQuery);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [navigate]);
 
   // Special top items (Meu Dia, Comunicados) - shown independently at the top
   const topItemNames = ['Meu Dia', 'Comunicados'];
