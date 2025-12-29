@@ -8,10 +8,10 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface System {
-  id: string;
-  name: string;
-  status: 'operational' | 'degraded' | 'down';
-  last_check: string;
+  cod_sistema: string;
+  des_nome: string;
+  des_status: 'operational' | 'degraded' | 'down';
+  dta_ultima_verificacao: string;
 }
 
 const statusConfig = {
@@ -43,15 +43,15 @@ export default function StatusPage() {
   const fetchSystems = async () => {
     try {
       const { data, error } = await supabase
-        .from('systems')
-        .select('id, name, status, last_check')
-        .eq('active', true)
-        .order('sort_order');
+        .from('tab_sistema')
+        .select('cod_sistema, des_nome, des_status, dta_ultima_verificacao')
+        .eq('ind_ativo', true)
+        .order('num_ordem');
 
       if (error) throw error;
       setSystems((data || []).map(d => ({
         ...d,
-        status: d.status as 'operational' | 'degraded' | 'down'
+        des_status: d.des_status as 'operational' | 'degraded' | 'down'
       })));
     } catch (error) {
       console.error('Error fetching systems:', error);
@@ -70,7 +70,7 @@ export default function StatusPage() {
     fetchSystems();
   };
 
-  const allOperational = systems.length > 0 && systems.every(s => s.status === 'operational');
+  const allOperational = systems.length > 0 && systems.every(s => s.des_status === 'operational');
 
   const formatLastCheck = (dateString: string) => {
     try {
@@ -102,7 +102,6 @@ export default function StatusPage() {
         </p>
       </motion.div>
 
-      {/* Overall Status Banner */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -134,7 +133,6 @@ export default function StatusPage() {
         </div>
       </motion.div>
 
-      {/* Systems List */}
       {!isLoading && systems.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -143,12 +141,12 @@ export default function StatusPage() {
           className="glass-card divide-y divide-border"
         >
           {systems.map((system, index) => {
-            const config = statusConfig[system.status];
+            const config = statusConfig[system.des_status];
             const Icon = config.icon;
 
             return (
               <motion.div
-                key={system.id}
+                key={system.cod_sistema}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.2, delay: 0.1 + index * 0.03 }}
@@ -156,10 +154,10 @@ export default function StatusPage() {
               >
                 <div className="flex items-center gap-3">
                   <Icon className={`h-5 w-5 ${config.color}`} />
-                  <span className="font-medium text-foreground">{system.name}</span>
+                  <span className="font-medium text-foreground">{system.des_nome}</span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-sm text-muted-foreground">Há {formatLastCheck(system.last_check)}</span>
+                  <span className="text-sm text-muted-foreground">Há {formatLastCheck(system.dta_ultima_verificacao)}</span>
                   <Badge variant={config.variant}>{config.label}</Badge>
                 </div>
               </motion.div>
@@ -168,7 +166,6 @@ export default function StatusPage() {
         </motion.div>
       )}
 
-      {/* Incident History */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

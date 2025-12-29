@@ -17,18 +17,18 @@ import { toast } from '@/hooks/use-toast';
 import { logAudit } from '@/hooks/useAuditLog';
 
 interface UserProfile {
-  id: string;
-  email: string;
-  full_name: string;
-  avatar_url?: string;
-  unit?: string;
-  department?: string;
-  job_title?: string;
-  phone?: string;
-  is_active: boolean;
-  ad_object_id?: string;
-  ad_synced_at?: string;
-  created_at: string;
+  cod_usuario: string;
+  des_email: string;
+  des_nome_completo: string;
+  des_avatar_url?: string;
+  des_unidade?: string;
+  des_departamento?: string;
+  des_cargo?: string;
+  des_telefone?: string;
+  ind_ativo: boolean;
+  des_ad_object_id?: string;
+  dta_sincronizacao_ad?: string;
+  dta_cadastro: string;
   roles: string[];
 }
 
@@ -53,24 +53,24 @@ export default function AdminUsersPage() {
     setIsLoading(true);
     try {
       const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
+        .from('tab_perfil_usuario')
         .select('*')
-        .order('full_name');
+        .order('des_nome_completo');
 
       if (profilesError) throw profilesError;
 
       const { data: roles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
+        .from('tab_usuario_role')
+        .select('seq_usuario, des_role');
 
       if (rolesError) throw rolesError;
 
       const usersWithRoles = (profiles || []).map(profile => ({
         ...profile,
-        is_active: profile.is_active ?? true,
+        ind_ativo: profile.ind_ativo ?? true,
         roles: (roles || [])
-          .filter(r => r.user_id === profile.id)
-          .map(r => r.role)
+          .filter(r => r.seq_usuario === profile.cod_usuario)
+          .map(r => r.des_role)
       }));
 
       setUsers(usersWithRoles);
@@ -85,24 +85,23 @@ export default function AdminUsersPage() {
   const handleToggleActive = async (userId: string, isActive: boolean) => {
     try {
       const { error } = await supabase
-        .from('profiles')
-        .update({ is_active: !isActive })
-        .eq('id', userId);
+        .from('tab_perfil_usuario')
+        .update({ ind_ativo: !isActive })
+        .eq('cod_usuario', userId);
 
       if (error) throw error;
 
-      // Log audit
       await logAudit({
         action: isActive ? 'user_deactivated' : 'user_activated',
         entity_type: 'profile',
         entity_id: userId,
         target_user_id: userId,
-        old_value: { is_active: isActive },
-        new_value: { is_active: !isActive },
+        old_value: { ind_ativo: isActive },
+        new_value: { ind_ativo: !isActive },
       });
 
       setUsers(users.map(u => 
-        u.id === userId ? { ...u, is_active: !isActive } : u
+        u.cod_usuario === userId ? { ...u, ind_ativo: !isActive } : u
       ));
 
       toast({ title: isActive ? 'Usuário desativado' : 'Usuário ativado' });
@@ -116,11 +115,10 @@ export default function AdminUsersPage() {
     try {
       if (add) {
         const { error } = await supabase
-          .from('user_roles')
-          .insert({ user_id: userId, role });
+          .from('tab_usuario_role')
+          .insert({ seq_usuario: userId, des_role: role });
         if (error) throw error;
 
-        // Log audit
         await logAudit({
           action: 'role_added',
           entity_type: 'user_role',
@@ -130,13 +128,12 @@ export default function AdminUsersPage() {
         });
       } else {
         const { error } = await supabase
-          .from('user_roles')
+          .from('tab_usuario_role')
           .delete()
-          .eq('user_id', userId)
-          .eq('role', role);
+          .eq('seq_usuario', userId)
+          .eq('des_role', role);
         if (error) throw error;
 
-        // Log audit
         await logAudit({
           action: 'role_removed',
           entity_type: 'user_role',
@@ -155,32 +152,31 @@ export default function AdminUsersPage() {
   };
 
   const handleUpdateProfile = async (userId: string, data: Partial<UserProfile>) => {
-    const currentUser = users.find(u => u.id === userId);
+    const currentUser = users.find(u => u.cod_usuario === userId);
     
     try {
       const { error } = await supabase
-        .from('profiles')
+        .from('tab_perfil_usuario')
         .update({
-          unit: data.unit,
-          department: data.department,
-          job_title: data.job_title,
-          phone: data.phone,
+          des_unidade: data.des_unidade,
+          des_departamento: data.des_departamento,
+          des_cargo: data.des_cargo,
+          des_telefone: data.des_telefone,
         })
-        .eq('id', userId);
+        .eq('cod_usuario', userId);
 
       if (error) throw error;
 
-      // Log audit
       await logAudit({
         action: 'profile_updated',
         entity_type: 'profile',
         entity_id: userId,
         target_user_id: userId,
         old_value: {
-          unit: currentUser?.unit,
-          department: currentUser?.department,
-          job_title: currentUser?.job_title,
-          phone: currentUser?.phone,
+          des_unidade: currentUser?.des_unidade,
+          des_departamento: currentUser?.des_departamento,
+          des_cargo: currentUser?.des_cargo,
+          des_telefone: currentUser?.des_telefone,
         },
         new_value: data,
       });
@@ -200,14 +196,14 @@ export default function AdminUsersPage() {
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
-      user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.unit?.toLowerCase().includes(searchQuery.toLowerCase());
+      user.des_nome_completo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.des_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.des_unidade?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesStatus = 
       filterStatus === 'all' ||
-      (filterStatus === 'active' && user.is_active) ||
-      (filterStatus === 'inactive' && !user.is_active);
+      (filterStatus === 'active' && user.ind_ativo) ||
+      (filterStatus === 'inactive' && !user.ind_ativo);
 
     const matchesRole = 
       filterRole === 'all' ||
@@ -244,7 +240,6 @@ export default function AdminUsersPage() {
           </div>
         </div>
 
-        {/* AD Integration Status */}
         <div className="bg-muted/50 border border-border rounded-lg p-4 mb-6">
           <div className="flex items-center gap-3">
             <Building2 className="h-5 w-5 text-muted-foreground" />
@@ -258,7 +253,6 @@ export default function AdminUsersPage() {
           </div>
         </div>
 
-        {/* Filters */}
         <div className="flex flex-wrap gap-4 mb-6">
           <div className="relative flex-1 min-w-[250px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -294,7 +288,6 @@ export default function AdminUsersPage() {
           </Select>
         </div>
 
-        {/* Users Table */}
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -311,23 +304,23 @@ export default function AdminUsersPage() {
               </thead>
               <tbody>
                 {filteredUsers.map((user) => (
-                  <tr key={user.id} className="border-b border-border hover:bg-muted/30 transition-colors">
+                  <tr key={user.cod_usuario} className="border-b border-border hover:bg-muted/30 transition-colors">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9">
-                          <AvatarImage src={user.avatar_url} />
+                          <AvatarImage src={user.des_avatar_url} />
                           <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                            {getInitials(user.full_name)}
+                            {getInitials(user.des_nome_completo)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium">{user.full_name || 'Sem nome'}</p>
-                          <p className="text-xs text-muted-foreground">{user.email}</p>
+                          <p className="font-medium">{user.des_nome_completo || 'Sem nome'}</p>
+                          <p className="text-xs text-muted-foreground">{user.des_email}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="p-4 text-muted-foreground">{user.unit || '-'}</td>
-                    <td className="p-4 text-muted-foreground">{user.department || '-'}</td>
+                    <td className="p-4 text-muted-foreground">{user.des_unidade || '-'}</td>
+                    <td className="p-4 text-muted-foreground">{user.des_departamento || '-'}</td>
                     <td className="p-4">
                       <div className="flex gap-1 flex-wrap">
                         {user.roles.length > 0 ? (
@@ -342,12 +335,12 @@ export default function AdminUsersPage() {
                       </div>
                     </td>
                     <td className="p-4">
-                      <Badge variant={user.is_active ? 'default' : 'destructive'} className="text-xs">
-                        {user.is_active ? 'Ativo' : 'Inativo'}
+                      <Badge variant={user.ind_ativo ? 'default' : 'destructive'} className="text-xs">
+                        {user.ind_ativo ? 'Ativo' : 'Inativo'}
                       </Badge>
                     </td>
                     <td className="p-4">
-                      {user.ad_object_id ? (
+                      {user.des_ad_object_id ? (
                         <Badge variant="outline" className="text-xs">Sincronizado</Badge>
                       ) : (
                         <span className="text-muted-foreground text-xs">-</span>
@@ -369,10 +362,10 @@ export default function AdminUsersPage() {
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          onClick={() => handleToggleActive(user.id, user.is_active)}
-                          title={user.is_active ? 'Desativar' : 'Ativar'}
+                          onClick={() => handleToggleActive(user.cod_usuario, user.ind_ativo)}
+                          title={user.ind_ativo ? 'Desativar' : 'Ativar'}
                         >
-                          {user.is_active ? (
+                          {user.ind_ativo ? (
                             <UserX className="h-4 w-4 text-destructive" />
                           ) : (
                             <UserCheck className="h-4 w-4 text-green-500" />
@@ -395,7 +388,6 @@ export default function AdminUsersPage() {
         </div>
       </motion.div>
 
-      {/* Edit User Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -412,96 +404,73 @@ export default function AdminUsersPage() {
               <TabsContent value="profile" className="space-y-4 mt-4">
                 <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src={selectedUser.avatar_url} />
+                    <AvatarImage src={selectedUser.des_avatar_url} />
                     <AvatarFallback className="bg-primary/10 text-primary">
-                      {getInitials(selectedUser.full_name)}
+                      {getInitials(selectedUser.des_nome_completo)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium">{selectedUser.full_name}</p>
-                    <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
+                    <p className="font-medium">{selectedUser.des_nome_completo}</p>
+                    <p className="text-sm text-muted-foreground">{selectedUser.des_email}</p>
                   </div>
                 </div>
 
                 <form onSubmit={(e) => {
                   e.preventDefault();
                   const formData = new FormData(e.currentTarget);
-                  handleUpdateProfile(selectedUser.id, {
-                    unit: formData.get('unit') as string,
-                    department: formData.get('department') as string,
-                    job_title: formData.get('job_title') as string,
-                    phone: formData.get('phone') as string,
+                  handleUpdateProfile(selectedUser.cod_usuario, {
+                    des_unidade: formData.get('unit') as string,
+                    des_departamento: formData.get('department') as string,
+                    des_cargo: formData.get('job_title') as string,
+                    des_telefone: formData.get('phone') as string,
                   });
                 }} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Unidade</Label>
-                      <Input name="unit" defaultValue={selectedUser.unit || ''} />
+                      <Input name="unit" defaultValue={selectedUser.des_unidade || ''} />
                     </div>
                     <div>
                       <Label>Departamento</Label>
-                      <Input name="department" defaultValue={selectedUser.department || ''} />
+                      <Input name="department" defaultValue={selectedUser.des_departamento || ''} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Cargo</Label>
-                      <Input name="job_title" defaultValue={selectedUser.job_title || ''} />
+                      <Input name="job_title" defaultValue={selectedUser.des_cargo || ''} />
                     </div>
                     <div>
                       <Label>Telefone</Label>
-                      <Input name="phone" defaultValue={selectedUser.phone || ''} />
+                      <Input name="phone" defaultValue={selectedUser.des_telefone || ''} />
                     </div>
                   </div>
-                  <Button type="submit" className="w-full">Salvar Alterações</Button>
+                  <Button type="submit" className="w-full">Salvar Perfil</Button>
                 </form>
               </TabsContent>
 
               <TabsContent value="permissions" className="space-y-4 mt-4">
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div>
-                      <p className="font-medium">Administrador</p>
-                      <p className="text-xs text-muted-foreground">Acesso total ao sistema</p>
+                  {(['admin', 'moderator', 'user'] as const).map(role => (
+                    <div key={role} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div>
+                        <p className="font-medium capitalize">
+                          {role === 'admin' ? 'Administrador' : role === 'moderator' ? 'Moderador' : 'Usuário'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {role === 'admin' 
+                            ? 'Acesso total ao sistema' 
+                            : role === 'moderator' 
+                            ? 'Pode moderar conteúdo' 
+                            : 'Acesso básico'}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={selectedUser.roles.includes(role)}
+                        onCheckedChange={(checked) => handleUpdateRole(selectedUser.cod_usuario, role, checked)}
+                      />
                     </div>
-                    <Switch
-                      checked={selectedUser.roles.includes('admin')}
-                      onCheckedChange={(checked) => handleUpdateRole(selectedUser.id, 'admin', checked)}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div>
-                      <p className="font-medium">Moderador</p>
-                      <p className="text-xs text-muted-foreground">Gerencia comunicados e conteúdo</p>
-                    </div>
-                    <Switch
-                      checked={selectedUser.roles.includes('moderator')}
-                      onCheckedChange={(checked) => handleUpdateRole(selectedUser.id, 'moderator', checked)}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div>
-                      <p className="font-medium">Usuário</p>
-                      <p className="text-xs text-muted-foreground">Acesso padrão</p>
-                    </div>
-                    <Switch
-                      checked={selectedUser.roles.includes('user')}
-                      onCheckedChange={(checked) => handleUpdateRole(selectedUser.id, 'user', checked)}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-3 border border-border rounded-lg">
-                  <div>
-                    <p className="font-medium">Status do Usuário</p>
-                    <p className="text-xs text-muted-foreground">
-                      {selectedUser.is_active ? 'Usuário pode acessar o sistema' : 'Usuário bloqueado'}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={selectedUser.is_active}
-                    onCheckedChange={() => handleToggleActive(selectedUser.id, selectedUser.is_active)}
-                  />
+                  ))}
                 </div>
               </TabsContent>
             </Tabs>

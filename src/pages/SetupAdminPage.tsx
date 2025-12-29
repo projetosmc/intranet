@@ -19,11 +19,10 @@ export default function SetupAdminPage() {
 
     setIsLoading(true);
     try {
-      // Check if any admin exists
       const { count } = await supabase
-        .from('user_roles')
+        .from('tab_usuario_role')
         .select('*', { count: 'exact', head: true })
-        .eq('role', 'admin');
+        .eq('des_role', 'admin');
 
       if (count && count > 0) {
         toast({
@@ -35,7 +34,6 @@ export default function SetupAdminPage() {
         return;
       }
 
-      // Insert admin role for current user using RPC to bypass RLS
       const { error } = await supabase.rpc('setup_first_admin', {
         admin_user_id: user.id,
       });

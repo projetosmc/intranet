@@ -10,7 +10,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth();
@@ -29,16 +28,16 @@ export default function ProfilePage() {
     if (user) {
       const fetchProfile = async () => {
         const { data } = await supabase
-          .from('profiles')
-          .select('full_name, avatar_url, birthday_date, unit')
-          .eq('id', user.id)
+          .from('tab_perfil_usuario')
+          .select('des_nome_completo, des_avatar_url, dta_aniversario, des_unidade')
+          .eq('cod_usuario', user.id)
           .maybeSingle();
 
         if (data) {
-          setFullName(data.full_name || '');
-          setAvatarUrl(data.avatar_url);
-          setBirthdayDate(data.birthday_date || '');
-          setUnit(data.unit || '');
+          setFullName(data.des_nome_completo || '');
+          setAvatarUrl(data.des_avatar_url);
+          setBirthdayDate(data.dta_aniversario || '');
+          setUnit(data.des_unidade || '');
         } else {
           setFullName(user.user_metadata?.full_name || '');
         }
@@ -70,11 +69,11 @@ export default function ProfilePage() {
       const newAvatarUrl = data.publicUrl;
 
       const { error: updateError } = await supabase
-        .from('profiles')
+        .from('tab_perfil_usuario')
         .upsert({
-          id: user.id,
-          avatar_url: newAvatarUrl,
-          email: user.email,
+          cod_usuario: user.id,
+          des_avatar_url: newAvatarUrl,
+          des_email: user.email,
         });
 
       if (updateError) throw updateError;
@@ -102,13 +101,13 @@ export default function ProfilePage() {
     setIsLoading(true);
     try {
       const { error } = await supabase
-        .from('profiles')
+        .from('tab_perfil_usuario')
         .upsert({
-          id: user.id,
-          full_name: fullName,
-          email: user.email,
-          birthday_date: birthdayDate || null,
-          unit: unit || null,
+          cod_usuario: user.id,
+          des_nome_completo: fullName,
+          des_email: user.email,
+          dta_aniversario: birthdayDate || null,
+          des_unidade: unit || null,
         });
 
       if (error) throw error;
@@ -158,7 +157,6 @@ export default function ProfilePage() {
         transition={{ delay: 0.1 }}
         className="bg-card border border-border rounded-xl p-8 shadow-md"
       >
-        {/* Avatar Section */}
         <div className="flex flex-col items-center mb-8">
           <div className="relative group">
             <Avatar className="h-32 w-32 border-4 border-primary/20">
@@ -189,7 +187,6 @@ export default function ProfilePage() {
             </Button>
           </div>
 
-          {/* Roles */}
           <div className="flex gap-2 mt-4">
             {isAdmin && (
               <Badge className="gap-1">
@@ -209,7 +206,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Form */}
         <div className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="fullName" className="flex items-center gap-2">

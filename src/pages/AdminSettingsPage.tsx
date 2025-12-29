@@ -27,8 +27,6 @@ import {
   DragOverlay,
   DragStartEvent,
   DragOverEvent,
-  pointerWithin,
-  rectIntersection,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -40,22 +38,22 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 interface MenuItem {
-  id: string;
-  name: string;
-  path: string;
-  icon: string;
-  parent_id: string | null;
-  open_in_new_tab: boolean;
-  sort_order: number;
-  is_admin_only: boolean;
-  active: boolean;
+  cod_menu_item: string;
+  des_nome: string;
+  des_caminho: string;
+  des_icone: string;
+  seq_menu_pai: string | null;
+  ind_nova_aba: boolean;
+  num_ordem: number;
+  ind_admin_only: boolean;
+  ind_ativo: boolean;
 }
 
 const availableIcons = [
   'Home', 'Settings', 'Users', 'FileText', 'Calendar', 'Bell', 'Mail',
   'Folder', 'Star', 'Heart', 'Bookmark', 'Tag', 'Link', 'ExternalLink',
   'Grid3X3', 'Megaphone', 'Activity', 'HelpCircle', 'Shield', 'Fuel',
-  'BarChart', 'PieChart', 'TrendingUp', 'Clock', 'CheckCircle'
+  'BarChart', 'PieChart', 'TrendingUp', 'Clock', 'CheckCircle', 'DoorOpen'
 ];
 
 export default function AdminSettingsPage() {
@@ -93,9 +91,9 @@ export default function AdminSettingsPage() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('menu_items')
+        .from('tab_menu_item')
         .select('*')
-        .order('sort_order');
+        .order('num_ordem');
 
       if (error) throw error;
       setMenuItems(data || []);
@@ -115,17 +113,14 @@ export default function AdminSettingsPage() {
     const parentId = (formData.get('parent_id') as string) === '__none__' ? null : (formData.get('parent_id') as string) || null;
     const pathValue = formData.get('path') as string;
     
-    // Format name: UPPERCASE for parent menus, Title Case for submenus
     const rawName = formData.get('name') as string;
     const formattedName = parentId ? toTitleCase(rawName) : rawName.toUpperCase();
     
-    // If it's a parent menu (no parent_id), path is optional - generate from name
     const finalPath = parentId ? pathValue : (pathValue || `/${rawName.toLowerCase().replace(/\s+/g, '-')}`);
     
-    // Check for duplicate name
     const isDuplicate = menuItems.some(item => 
-      item.name.toLowerCase() === formattedName.toLowerCase() && 
-      item.id !== editingItem?.id
+      item.des_nome.toLowerCase() === formattedName.toLowerCase() && 
+      item.cod_menu_item !== editingItem?.cod_menu_item
     );
 
     if (isDuplicate) {
@@ -138,27 +133,27 @@ export default function AdminSettingsPage() {
     }
 
     const item = {
-      name: formattedName,
-      path: finalPath,
-      icon: formData.get('icon') as string,
-      parent_id: parentId,
-      open_in_new_tab: formData.get('open_mode') === 'new_tab',
-      is_admin_only: formData.get('is_admin_only') === 'on',
-      sort_order: parseInt(formData.get('sort_order') as string) || 0,
-      active: true,
+      des_nome: formattedName,
+      des_caminho: finalPath,
+      des_icone: formData.get('icon') as string,
+      seq_menu_pai: parentId,
+      ind_nova_aba: formData.get('open_mode') === 'new_tab',
+      ind_admin_only: formData.get('is_admin_only') === 'on',
+      num_ordem: parseInt(formData.get('sort_order') as string) || 0,
+      ind_ativo: true,
     };
 
     try {
       if (editingItem) {
         const { error } = await supabase
-          .from('menu_items')
+          .from('tab_menu_item')
           .update(item)
-          .eq('id', editingItem.id);
+          .eq('cod_menu_item', editingItem.cod_menu_item);
         if (error) throw error;
         toast({ title: 'Item atualizado!' });
       } else {
         const { error } = await supabase
-          .from('menu_items')
+          .from('tab_menu_item')
           .insert(item);
         if (error) throw error;
         toast({ title: 'Item criado!' });
@@ -166,7 +161,7 @@ export default function AdminSettingsPage() {
 
       setIsDialogOpen(false);
       setEditingItem(null);
-      clearMenuCache(); // Clear sidebar cache
+      clearMenuCache();
       await fetchMenuItems();
     } catch (error) {
       console.error('Error saving menu item:', error);
@@ -178,13 +173,13 @@ export default function AdminSettingsPage() {
     if (!deleteItemId) return;
     try {
       const { error } = await supabase
-        .from('menu_items')
+        .from('tab_menu_item')
         .delete()
-        .eq('id', deleteItemId);
+        .eq('cod_menu_item', deleteItemId);
 
       if (error) throw error;
       toast({ title: 'Item removido!' });
-      clearMenuCache(); // Clear sidebar cache
+      clearMenuCache();
       await fetchMenuItems();
     } catch (error) {
       console.error('Error deleting menu item:', error);
@@ -197,12 +192,12 @@ export default function AdminSettingsPage() {
   const handleToggleActive = async (id: string, active: boolean) => {
     try {
       const { error } = await supabase
-        .from('menu_items')
-        .update({ active: !active })
-        .eq('id', id);
+        .from('tab_menu_item')
+        .update({ ind_ativo: !active })
+        .eq('cod_menu_item', id);
 
       if (error) throw error;
-      clearMenuCache(); // Clear sidebar cache
+      clearMenuCache();
       await fetchMenuItems();
     } catch (error) {
       console.error('Error toggling menu item:', error);
@@ -225,23 +220,21 @@ export default function AdminSettingsPage() {
 
     if (!over || active.id === over.id) return;
 
-    const activeItem = menuItems.find(item => item.id === active.id);
-    const overItem = menuItems.find(item => item.id === over.id);
+    const activeItem = menuItems.find(item => item.cod_menu_item === active.id);
+    const overItem = menuItems.find(item => item.cod_menu_item === over.id);
 
     if (!activeItem) return;
 
-    // Check if dragging a child item onto a parent (to change parent)
-    if (activeItem.parent_id && overItem && !overItem.parent_id) {
-      // Moving submenu to a different parent
+    if (activeItem.seq_menu_pai && overItem && !overItem.seq_menu_pai) {
       try {
-        const newChildren = getChildItems(overItem.id);
+        const newChildren = getChildItems(overItem.cod_menu_item);
         await supabase
-          .from('menu_items')
+          .from('tab_menu_item')
           .update({ 
-            parent_id: overItem.id, 
-            sort_order: newChildren.length 
+            seq_menu_pai: overItem.cod_menu_item, 
+            num_ordem: newChildren.length 
           })
-          .eq('id', activeItem.id);
+          .eq('cod_menu_item', activeItem.cod_menu_item);
         
         clearMenuCache();
         await fetchMenuItems();
@@ -254,11 +247,9 @@ export default function AdminSettingsPage() {
       }
     }
 
-    // Reordering within same level
-    if (!activeItem.parent_id && overItem && !overItem.parent_id) {
-      // Reordering parent items
-      const oldIndex = parentItems.findIndex((item) => item.id === active.id);
-      const newIndex = parentItems.findIndex((item) => item.id === over.id);
+    if (!activeItem.seq_menu_pai && overItem && !overItem.seq_menu_pai) {
+      const oldIndex = parentItems.findIndex((item) => item.cod_menu_item === active.id);
+      const newIndex = parentItems.findIndex((item) => item.cod_menu_item === over.id);
 
       if (oldIndex !== -1 && newIndex !== -1) {
         const newOrder = arrayMove(parentItems, oldIndex, newIndex);
@@ -266,9 +257,9 @@ export default function AdminSettingsPage() {
         try {
           const updates = newOrder.map((item, index) => 
             supabase
-              .from('menu_items')
-              .update({ sort_order: index })
-              .eq('id', item.id)
+              .from('tab_menu_item')
+              .update({ num_ordem: index })
+              .eq('cod_menu_item', item.cod_menu_item)
           );
           
           await Promise.all(updates);
@@ -290,21 +281,18 @@ export default function AdminSettingsPage() {
 
     if (!over || active.id === over.id) return;
 
-    const activeItem = menuItems.find(item => item.id === active.id);
-    const overItem = menuItems.find(item => item.id === over.id);
+    const overItem = menuItems.find(item => item.cod_menu_item === over.id);
 
-    // Check if dropping onto a different parent
-    if (overItem && !overItem.parent_id && overItem.id !== parentId) {
-      // Moving to a different parent
+    if (overItem && !overItem.seq_menu_pai && overItem.cod_menu_item !== parentId) {
       try {
-        const newChildren = getChildItems(overItem.id);
+        const newChildren = getChildItems(overItem.cod_menu_item);
         await supabase
-          .from('menu_items')
+          .from('tab_menu_item')
           .update({ 
-            parent_id: overItem.id, 
-            sort_order: newChildren.length 
+            seq_menu_pai: overItem.cod_menu_item, 
+            num_ordem: newChildren.length 
           })
-          .eq('id', String(active.id));
+          .eq('cod_menu_item', String(active.id));
         
         clearMenuCache();
         await fetchMenuItems();
@@ -318,8 +306,8 @@ export default function AdminSettingsPage() {
     }
 
     const children = getChildItems(parentId);
-    const oldIndex = children.findIndex((item) => item.id === active.id);
-    const newIndex = children.findIndex((item) => item.id === over.id);
+    const oldIndex = children.findIndex((item) => item.cod_menu_item === active.id);
+    const newIndex = children.findIndex((item) => item.cod_menu_item === over.id);
 
     if (oldIndex !== -1 && newIndex !== -1) {
       const newOrder = arrayMove(children, oldIndex, newIndex);
@@ -327,9 +315,9 @@ export default function AdminSettingsPage() {
       try {
         const updates = newOrder.map((item, index) => 
           supabase
-            .from('menu_items')
-            .update({ sort_order: index })
-            .eq('id', item.id)
+            .from('tab_menu_item')
+            .update({ num_ordem: index })
+            .eq('cod_menu_item', item.cod_menu_item)
         );
         
         await Promise.all(updates);
@@ -343,7 +331,7 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const getActiveItem = () => menuItems.find(item => item.id === activeId);
+  const getActiveItem = () => menuItems.find(item => item.cod_menu_item === activeId);
 
   const getIconComponent = (iconName: string) => {
     const Icon = (LucideIcons as any)[iconName] || LucideIcons.Circle;
@@ -355,10 +343,9 @@ export default function AdminSettingsPage() {
     return <Icon className="h-6 w-6" />;
   };
 
-  const parentItems = menuItems.filter(item => !item.parent_id);
-  const getChildItems = (parentId: string) => menuItems.filter(item => item.parent_id === parentId);
+  const parentItems = menuItems.filter(item => !item.seq_menu_pai);
+  const getChildItems = (parentId: string) => menuItems.filter(item => item.seq_menu_pai === parentId);
 
-  // Sortable Menu Item Component
   const SortableMenuItem = ({ item, isChild = false }: { item: MenuItem; isChild?: boolean }) => {
     const {
       attributes,
@@ -367,9 +354,9 @@ export default function AdminSettingsPage() {
       transform,
       transition,
       isDragging,
-    } = useSortable({ id: item.id });
+    } = useSortable({ id: item.cod_menu_item });
 
-    const isOver = overId === item.id && !isDragging;
+    const isOver = overId === item.cod_menu_item && !isDragging;
 
     const style = {
       transform: CSS.Transform.toString(transform),
@@ -403,34 +390,34 @@ export default function AdminSettingsPage() {
           <GripVertical className={`h-4 w-4 transition-colors ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
         </motion.div>
         <div className="flex items-center gap-2 flex-1">
-          {getIconComponent(item.icon)}
-          <span className="font-medium">{item.name}</span>
+          {getIconComponent(item.des_icone)}
+          <span className="font-medium">{item.des_nome}</span>
           {!isChild && (
             <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">
-              {menuItems.filter(m => m.parent_id === item.id).length} submenus
+              {menuItems.filter(m => m.seq_menu_pai === item.cod_menu_item).length} submenus
             </span>
           )}
-          <span className="text-sm text-muted-foreground">{item.path}</span>
-          {item.open_in_new_tab && (
+          <span className="text-sm text-muted-foreground">{item.des_caminho}</span>
+          {item.ind_nova_aba && (
             <ExternalLink className="h-3 w-3 text-muted-foreground" />
           )}
-          {item.is_admin_only && (
+          {item.ind_admin_only && (
             <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Admin</span>
           )}
         </div>
         <div className="flex items-center gap-2">
           <Switch
-            checked={item.active}
-            onCheckedChange={() => handleToggleActive(item.id, item.active)}
+            checked={item.ind_ativo}
+            onCheckedChange={() => handleToggleActive(item.cod_menu_item, item.ind_ativo)}
           />
           <Button 
             variant="ghost" 
             size="icon-sm" 
             onClick={() => { 
               setEditingItem(item); 
-              setSelectedParentId(item.parent_id || '__none__'); 
-              setSelectedIcon(item.icon || 'Circle');
-              setNamePreview(item.name);
+              setSelectedParentId(item.seq_menu_pai || '__none__'); 
+              setSelectedIcon(item.des_icone || 'Circle');
+              setNamePreview(item.des_nome);
               setIsDialogOpen(true); 
             }}
           >
@@ -439,7 +426,7 @@ export default function AdminSettingsPage() {
           <Button 
             variant="ghost" 
             size="icon-sm" 
-            onClick={() => setDeleteItemId(item.id)}
+            onClick={() => setDeleteItemId(item.cod_menu_item)}
           >
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
@@ -448,13 +435,12 @@ export default function AdminSettingsPage() {
     );
   };
 
-  // Drag Overlay Item (visual feedback while dragging)
   const DragOverlayItem = ({ item }: { item: MenuItem }) => (
     <div className="flex items-center gap-3 p-4 bg-card rounded-lg shadow-2xl border-2 border-primary">
       <GripVertical className="h-4 w-4 text-primary" />
       <div className="flex items-center gap-2 flex-1">
-        {getIconComponent(item.icon)}
-        <span className="font-semibold">{item.name}</span>
+        {getIconComponent(item.des_icone)}
+        <span className="font-semibold">{item.des_nome}</span>
       </div>
     </div>
   );
@@ -509,9 +495,9 @@ export default function AdminSettingsPage() {
                   setNamePreview('');
                   setSelectedIcon('Circle');
                 } else if (editingItem) {
-                  setSelectedParentId(editingItem.parent_id || '__none__');
-                  setNamePreview(editingItem.name);
-                  setSelectedIcon(editingItem.icon || 'Circle');
+                  setSelectedParentId(editingItem.seq_menu_pai || '__none__');
+                  setNamePreview(editingItem.des_nome);
+                  setSelectedIcon(editingItem.des_icone || 'Circle');
                 }
               }}>
                 <DialogTrigger asChild>
@@ -538,8 +524,8 @@ export default function AdminSettingsPage() {
                         <SelectContent>
                           <SelectItem value="__none__">Nenhum (menu principal)</SelectItem>
                           {parentItems.map(item => (
-                            <SelectItem key={item.id} value={item.id}>
-                              {item.name}
+                            <SelectItem key={item.cod_menu_item} value={item.cod_menu_item}>
+                              {item.des_nome}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -555,7 +541,7 @@ export default function AdminSettingsPage() {
                       <Label className="mb-1.5 block">Nome</Label>
                       <Input 
                         name="name" 
-                        defaultValue={editingItem?.name} 
+                        defaultValue={editingItem?.des_nome} 
                         required 
                         placeholder="Nome do menu"
                         onChange={(e) => setNamePreview(e.target.value)}
@@ -576,7 +562,7 @@ export default function AdminSettingsPage() {
                     {selectedParentId !== '__none__' && (
                       <div>
                         <Label className="mb-1.5 block">Caminho/URL</Label>
-                        <Input name="path" defaultValue={editingItem?.path} required placeholder="/pagina ou https://..." />
+                        <Input name="path" defaultValue={editingItem?.des_caminho} required placeholder="/pagina ou https://..." />
                       </div>
                     )}
 
@@ -588,7 +574,7 @@ export default function AdminSettingsPage() {
                         </div>
                         <Select 
                           name="icon" 
-                          defaultValue={editingItem?.icon || 'Circle'}
+                          defaultValue={editingItem?.des_icone || 'Circle'}
                           onValueChange={setSelectedIcon}
                         >
                           <SelectTrigger className="flex-1">
@@ -613,14 +599,14 @@ export default function AdminSettingsPage() {
                       <Input 
                         name="sort_order" 
                         type="number" 
-                        defaultValue={editingItem?.sort_order || 0} 
+                        defaultValue={editingItem?.num_ordem || 0} 
                         placeholder="0" 
                       />
                     </div>
 
                     <div>
                       <Label className="mb-1.5 block">Abrir em</Label>
-                      <Select name="open_mode" defaultValue={editingItem?.open_in_new_tab ? 'new_tab' : 'same_window'}>
+                      <Select name="open_mode" defaultValue={editingItem?.ind_nova_aba ? 'new_tab' : 'same_window'}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -636,7 +622,7 @@ export default function AdminSettingsPage() {
                         <p className="font-medium text-sm">Apenas administradores</p>
                         <p className="text-xs text-muted-foreground">Visível somente para admins</p>
                       </div>
-                      <Switch name="is_admin_only" defaultChecked={editingItem?.is_admin_only} />
+                      <Switch name="is_admin_only" defaultChecked={editingItem?.ind_admin_only} />
                     </div>
 
                     <Button type="submit" className="w-full">Salvar</Button>
@@ -645,7 +631,6 @@ export default function AdminSettingsPage() {
               </Dialog>
             </div>
 
-            {/* Menu Items List */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
               {isLoading ? (
                 <div className="p-8 text-center text-muted-foreground">Carregando...</div>
@@ -664,33 +649,32 @@ export default function AdminSettingsPage() {
                   onDragEnd={handleDragEnd}
                 >
                   <SortableContext
-                    items={parentItems.map(item => item.id)}
+                    items={parentItems.map(item => item.cod_menu_item)}
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="divide-y divide-border">
                       {parentItems.map((item) => (
-                        <div key={item.id}>
+                        <div key={item.cod_menu_item}>
                           <SortableMenuItem item={item} />
                           
-                          {/* Child Items with their own DndContext */}
-                          {getChildItems(item.id).length > 0 && (
+                          {getChildItems(item.cod_menu_item).length > 0 && (
                             <DndContext
                               sensors={sensors}
                               collisionDetection={closestCenter}
                               onDragStart={handleDragStart}
                               onDragOver={handleDragOver}
-                              onDragEnd={(event) => handleChildDragEnd(item.id, event)}
+                              onDragEnd={(event) => handleChildDragEnd(item.cod_menu_item, event)}
                             >
                               <SortableContext
-                                items={getChildItems(item.id).map(child => child.id)}
+                                items={getChildItems(item.cod_menu_item).map(child => child.cod_menu_item)}
                                 strategy={verticalListSortingStrategy}
                               >
-                                {getChildItems(item.id).map((child) => (
-                                  <SortableMenuItem key={child.id} item={child} isChild />
+                                {getChildItems(item.cod_menu_item).map((child) => (
+                                  <SortableMenuItem key={child.cod_menu_item} item={child} isChild />
                                 ))}
                               </SortableContext>
                               <DragOverlay>
-                                {activeId && getActiveItem()?.parent_id === item.id ? (
+                                {activeId && getActiveItem()?.seq_menu_pai === item.cod_menu_item ? (
                                   <DragOverlayItem item={getActiveItem()!} />
                                 ) : null}
                               </DragOverlay>
@@ -699,14 +683,13 @@ export default function AdminSettingsPage() {
                         </div>
                       ))}
 
-                      {/* Orphan Items */}
-                      {menuItems.filter(item => item.parent_id && !parentItems.find(p => p.id === item.parent_id)).map((item) => (
-                        <SortableMenuItem key={item.id} item={item} />
+                      {menuItems.filter(item => item.seq_menu_pai && !parentItems.find(p => p.cod_menu_item === item.seq_menu_pai)).map((item) => (
+                        <SortableMenuItem key={item.cod_menu_item} item={item} />
                       ))}
                     </div>
                   </SortableContext>
                   <DragOverlay>
-                    {activeId && !getActiveItem()?.parent_id ? (
+                    {activeId && !getActiveItem()?.seq_menu_pai ? (
                       <DragOverlayItem item={getActiveItem()!} />
                     ) : null}
                   </DragOverlay>
@@ -721,7 +704,6 @@ export default function AdminSettingsPage() {
         </Tabs>
       </motion.div>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteItemId} onOpenChange={(open) => !open && setDeleteItemId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
