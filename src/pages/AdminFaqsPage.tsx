@@ -33,11 +33,11 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 interface FAQ {
-  id: string;
-  question: string;
-  answer: string;
-  sort_order: number;
-  active: boolean;
+  cod_faq: string;
+  des_pergunta: string;
+  des_resposta: string;
+  num_ordem: number;
+  ind_ativo: boolean;
 }
 
 export default function AdminFaqsPage() {
@@ -65,9 +65,9 @@ export default function AdminFaqsPage() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('faqs')
+        .from('tab_faq')
         .select('*')
-        .order('sort_order');
+        .order('num_ordem');
 
       if (error) throw error;
       setFaqs(data || []);
@@ -81,23 +81,23 @@ export default function AdminFaqsPage() {
 
   const handleSave = async (formData: FormData) => {
     const faq = {
-      question: formData.get('question') as string,
-      answer: formData.get('answer') as string,
-      sort_order: parseInt(formData.get('sort_order') as string) || 0,
-      active: true,
+      des_pergunta: formData.get('question') as string,
+      des_resposta: formData.get('answer') as string,
+      num_ordem: parseInt(formData.get('sort_order') as string) || 0,
+      ind_ativo: true,
     };
 
     try {
       if (editingFaq) {
         const { error } = await supabase
-          .from('faqs')
+          .from('tab_faq')
           .update(faq)
-          .eq('id', editingFaq.id);
+          .eq('cod_faq', editingFaq.cod_faq);
         if (error) throw error;
         toast({ title: 'FAQ atualizado!' });
       } else {
         const { error } = await supabase
-          .from('faqs')
+          .from('tab_faq')
           .insert(faq);
         if (error) throw error;
         toast({ title: 'FAQ criado!' });
@@ -116,9 +116,9 @@ export default function AdminFaqsPage() {
     if (!deleteFaqId) return;
     try {
       const { error } = await supabase
-        .from('faqs')
+        .from('tab_faq')
         .delete()
-        .eq('id', deleteFaqId);
+        .eq('cod_faq', deleteFaqId);
 
       if (error) throw error;
       toast({ title: 'FAQ removido!' });
@@ -134,9 +134,9 @@ export default function AdminFaqsPage() {
   const handleToggleActive = async (id: string, active: boolean) => {
     try {
       const { error } = await supabase
-        .from('faqs')
-        .update({ active: !active })
-        .eq('id', id);
+        .from('tab_faq')
+        .update({ ind_ativo: !active })
+        .eq('cod_faq', id);
 
       if (error) throw error;
       await fetchFaqs();
@@ -156,8 +156,8 @@ export default function AdminFaqsPage() {
 
     if (!over || active.id === over.id) return;
 
-    const oldIndex = faqs.findIndex((f) => f.id === active.id);
-    const newIndex = faqs.findIndex((f) => f.id === over.id);
+    const oldIndex = faqs.findIndex((f) => f.cod_faq === active.id);
+    const newIndex = faqs.findIndex((f) => f.cod_faq === over.id);
 
     if (oldIndex !== -1 && newIndex !== -1) {
       const newOrder = arrayMove(faqs, oldIndex, newIndex);
@@ -165,9 +165,9 @@ export default function AdminFaqsPage() {
       try {
         const updates = newOrder.map((item, index) => 
           supabase
-            .from('faqs')
-            .update({ sort_order: index })
-            .eq('id', item.id)
+            .from('tab_faq')
+            .update({ num_ordem: index })
+            .eq('cod_faq', item.cod_faq)
         );
         
         await Promise.all(updates);
@@ -188,7 +188,7 @@ export default function AdminFaqsPage() {
       transform,
       transition,
       isDragging,
-    } = useSortable({ id: faq.id });
+    } = useSortable({ id: faq.cod_faq });
 
     const style = {
       transform: CSS.Transform.toString(transform),
@@ -218,13 +218,13 @@ export default function AdminFaqsPage() {
           <GripVertical className={`h-4 w-4 transition-colors ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
         </motion.div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium truncate">{faq.question}</p>
-          <p className="text-sm text-muted-foreground line-clamp-2">{faq.answer}</p>
+          <p className="font-medium truncate">{faq.des_pergunta}</p>
+          <p className="text-sm text-muted-foreground line-clamp-2">{faq.des_resposta}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Switch
-            checked={faq.active}
-            onCheckedChange={() => handleToggleActive(faq.id, faq.active)}
+            checked={faq.ind_ativo}
+            onCheckedChange={() => handleToggleActive(faq.cod_faq, faq.ind_ativo)}
           />
           <Button 
             variant="ghost" 
@@ -239,7 +239,7 @@ export default function AdminFaqsPage() {
           <Button 
             variant="ghost" 
             size="icon-sm" 
-            onClick={() => setDeleteFaqId(faq.id)}
+            onClick={() => setDeleteFaqId(faq.cod_faq)}
           >
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
@@ -251,7 +251,7 @@ export default function AdminFaqsPage() {
   const DragOverlayItem = ({ faq }: { faq: FAQ }) => (
     <div className="flex items-center gap-3 p-4 bg-card rounded-lg shadow-2xl border-2 border-primary">
       <GripVertical className="h-4 w-4 text-primary" />
-      <span className="font-semibold truncate">{faq.question}</span>
+      <span className="font-semibold truncate">{faq.des_pergunta}</span>
     </div>
   );
 
@@ -294,7 +294,7 @@ export default function AdminFaqsPage() {
                   <Label className="mb-1.5 block">Pergunta</Label>
                   <Input 
                     name="question" 
-                    defaultValue={editingFaq?.question} 
+                    defaultValue={editingFaq?.des_pergunta} 
                     required 
                     placeholder="Ex: Como abrir um chamado?"
                   />
@@ -304,7 +304,7 @@ export default function AdminFaqsPage() {
                   <Label className="mb-1.5 block">Resposta</Label>
                   <Textarea 
                     name="answer" 
-                    defaultValue={editingFaq?.answer} 
+                    defaultValue={editingFaq?.des_resposta} 
                     required 
                     placeholder="Digite a resposta..."
                     rows={4}
@@ -316,7 +316,7 @@ export default function AdminFaqsPage() {
                   <Input 
                     name="sort_order" 
                     type="number" 
-                    defaultValue={editingFaq?.sort_order || 0} 
+                    defaultValue={editingFaq?.num_ordem || 0} 
                     placeholder="0" 
                   />
                 </div>
@@ -344,18 +344,18 @@ export default function AdminFaqsPage() {
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={faqs.map(f => f.id)}
+                items={faqs.map(f => f.cod_faq)}
                 strategy={verticalListSortingStrategy}
               >
                 <div className="divide-y divide-border">
                   {faqs.map((faq) => (
-                    <SortableFaq key={faq.id} faq={faq} />
+                    <SortableFaq key={faq.cod_faq} faq={faq} />
                   ))}
                 </div>
               </SortableContext>
               <DragOverlay>
                 {activeId ? (
-                  <DragOverlayItem faq={faqs.find(f => f.id === activeId)!} />
+                  <DragOverlayItem faq={faqs.find(f => f.cod_faq === activeId)!} />
                 ) : null}
               </DragOverlay>
             </DndContext>

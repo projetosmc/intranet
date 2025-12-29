@@ -8,7 +8,6 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useUser } from '@/contexts/UserContext';
@@ -36,19 +35,19 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 interface MeetingRoom {
-  id: string;
-  name: string;
-  capacity: number;
-  allowed_roles: string[];
-  active: boolean;
-  sort_order: number;
+  cod_sala: string;
+  des_nome: string;
+  num_capacidade: number;
+  des_roles_permitidos: string[];
+  ind_ativo: boolean;
+  num_ordem: number;
 }
 
 interface MeetingType {
-  id: string;
-  name: string;
-  active: boolean;
-  sort_order: number;
+  cod_tipo_reuniao: string;
+  des_nome: string;
+  ind_ativo: boolean;
+  num_ordem: number;
 }
 
 const availableRoles = [
@@ -90,8 +89,8 @@ export default function AdminRoomConfigPage() {
     setIsLoading(true);
     try {
       const [roomsRes, typesRes] = await Promise.all([
-        supabase.from('meeting_rooms').select('*').order('sort_order'),
-        supabase.from('meeting_types').select('*').order('sort_order')
+        supabase.from('tab_sala_reuniao').select('*').order('num_ordem'),
+        supabase.from('tab_tipo_reuniao').select('*').order('num_ordem')
       ]);
 
       if (roomsRes.error) throw roomsRes.error;
@@ -110,20 +109,20 @@ export default function AdminRoomConfigPage() {
   // Room handlers
   const handleSaveRoom = async (formData: FormData) => {
     const room = {
-      name: formData.get('name') as string,
-      capacity: parseInt(formData.get('capacity') as string) || 10,
-      allowed_roles: selectedRoles,
-      sort_order: parseInt(formData.get('sort_order') as string) || 0,
-      active: true,
+      des_nome: formData.get('name') as string,
+      num_capacidade: parseInt(formData.get('capacity') as string) || 10,
+      des_roles_permitidos: selectedRoles,
+      num_ordem: parseInt(formData.get('sort_order') as string) || 0,
+      ind_ativo: true,
     };
 
     try {
       if (editingRoom) {
-        const { error } = await supabase.from('meeting_rooms').update(room).eq('id', editingRoom.id);
+        const { error } = await supabase.from('tab_sala_reuniao').update(room).eq('cod_sala', editingRoom.cod_sala);
         if (error) throw error;
         toast({ title: 'Sala atualizada!' });
       } else {
-        const { error } = await supabase.from('meeting_rooms').insert(room);
+        const { error } = await supabase.from('tab_sala_reuniao').insert(room);
         if (error) throw error;
         toast({ title: 'Sala criada!' });
       }
@@ -141,7 +140,7 @@ export default function AdminRoomConfigPage() {
   const confirmDeleteRoom = async () => {
     if (!deleteRoomId) return;
     try {
-      const { error } = await supabase.from('meeting_rooms').delete().eq('id', deleteRoomId);
+      const { error } = await supabase.from('tab_sala_reuniao').delete().eq('cod_sala', deleteRoomId);
       if (error) throw error;
       toast({ title: 'Sala removida!' });
       await fetchData();
@@ -155,7 +154,7 @@ export default function AdminRoomConfigPage() {
 
   const handleToggleRoomActive = async (id: string, active: boolean) => {
     try {
-      const { error } = await supabase.from('meeting_rooms').update({ active: !active }).eq('id', id);
+      const { error } = await supabase.from('tab_sala_reuniao').update({ ind_ativo: !active }).eq('cod_sala', id);
       if (error) throw error;
       await fetchData();
     } catch (error) {
@@ -167,18 +166,18 @@ export default function AdminRoomConfigPage() {
   // Meeting type handlers
   const handleSaveType = async (formData: FormData) => {
     const type = {
-      name: formData.get('name') as string,
-      sort_order: parseInt(formData.get('sort_order') as string) || 0,
-      active: true,
+      des_nome: formData.get('name') as string,
+      num_ordem: parseInt(formData.get('sort_order') as string) || 0,
+      ind_ativo: true,
     };
 
     try {
       if (editingType) {
-        const { error } = await supabase.from('meeting_types').update(type).eq('id', editingType.id);
+        const { error } = await supabase.from('tab_tipo_reuniao').update(type).eq('cod_tipo_reuniao', editingType.cod_tipo_reuniao);
         if (error) throw error;
         toast({ title: 'Tipo de reunião atualizado!' });
       } else {
-        const { error } = await supabase.from('meeting_types').insert(type);
+        const { error } = await supabase.from('tab_tipo_reuniao').insert(type);
         if (error) throw error;
         toast({ title: 'Tipo de reunião criado!' });
       }
@@ -195,7 +194,7 @@ export default function AdminRoomConfigPage() {
   const confirmDeleteType = async () => {
     if (!deleteTypeId) return;
     try {
-      const { error } = await supabase.from('meeting_types').delete().eq('id', deleteTypeId);
+      const { error } = await supabase.from('tab_tipo_reuniao').delete().eq('cod_tipo_reuniao', deleteTypeId);
       if (error) throw error;
       toast({ title: 'Tipo de reunião removido!' });
       await fetchData();
@@ -209,7 +208,7 @@ export default function AdminRoomConfigPage() {
 
   const handleToggleTypeActive = async (id: string, active: boolean) => {
     try {
-      const { error } = await supabase.from('meeting_types').update({ active: !active }).eq('id', id);
+      const { error } = await supabase.from('tab_tipo_reuniao').update({ ind_ativo: !active }).eq('cod_tipo_reuniao', id);
       if (error) throw error;
       await fetchData();
     } catch (error) {
@@ -228,14 +227,14 @@ export default function AdminRoomConfigPage() {
     setActiveId(null);
     if (!over || active.id === over.id) return;
 
-    const oldIndex = rooms.findIndex((r) => r.id === active.id);
-    const newIndex = rooms.findIndex((r) => r.id === over.id);
+    const oldIndex = rooms.findIndex((r) => r.cod_sala === active.id);
+    const newIndex = rooms.findIndex((r) => r.cod_sala === over.id);
 
     if (oldIndex !== -1 && newIndex !== -1) {
       const newOrder = arrayMove(rooms, oldIndex, newIndex);
       try {
         const updates = newOrder.map((item, index) => 
-          supabase.from('meeting_rooms').update({ sort_order: index }).eq('id', item.id)
+          supabase.from('tab_sala_reuniao').update({ num_ordem: index }).eq('cod_sala', item.cod_sala)
         );
         await Promise.all(updates);
         await fetchData();
@@ -250,14 +249,14 @@ export default function AdminRoomConfigPage() {
     setActiveId(null);
     if (!over || active.id === over.id) return;
 
-    const oldIndex = meetingTypes.findIndex((t) => t.id === active.id);
-    const newIndex = meetingTypes.findIndex((t) => t.id === over.id);
+    const oldIndex = meetingTypes.findIndex((t) => t.cod_tipo_reuniao === active.id);
+    const newIndex = meetingTypes.findIndex((t) => t.cod_tipo_reuniao === over.id);
 
     if (oldIndex !== -1 && newIndex !== -1) {
       const newOrder = arrayMove(meetingTypes, oldIndex, newIndex);
       try {
         const updates = newOrder.map((item, index) => 
-          supabase.from('meeting_types').update({ sort_order: index }).eq('id', item.id)
+          supabase.from('tab_tipo_reuniao').update({ num_ordem: index }).eq('cod_tipo_reuniao', item.cod_tipo_reuniao)
         );
         await Promise.all(updates);
         await fetchData();
@@ -269,7 +268,7 @@ export default function AdminRoomConfigPage() {
 
   // Sortable components
   const SortableRoom = ({ room }: { room: MeetingRoom }) => {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: room.id });
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: room.cod_sala });
     const style = { transform: CSS.Transform.toString(transform), transition };
 
     return (
@@ -284,14 +283,14 @@ export default function AdminRoomConfigPage() {
         </motion.div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-medium">{room.name}</span>
+            <span className="font-medium">{room.des_nome}</span>
             <Badge variant="outline" className="text-xs">
               <Users className="h-3 w-3 mr-1" />
-              {room.capacity}
+              {room.num_capacidade}
             </Badge>
           </div>
           <div className="flex gap-1 mt-1">
-            {room.allowed_roles.map(role => (
+            {room.des_roles_permitidos?.map(role => (
               <Badge key={role} variant="secondary" className="text-xs">
                 {availableRoles.find(r => r.value === role)?.label || role}
               </Badge>
@@ -299,15 +298,15 @@ export default function AdminRoomConfigPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Switch checked={room.active} onCheckedChange={() => handleToggleRoomActive(room.id, room.active)} />
+          <Switch checked={room.ind_ativo} onCheckedChange={() => handleToggleRoomActive(room.cod_sala, room.ind_ativo)} />
           <Button variant="ghost" size="icon-sm" onClick={() => { 
             setEditingRoom(room); 
-            setSelectedRoles(room.allowed_roles);
+            setSelectedRoles(room.des_roles_permitidos || ['all']);
             setIsRoomDialogOpen(true); 
           }}>
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon-sm" onClick={() => setDeleteRoomId(room.id)}>
+          <Button variant="ghost" size="icon-sm" onClick={() => setDeleteRoomId(room.cod_sala)}>
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
@@ -316,7 +315,7 @@ export default function AdminRoomConfigPage() {
   };
 
   const SortableType = ({ type }: { type: MeetingType }) => {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: type.id });
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: type.cod_tipo_reuniao });
     const style = { transform: CSS.Transform.toString(transform), transition };
 
     return (
@@ -330,14 +329,14 @@ export default function AdminRoomConfigPage() {
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </motion.div>
         <div className="flex-1">
-          <span className="font-medium">{type.name}</span>
+          <span className="font-medium">{type.des_nome}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Switch checked={type.active} onCheckedChange={() => handleToggleTypeActive(type.id, type.active)} />
+          <Switch checked={type.ind_ativo} onCheckedChange={() => handleToggleTypeActive(type.cod_tipo_reuniao, type.ind_ativo)} />
           <Button variant="ghost" size="icon-sm" onClick={() => { setEditingType(type); setIsTypeDialogOpen(true); }}>
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon-sm" onClick={() => setDeleteTypeId(type.id)}>
+          <Button variant="ghost" size="icon-sm" onClick={() => setDeleteTypeId(type.cod_tipo_reuniao)}>
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
@@ -398,11 +397,11 @@ export default function AdminRoomConfigPage() {
                   <form onSubmit={(e) => { e.preventDefault(); handleSaveRoom(new FormData(e.currentTarget)); }} className="space-y-4">
                     <div>
                       <Label className="mb-1.5 block">Nome da Sala</Label>
-                      <Input name="name" defaultValue={editingRoom?.name} required placeholder="Ex: Sala de Reunião 1" />
+                      <Input name="name" defaultValue={editingRoom?.des_nome} required placeholder="Ex: Sala de Reunião 1" />
                     </div>
                     <div>
                       <Label className="mb-1.5 block">Capacidade Máxima</Label>
-                      <Input name="capacity" type="number" defaultValue={editingRoom?.capacity || 10} required min={1} />
+                      <Input name="capacity" type="number" defaultValue={editingRoom?.num_capacidade || 10} required min={1} />
                     </div>
                     <div>
                       <Label className="mb-1.5 block">Quem pode reservar</Label>
@@ -431,7 +430,7 @@ export default function AdminRoomConfigPage() {
                     </div>
                     <div>
                       <Label className="mb-1.5 block">Ordem</Label>
-                      <Input name="sort_order" type="number" defaultValue={editingRoom?.sort_order || 0} />
+                      <Input name="sort_order" type="number" defaultValue={editingRoom?.num_ordem || 0} />
                     </div>
                     <Button type="submit" className="w-full">Salvar</Button>
                   </form>
@@ -448,12 +447,27 @@ export default function AdminRoomConfigPage() {
                   <p>Nenhuma sala cadastrada</p>
                 </div>
               ) : (
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleRoomDragEnd}>
-                  <SortableContext items={rooms.map(r => r.id)} strategy={verticalListSortingStrategy}>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleRoomDragEnd}
+                >
+                  <SortableContext items={rooms.map(r => r.cod_sala)} strategy={verticalListSortingStrategy}>
                     <div className="divide-y divide-border">
-                      {rooms.map((room) => <SortableRoom key={room.id} room={room} />)}
+                      {rooms.map((room) => (
+                        <SortableRoom key={room.cod_sala} room={room} />
+                      ))}
                     </div>
                   </SortableContext>
+                  <DragOverlay>
+                    {activeId && rooms.find(r => r.cod_sala === activeId) ? (
+                      <div className="flex items-center gap-3 p-4 bg-card rounded-lg shadow-2xl border-2 border-primary">
+                        <GripVertical className="h-4 w-4 text-primary" />
+                        <span className="font-semibold">{rooms.find(r => r.cod_sala === activeId)?.des_nome}</span>
+                      </div>
+                    ) : null}
+                  </DragOverlay>
                 </DndContext>
               )}
             </div>
@@ -464,7 +478,7 @@ export default function AdminRoomConfigPage() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-lg font-semibold">Tipos de Reunião</h2>
-                <p className="text-sm text-muted-foreground">Gerencie os tipos disponíveis para classificar reservas</p>
+                <p className="text-sm text-muted-foreground">Defina os tipos de reunião disponíveis</p>
               </div>
               <Dialog open={isTypeDialogOpen} onOpenChange={(o) => { 
                 setIsTypeDialogOpen(o); 
@@ -480,11 +494,11 @@ export default function AdminRoomConfigPage() {
                   <form onSubmit={(e) => { e.preventDefault(); handleSaveType(new FormData(e.currentTarget)); }} className="space-y-4">
                     <div>
                       <Label className="mb-1.5 block">Nome do Tipo</Label>
-                      <Input name="name" defaultValue={editingType?.name} required placeholder="Ex: Reunião de Equipe" />
+                      <Input name="name" defaultValue={editingType?.des_nome} required placeholder="Ex: Reunião de Equipe" />
                     </div>
                     <div>
                       <Label className="mb-1.5 block">Ordem</Label>
-                      <Input name="sort_order" type="number" defaultValue={editingType?.sort_order || 0} />
+                      <Input name="sort_order" type="number" defaultValue={editingType?.num_ordem || 0} />
                     </div>
                     <Button type="submit" className="w-full">Salvar</Button>
                   </form>
@@ -498,15 +512,30 @@ export default function AdminRoomConfigPage() {
               ) : meetingTypes.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <Tag className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>Nenhum tipo cadastrado</p>
+                  <p>Nenhum tipo de reunião cadastrado</p>
                 </div>
               ) : (
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleTypeDragEnd}>
-                  <SortableContext items={meetingTypes.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleTypeDragEnd}
+                >
+                  <SortableContext items={meetingTypes.map(t => t.cod_tipo_reuniao)} strategy={verticalListSortingStrategy}>
                     <div className="divide-y divide-border">
-                      {meetingTypes.map((type) => <SortableType key={type.id} type={type} />)}
+                      {meetingTypes.map((type) => (
+                        <SortableType key={type.cod_tipo_reuniao} type={type} />
+                      ))}
                     </div>
                   </SortableContext>
+                  <DragOverlay>
+                    {activeId && meetingTypes.find(t => t.cod_tipo_reuniao === activeId) ? (
+                      <div className="flex items-center gap-3 p-4 bg-card rounded-lg shadow-2xl border-2 border-primary">
+                        <GripVertical className="h-4 w-4 text-primary" />
+                        <span className="font-semibold">{meetingTypes.find(t => t.cod_tipo_reuniao === activeId)?.des_nome}</span>
+                      </div>
+                    ) : null}
+                  </DragOverlay>
                 </DndContext>
               )}
             </div>
@@ -519,11 +548,15 @@ export default function AdminRoomConfigPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>Tem certeza que deseja excluir esta sala? Todas as reservas associadas serão removidas.</AlertDialogDescription>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta sala? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteRoom} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+            <AlertDialogAction onClick={confirmDeleteRoom} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -533,11 +566,15 @@ export default function AdminRoomConfigPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>Tem certeza que deseja excluir este tipo de reunião?</AlertDialogDescription>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este tipo de reunião? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteType} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+            <AlertDialogAction onClick={confirmDeleteType} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
