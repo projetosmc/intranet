@@ -28,6 +28,15 @@ import {
   Paperclip,
   FileIcon,
   Trash2,
+  Loader2,
+  Download,
+  File,
+  FileImage,
+  FileVideo,
+  FileAudio,
+  FileSpreadsheet,
+  FileType,
+  Presentation,
 } from 'lucide-react';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Button } from '@/components/ui/button';
@@ -69,8 +78,22 @@ import {
   ArticleType,
   ArticleStatus,
 } from '@/hooks/useKnowledgeBaseArticles';
+import { useKBAttachments } from '@/hooks/useKBAttachments';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+const getFileIcon = (type: string | null) => {
+  switch (type) {
+    case 'imagem': return FileImage;
+    case 'video': return FileVideo;
+    case 'audio': return FileAudio;
+    case 'pdf': return FileType;
+    case 'planilha': return FileSpreadsheet;
+    case 'documento': return FileText;
+    case 'apresentacao': return Presentation;
+    default: return File;
+  }
+};
 
 const AUDIENCE_OPTIONS = [
   { value: 'TODOS', label: 'Todos' },
@@ -104,6 +127,17 @@ export default function KnowledgeBaseEditorPage() {
     updateArticle,
   } = useKnowledgeBaseArticles();
 
+  const {
+    attachments,
+    isUploading,
+    fetchAttachments,
+    uploadAttachment,
+    deleteAttachment,
+    formatFileSize,
+  } = useKBAttachments(id);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [isLoading, setIsLoading] = useState(isEditing);
   const [isSaving, setIsSaving] = useState(false);
   const [editorTab, setEditorTab] = useState<'edit' | 'preview'>('edit');
@@ -134,6 +168,7 @@ export default function KnowledgeBaseEditorPage() {
 
     if (isEditing && id) {
       loadArticle();
+      fetchAttachments();
     }
   }, [id, isAdmin, navigate]);
 
@@ -521,6 +556,104 @@ código de exemplo
               </div>
             </CardContent>
           </Card>
+
+          {/* Attachments */}
+          {isEditing && (
+            <Card className="bg-card border-border/50">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Paperclip className="h-5 w-5" />
+                    Anexos
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="gap-2"
+                  >
+                    {isUploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                    Enviar
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files || []);
+                      for (const file of files) {
+                        if (id) await uploadAttachment(file, id);
+                      }
+                      e.target.value = '';
+                    }}
+                  />
+                </div>
+              </CardHeader>
+              <CardContent>
+                {attachments.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <FileIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Nenhum anexo</p>
+                    <p className="text-xs">Clique em Enviar para adicionar arquivos</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {attachments.map((attachment) => {
+                      const Icon = getFileIcon(attachment.type);
+                      return (
+                        <div
+                          key={attachment.id}
+                          className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border border-border/50 group"
+                        >
+                          <Icon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{attachment.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatFileSize(attachment.sizeBytes)}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => window.open(attachment.url, '_blank')}
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Baixar</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-destructive hover:text-destructive"
+                                  onClick={() => deleteAttachment(attachment.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Remover</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </motion.div>
 
         {/* Sidebar */}
