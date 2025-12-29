@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import { Announcement } from '@/types/announcements';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { PixelImage } from '@/components/ui/pixel-image';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -28,14 +27,11 @@ export function AnnouncementCard({ announcement, onClick, delay = 0 }: Announcem
       onClick={onClick}
     >
       <div className="h-40 overflow-hidden">
-        <PixelImage
+        <img
           src={announcement.imageUrl || placeholderImage}
           alt={announcement.title}
-          customGrid={{ rows: 3, cols: 4 }}
-          grayscaleAnimation={false}
-          pixelFadeInDuration={400}
-          maxAnimationDelay={500}
-          className="w-full h-full"
+          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+          loading="lazy"
         />
       </div>
 
