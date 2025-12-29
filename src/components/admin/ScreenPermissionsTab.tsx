@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Lock, Save, Loader2, Check, X, Info, Copy, GripVertical, Plus, Trash2 } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Lock, Save, Loader2, Check, X, Info, Copy, GripVertical, Plus, Trash2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -205,6 +205,9 @@ export function ScreenPermissionsTab() {
   
   // Estado para deletar tela
   const [deleteScreenName, setDeleteScreenName] = useState<string | null>(null);
+  
+  // Estado para busca
+  const [searchTerm, setSearchTerm] = useState('');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -494,12 +497,27 @@ export function ScreenPermissionsTab() {
     });
   }, [groupedByScreen]);
 
+  // Filtro de busca
+  const filteredScreens = useMemo(() => {
+    if (!searchTerm.trim()) return sortedScreens;
+    const lowerSearch = searchTerm.toLowerCase();
+    return sortedScreens.filter(screen => {
+      const screenData = groupedByScreen[screen];
+      return screen.toLowerCase().includes(lowerSearch) ||
+             screenData.rota.toLowerCase().includes(lowerSearch);
+    });
+  }, [sortedScreens, groupedByScreen, searchTerm]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchTerm('');
+  }, []);
+
   const sortableIds = useMemo(() => {
-    return sortedScreens.map((screen) => {
+    return filteredScreens.map((screen) => {
       const firstPerm = Object.values(groupedByScreen[screen].permissions)[0];
       return firstPerm?.cod_permissao || screen;
     });
-  }, [sortedScreens, groupedByScreen]);
+  }, [filteredScreens, groupedByScreen]);
 
   if (isLoading) {
     return (
@@ -523,6 +541,23 @@ export function ScreenPermissionsTab() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar tela ou rota..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 pr-9 w-64"
+            />
+            {searchTerm && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           <Button variant="outline" onClick={() => setAddScreenDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Nova Tela
@@ -540,7 +575,7 @@ export function ScreenPermissionsTab() {
             ) : (
               <Save className="h-4 w-4 mr-2" />
             )}
-            Salvar Alterações
+            Salvar
             {pendingChanges.size > 0 && (
               <Badge variant="secondary" className="ml-2">
                 {pendingChanges.size}
@@ -549,6 +584,13 @@ export function ScreenPermissionsTab() {
           </Button>
         </div>
       </div>
+
+      {/* Results count */}
+      {searchTerm && (
+        <p className="text-sm text-muted-foreground">
+          {filteredScreens.length} tela{filteredScreens.length !== 1 ? 's' : ''} encontrada{filteredScreens.length !== 1 ? 's' : ''}
+        </p>
+      )}
 
       {/* Info box */}
       <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-lg">
@@ -602,18 +644,26 @@ export function ScreenPermissionsTab() {
             </TableHeader>
             <TableBody>
               <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-                {sortedScreens.map((screen) => (
-                  <SortableScreenRow
-                    key={screen}
-                    screen={screen}
-                    screenData={groupedByScreen[screen]}
-                    roles={roleTypes}
-                    roleLabels={roleLabels}
-                    pendingChanges={pendingChanges}
-                    onToggle={handleToggle}
-                    onDelete={setDeleteScreenName}
-                  />
-                ))}
+                {filteredScreens.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={roleTypes.length + 3} className="text-center py-8 text-muted-foreground">
+                      {searchTerm ? 'Nenhuma tela encontrada' : 'Nenhuma tela cadastrada'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredScreens.map((screen) => (
+                    <SortableScreenRow
+                      key={screen}
+                      screen={screen}
+                      screenData={groupedByScreen[screen]}
+                      roles={roleTypes}
+                      roleLabels={roleLabels}
+                      pendingChanges={pendingChanges}
+                      onToggle={handleToggle}
+                      onDelete={setDeleteScreenName}
+                    />
+                  ))
+                )}
               </SortableContext>
             </TableBody>
           </Table>

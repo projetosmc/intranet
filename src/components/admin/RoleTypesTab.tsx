@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Users,
   Plus,
@@ -7,6 +7,8 @@ import {
   Loader2,
   Shield,
   GripVertical,
+  Search,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -163,6 +165,7 @@ export function RoleTypesTab() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleType | null>(null);
   const [deletingRole, setDeletingRole] = useState<RoleType | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Form state
   const [formCodigo, setFormCodigo] = useState('');
@@ -331,6 +334,21 @@ export function RoleTypesTab() {
     }
   };
 
+  // Filtro de busca
+  const filteredRoles = useMemo(() => {
+    if (!searchTerm.trim()) return roles;
+    const lowerSearch = searchTerm.toLowerCase();
+    return roles.filter(role =>
+      role.des_nome.toLowerCase().includes(lowerSearch) ||
+      role.des_codigo.toLowerCase().includes(lowerSearch) ||
+      role.des_descricao?.toLowerCase().includes(lowerSearch)
+    );
+  }, [roles, searchTerm]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchTerm('');
+  }, []);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -352,11 +370,37 @@ export function RoleTypesTab() {
             </p>
           </div>
         </div>
-        <Button onClick={handleNew}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Tipo de Perfil
-        </Button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-initial">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome ou código..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 pr-9 w-full sm:w-64"
+            />
+            {searchTerm && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <Button onClick={handleNew}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Tipo
+          </Button>
+        </div>
       </div>
+
+      {/* Results count */}
+      {searchTerm && (
+        <p className="text-sm text-muted-foreground">
+          {filteredRoles.length} tipo{filteredRoles.length !== 1 ? 's' : ''} encontrado{filteredRoles.length !== 1 ? 's' : ''}
+        </p>
+      )}
 
       {/* Tabela com drag-and-drop */}
       <div className="border border-border rounded-lg overflow-hidden">
@@ -378,20 +422,28 @@ export function RoleTypesTab() {
             </TableHeader>
             <TableBody>
               <SortableContext
-                items={roles.map((r) => r.cod_perfil_tipo)}
+                items={filteredRoles.map((r) => r.cod_perfil_tipo)}
                 strategy={verticalListSortingStrategy}
               >
-                {roles.map((role) => (
-                  <SortableRow
-                    key={role.cod_perfil_tipo}
-                    role={role}
-                    onEdit={() => handleEdit(role)}
-                    onDelete={() => {
-                      setDeletingRole(role);
-                      setDeleteDialogOpen(true);
-                    }}
-                  />
-                ))}
+                {filteredRoles.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      {searchTerm ? 'Nenhum tipo de perfil encontrado' : 'Nenhum tipo de perfil cadastrado'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredRoles.map((role) => (
+                    <SortableRow
+                      key={role.cod_perfil_tipo}
+                      role={role}
+                      onEdit={() => handleEdit(role)}
+                      onDelete={() => {
+                        setDeletingRole(role);
+                        setDeleteDialogOpen(true);
+                      }}
+                    />
+                  ))
+                )}
               </SortableContext>
             </TableBody>
           </Table>
