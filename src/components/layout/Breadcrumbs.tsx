@@ -2,6 +2,7 @@ import { ChevronRight, Home } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Mapeamento de rotas para nomes legíveis
 const routeNames: Record<string, string> = {
@@ -23,11 +24,24 @@ const routeNames: Record<string, string> = {
 
 interface BreadcrumbsProps {
   className?: string;
+  isLoading?: boolean;
 }
 
-export function Breadcrumbs({ className }: BreadcrumbsProps) {
+export function Breadcrumbs({ className, isLoading = false }: BreadcrumbsProps) {
   const location = useLocation();
   const pathSegments = location.pathname.split('/').filter(Boolean);
+
+  // Skeleton loading state
+  if (isLoading) {
+    return (
+      <nav className={cn("flex items-center gap-1 text-sm mb-6", className)} aria-label="Breadcrumbs">
+        <Skeleton className="h-4 w-4 rounded" />
+        <Skeleton className="h-4 w-12 hidden sm:block" />
+        <ChevronRight className="h-4 w-4 text-muted-foreground/30" />
+        <Skeleton className="h-4 w-24" />
+      </nav>
+    );
+  }
 
   // Não mostrar breadcrumbs na página inicial
   if (pathSegments.length === 0) {
