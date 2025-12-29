@@ -859,6 +859,7 @@ export default function RoomReservationPage() {
                         onSelect={handleReservationDateSelect}
                         disabled={(date) => isBefore(startOfDay(date), startOfDay(new Date()))}
                         initialFocus
+                        locale={ptBR}
                         className="p-3 pointer-events-auto"
                       />
                     </PopoverContent>
