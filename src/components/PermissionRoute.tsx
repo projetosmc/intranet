@@ -2,7 +2,6 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useRef } from 'react';
-import { PageSkeleton } from '@/components/layout/PageSkeleton';
 
 interface PermissionRouteProps {
   children: React.ReactNode;
@@ -43,10 +42,8 @@ export function PermissionRoute({ children }: PermissionRouteProps) {
     };
   }, [location.pathname]);
 
-  if (isLoading) {
-    return <PageSkeleton />;
-  }
-
+  // Parent ProtectedRoute already handles loading, so no need to show loading here
+  // Just check authentication (should already be authenticated due to parent route)
   if (!isAuthenticated) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
