@@ -1,6 +1,26 @@
 import { supabase } from '@/integrations/supabase/client';
 
-export type AuditAction = 
+/**
+ * Hook para registro de logs de auditoria
+ * 
+ * Tabela: tab_log_auditoria
+ * Colunas:
+ * - cod_log (PK): UUID do log
+ * - seq_usuario: ID do usuário que realizou a ação
+ * - seq_usuario_alvo: ID do usuário afetado (se aplicável)
+ * - des_acao: Ação realizada (AuditAction)
+ * - des_tipo_entidade: Tipo da entidade afetada (EntityType)
+ * - des_id_entidade: ID da entidade afetada
+ * - des_valor_anterior: Valor anterior (JSONB)
+ * - des_valor_novo: Novo valor (JSONB)
+ * - des_user_agent: User agent do navegador
+ * - des_ip: Endereço IP (se disponível)
+ * - dta_cadastro: Data/hora do registro
+ * 
+ * RLS: Admins podem visualizar, sistema pode inserir
+ */
+
+export type AuditAction =
   | 'role_added' 
   | 'role_removed' 
   | 'user_activated' 

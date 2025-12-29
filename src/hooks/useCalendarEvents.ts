@@ -2,15 +2,41 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
+/**
+ * Interface para eventos do calendário
+ * Mapeamento para tabela: tab_evento_calendario
+ */
 export interface CalendarEvent {
+  /** cod_evento - Identificador único do evento (UUID) */
   id: string;
+  /** des_titulo - Título do evento */
   title: string;
+  /** des_descricao - Descrição detalhada do evento */
   description?: string;
+  /** dta_evento - Data do evento */
   event_date: Date;
+  /** des_tipo_evento - Tipo do evento (general, meeting, holiday, etc.) */
   event_type: string;
+  /** seq_criado_por - ID do usuário que criou o evento */
   created_by?: string;
 }
 
+/**
+ * Hook para gerenciamento de eventos do calendário
+ * 
+ * Tabela: tab_evento_calendario
+ * Colunas:
+ * - cod_evento (PK): UUID do evento
+ * - des_titulo: Título do evento
+ * - des_descricao: Descrição do evento
+ * - dta_evento: Data do evento (DATE)
+ * - des_tipo_evento: Tipo do evento
+ * - seq_criado_por: FK para o usuário criador
+ * - dta_cadastro: Data de criação
+ * - dta_atualizacao: Data de atualização
+ * 
+ * RLS: Admins podem gerenciar, usuários autenticados podem visualizar
+ */
 export function useCalendarEvents() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
