@@ -81,7 +81,7 @@ export function AuditLogsTab() {
       log.user_email?.toLowerCase().includes(query) ||
       log.target_user_name?.toLowerCase().includes(query) ||
       log.target_user_email?.toLowerCase().includes(query) ||
-      log.action.toLowerCase().includes(query)
+      log.des_acao.toLowerCase().includes(query)
     );
   });
 
@@ -141,13 +141,13 @@ export function AuditLogsTab() {
         <div className="bg-card border border-border rounded-lg p-4">
           <p className="text-sm text-muted-foreground">Permissões alteradas</p>
           <p className="text-2xl font-bold">
-            {logs.filter(l => l.entity_type === 'user_role').length}
+            {logs.filter(l => l.des_tipo_entidade === 'user_role').length}
           </p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
           <p className="text-sm text-muted-foreground">Perfis alterados</p>
           <p className="text-2xl font-bold">
-            {logs.filter(l => l.entity_type === 'profile').length}
+            {logs.filter(l => l.des_tipo_entidade === 'profile').length}
           </p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
@@ -155,7 +155,7 @@ export function AuditLogsTab() {
           <p className="text-2xl font-bold">
             {logs.filter(l => {
               const today = new Date();
-              const logDate = new Date(l.created_at);
+              const logDate = new Date(l.dta_cadastro);
               return logDate.toDateString() === today.toDateString();
             }).length}
           </p>
@@ -175,14 +175,14 @@ export function AuditLogsTab() {
           <div className="divide-y divide-border">
             {filteredLogs.map((log) => (
               <motion.div
-                key={log.id}
+                key={log.cod_log}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="p-4 hover:bg-muted/30 transition-colors"
               >
                 <div 
                   className="flex items-start gap-4 cursor-pointer"
-                  onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
+                  onClick={() => setExpandedLog(expandedLog === log.cod_log ? null : log.cod_log)}
                 >
                   <div className="flex-shrink-0 mt-1">
                     <User className="h-5 w-5 text-muted-foreground" />
@@ -193,15 +193,15 @@ export function AuditLogsTab() {
                       <span className="font-medium">
                         {log.user_name || log.user_email || 'Usuário desconhecido'}
                       </span>
-                      <Badge className={`text-xs ${actionColors[log.action] || 'bg-gray-100 text-gray-800'}`}>
-                        {actionLabels[log.action] || log.action}
+                      <Badge className={`text-xs ${actionColors[log.des_acao] || 'bg-gray-100 text-gray-800'}`}>
+                        {actionLabels[log.des_acao] || log.des_acao}
                       </Badge>
                       <Badge variant="outline" className="text-xs">
-                        {entityLabels[log.entity_type] || log.entity_type}
+                        {entityLabels[log.des_tipo_entidade] || log.des_tipo_entidade}
                       </Badge>
                     </div>
                     
-                    {log.target_user_id && log.target_user_id !== log.user_id && (
+                    {log.seq_usuario_alvo && log.seq_usuario_alvo !== log.seq_usuario && (
                       <p className="text-sm text-muted-foreground mt-1">
                         → Usuário afetado: <span className="font-medium">{log.target_user_name || log.target_user_email}</span>
                       </p>
@@ -210,13 +210,13 @@ export function AuditLogsTab() {
                     <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                       <Calendar className="h-3 w-3" />
                       <span>
-                        {format(new Date(log.created_at), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                        {format(new Date(log.dta_cadastro), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex-shrink-0">
-                    {expandedLog === log.id ? (
+                    {expandedLog === log.cod_log ? (
                       <ChevronUp className="h-5 w-5 text-muted-foreground" />
                     ) : (
                       <ChevronDown className="h-5 w-5 text-muted-foreground" />
@@ -225,7 +225,7 @@ export function AuditLogsTab() {
                 </div>
 
                 {/* Expanded Details */}
-                {expandedLog === log.id && (
+                {expandedLog === log.cod_log && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
@@ -233,26 +233,26 @@ export function AuditLogsTab() {
                     className="mt-4 ml-9 p-4 bg-muted/50 rounded-lg"
                   >
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      {log.old_value && (
+                      {log.des_valor_anterior && (
                         <div>
                           <p className="font-medium text-muted-foreground mb-1">Valor anterior</p>
                           <pre className="bg-background p-2 rounded text-xs overflow-auto">
-                            {JSON.stringify(log.old_value, null, 2)}
+                            {JSON.stringify(log.des_valor_anterior, null, 2)}
                           </pre>
                         </div>
                       )}
-                      {log.new_value && (
+                      {log.des_valor_novo && (
                         <div>
                           <p className="font-medium text-muted-foreground mb-1">Novo valor</p>
                           <pre className="bg-background p-2 rounded text-xs overflow-auto">
-                            {JSON.stringify(log.new_value, null, 2)}
+                            {JSON.stringify(log.des_valor_novo, null, 2)}
                           </pre>
                         </div>
                       )}
                     </div>
-                    {log.user_agent && (
+                    {log.des_user_agent && (
                       <div className="mt-3 text-xs text-muted-foreground">
-                        <span className="font-medium">User Agent:</span> {log.user_agent}
+                        <span className="font-medium">User Agent:</span> {log.des_user_agent}
                       </div>
                     )}
                   </motion.div>

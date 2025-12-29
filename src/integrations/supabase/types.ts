@@ -14,489 +14,489 @@ export type Database = {
   }
   public: {
     Tables: {
-      announcements: {
+      tab_comunicado: {
         Row: {
-          active: boolean | null
-          content: string
-          created_at: string | null
-          id: string
-          image_url: string | null
-          pinned: boolean | null
-          poll_type: string | null
-          published_at: string | null
-          summary: string
-          template_type: string | null
-          title: string
-          updated_at: string | null
+          cod_comunicado: string
+          des_conteudo: string
+          des_imagem_url: string | null
+          des_resumo: string
+          des_tipo_enquete: string | null
+          des_tipo_template: string | null
+          des_titulo: string
+          dta_atualizacao: string | null
+          dta_cadastro: string | null
+          dta_publicacao: string | null
+          ind_ativo: boolean | null
+          ind_fixado: boolean | null
         }
         Insert: {
-          active?: boolean | null
-          content: string
-          created_at?: string | null
-          id?: string
-          image_url?: string | null
-          pinned?: boolean | null
-          poll_type?: string | null
-          published_at?: string | null
-          summary: string
-          template_type?: string | null
-          title: string
-          updated_at?: string | null
+          cod_comunicado?: string
+          des_conteudo: string
+          des_imagem_url?: string | null
+          des_resumo: string
+          des_tipo_enquete?: string | null
+          des_tipo_template?: string | null
+          des_titulo: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          dta_publicacao?: string | null
+          ind_ativo?: boolean | null
+          ind_fixado?: boolean | null
         }
         Update: {
-          active?: boolean | null
-          content?: string
-          created_at?: string | null
-          id?: string
-          image_url?: string | null
-          pinned?: boolean | null
-          poll_type?: string | null
-          published_at?: string | null
-          summary?: string
-          template_type?: string | null
-          title?: string
-          updated_at?: string | null
+          cod_comunicado?: string
+          des_conteudo?: string
+          des_imagem_url?: string | null
+          des_resumo?: string
+          des_tipo_enquete?: string | null
+          des_tipo_template?: string | null
+          des_titulo?: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          dta_publicacao?: string | null
+          ind_ativo?: boolean | null
+          ind_fixado?: boolean | null
         }
         Relationships: []
       }
-      audit_logs: {
+      tab_enquete_opcao: {
         Row: {
-          action: string
-          created_at: string
-          entity_id: string | null
-          entity_type: string
-          id: string
-          ip_address: string | null
-          new_value: Json | null
-          old_value: Json | null
-          target_user_id: string | null
-          user_agent: string | null
-          user_id: string | null
+          cod_opcao: string
+          des_texto_opcao: string
+          dta_cadastro: string | null
+          seq_comunicado: string
         }
         Insert: {
-          action: string
-          created_at?: string
-          entity_id?: string | null
-          entity_type: string
-          id?: string
-          ip_address?: string | null
-          new_value?: Json | null
-          old_value?: Json | null
-          target_user_id?: string | null
-          user_agent?: string | null
-          user_id?: string | null
+          cod_opcao?: string
+          des_texto_opcao: string
+          dta_cadastro?: string | null
+          seq_comunicado: string
         }
         Update: {
-          action?: string
-          created_at?: string
-          entity_id?: string | null
-          entity_type?: string
-          id?: string
-          ip_address?: string | null
-          new_value?: Json | null
-          old_value?: Json | null
-          target_user_id?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      calendar_events: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          description: string | null
-          event_date: string
-          event_type: string | null
-          id: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          event_date: string
-          event_type?: string | null
-          id?: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          event_date?: string
-          event_type?: string | null
-          id?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      faqs: {
-        Row: {
-          active: boolean | null
-          answer: string
-          created_at: string | null
-          id: string
-          question: string
-          sort_order: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          active?: boolean | null
-          answer: string
-          created_at?: string | null
-          id?: string
-          question: string
-          sort_order?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          active?: boolean | null
-          answer?: string
-          created_at?: string | null
-          id?: string
-          question?: string
-          sort_order?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      meeting_rooms: {
-        Row: {
-          active: boolean | null
-          allowed_roles: string[] | null
-          capacity: number
-          created_at: string | null
-          id: string
-          name: string
-          sort_order: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          active?: boolean | null
-          allowed_roles?: string[] | null
-          capacity?: number
-          created_at?: string | null
-          id?: string
-          name: string
-          sort_order?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          active?: boolean | null
-          allowed_roles?: string[] | null
-          capacity?: number
-          created_at?: string | null
-          id?: string
-          name?: string
-          sort_order?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      meeting_types: {
-        Row: {
-          active: boolean | null
-          created_at: string | null
-          id: string
-          name: string
-          sort_order: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          active?: boolean | null
-          created_at?: string | null
-          id?: string
-          name: string
-          sort_order?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          active?: boolean | null
-          created_at?: string | null
-          id?: string
-          name?: string
-          sort_order?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      menu_items: {
-        Row: {
-          active: boolean | null
-          created_at: string
-          icon: string | null
-          id: string
-          is_admin_only: boolean | null
-          name: string
-          open_in_new_tab: boolean | null
-          parent_id: string | null
-          path: string
-          sort_order: number | null
-          updated_at: string
-        }
-        Insert: {
-          active?: boolean | null
-          created_at?: string
-          icon?: string | null
-          id?: string
-          is_admin_only?: boolean | null
-          name: string
-          open_in_new_tab?: boolean | null
-          parent_id?: string | null
-          path: string
-          sort_order?: number | null
-          updated_at?: string
-        }
-        Update: {
-          active?: boolean | null
-          created_at?: string
-          icon?: string | null
-          id?: string
-          is_admin_only?: boolean | null
-          name?: string
-          open_in_new_tab?: boolean | null
-          parent_id?: string | null
-          path?: string
-          sort_order?: number | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "menu_items_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "menu_items"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      poll_options: {
-        Row: {
-          announcement_id: string
-          created_at: string | null
-          id: string
-          option_text: string
-        }
-        Insert: {
-          announcement_id: string
-          created_at?: string | null
-          id?: string
-          option_text: string
-        }
-        Update: {
-          announcement_id?: string
-          created_at?: string | null
-          id?: string
-          option_text?: string
+          cod_opcao?: string
+          des_texto_opcao?: string
+          dta_cadastro?: string | null
+          seq_comunicado?: string
         }
         Relationships: [
           {
             foreignKeyName: "poll_options_announcement_id_fkey"
-            columns: ["announcement_id"]
+            columns: ["seq_comunicado"]
             isOneToOne: false
-            referencedRelation: "announcements"
-            referencedColumns: ["id"]
+            referencedRelation: "tab_comunicado"
+            referencedColumns: ["cod_comunicado"]
           },
         ]
       }
-      poll_votes: {
+      tab_enquete_voto: {
         Row: {
-          created_at: string | null
-          id: string
-          option_id: string
-          user_id: string
+          cod_voto: string
+          dta_cadastro: string | null
+          seq_opcao: string
+          seq_usuario: string
         }
         Insert: {
-          created_at?: string | null
-          id?: string
-          option_id: string
-          user_id: string
+          cod_voto?: string
+          dta_cadastro?: string | null
+          seq_opcao: string
+          seq_usuario: string
         }
         Update: {
-          created_at?: string | null
-          id?: string
-          option_id?: string
-          user_id?: string
+          cod_voto?: string
+          dta_cadastro?: string | null
+          seq_opcao?: string
+          seq_usuario?: string
         }
         Relationships: [
           {
             foreignKeyName: "poll_votes_option_id_fkey"
-            columns: ["option_id"]
+            columns: ["seq_opcao"]
             isOneToOne: false
-            referencedRelation: "poll_options"
-            referencedColumns: ["id"]
+            referencedRelation: "tab_enquete_opcao"
+            referencedColumns: ["cod_opcao"]
           },
         ]
       }
-      profiles: {
+      tab_evento_calendario: {
         Row: {
-          ad_object_id: string | null
-          ad_synced_at: string | null
-          avatar_url: string | null
-          birthday_date: string | null
-          created_at: string | null
-          department: string | null
-          email: string | null
-          full_name: string | null
-          id: string
-          is_active: boolean | null
-          job_title: string | null
-          phone: string | null
-          unit: string | null
-          updated_at: string | null
+          cod_evento: string
+          des_descricao: string | null
+          des_tipo_evento: string | null
+          des_titulo: string
+          dta_atualizacao: string
+          dta_cadastro: string
+          dta_evento: string
+          seq_criado_por: string | null
         }
         Insert: {
-          ad_object_id?: string | null
-          ad_synced_at?: string | null
-          avatar_url?: string | null
-          birthday_date?: string | null
-          created_at?: string | null
-          department?: string | null
-          email?: string | null
-          full_name?: string | null
-          id: string
-          is_active?: boolean | null
-          job_title?: string | null
-          phone?: string | null
-          unit?: string | null
-          updated_at?: string | null
+          cod_evento?: string
+          des_descricao?: string | null
+          des_tipo_evento?: string | null
+          des_titulo: string
+          dta_atualizacao?: string
+          dta_cadastro?: string
+          dta_evento: string
+          seq_criado_por?: string | null
         }
         Update: {
-          ad_object_id?: string | null
-          ad_synced_at?: string | null
-          avatar_url?: string | null
-          birthday_date?: string | null
-          created_at?: string | null
-          department?: string | null
-          email?: string | null
-          full_name?: string | null
-          id?: string
-          is_active?: boolean | null
-          job_title?: string | null
-          phone?: string | null
-          unit?: string | null
-          updated_at?: string | null
+          cod_evento?: string
+          des_descricao?: string | null
+          des_tipo_evento?: string | null
+          des_titulo?: string
+          dta_atualizacao?: string
+          dta_cadastro?: string
+          dta_evento?: string
+          seq_criado_por?: string | null
         }
         Relationships: []
       }
-      room_reservations: {
+      tab_faq: {
         Row: {
-          created_at: string | null
-          end_time: string
-          id: string
-          meeting_type_id: string | null
-          notes: string | null
-          notified: boolean | null
-          participants_count: number | null
-          requester_name: string
-          reservation_date: string
-          room_id: string
-          start_time: string
-          updated_at: string | null
-          user_id: string
+          cod_faq: string
+          des_pergunta: string
+          des_resposta: string
+          dta_atualizacao: string | null
+          dta_cadastro: string | null
+          ind_ativo: boolean | null
+          num_ordem: number | null
         }
         Insert: {
-          created_at?: string | null
-          end_time: string
-          id?: string
-          meeting_type_id?: string | null
-          notes?: string | null
-          notified?: boolean | null
-          participants_count?: number | null
-          requester_name: string
-          reservation_date: string
-          room_id: string
-          start_time: string
-          updated_at?: string | null
-          user_id: string
+          cod_faq?: string
+          des_pergunta: string
+          des_resposta: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_ativo?: boolean | null
+          num_ordem?: number | null
         }
         Update: {
-          created_at?: string | null
-          end_time?: string
-          id?: string
-          meeting_type_id?: string | null
-          notes?: string | null
-          notified?: boolean | null
-          participants_count?: number | null
-          requester_name?: string
-          reservation_date?: string
-          room_id?: string
-          start_time?: string
-          updated_at?: string | null
-          user_id?: string
+          cod_faq?: string
+          des_pergunta?: string
+          des_resposta?: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_ativo?: boolean | null
+          num_ordem?: number | null
+        }
+        Relationships: []
+      }
+      tab_log_auditoria: {
+        Row: {
+          cod_log: string
+          des_acao: string
+          des_id_entidade: string | null
+          des_ip: string | null
+          des_tipo_entidade: string
+          des_user_agent: string | null
+          des_valor_anterior: Json | null
+          des_valor_novo: Json | null
+          dta_cadastro: string
+          seq_usuario: string | null
+          seq_usuario_alvo: string | null
+        }
+        Insert: {
+          cod_log?: string
+          des_acao: string
+          des_id_entidade?: string | null
+          des_ip?: string | null
+          des_tipo_entidade: string
+          des_user_agent?: string | null
+          des_valor_anterior?: Json | null
+          des_valor_novo?: Json | null
+          dta_cadastro?: string
+          seq_usuario?: string | null
+          seq_usuario_alvo?: string | null
+        }
+        Update: {
+          cod_log?: string
+          des_acao?: string
+          des_id_entidade?: string | null
+          des_ip?: string | null
+          des_tipo_entidade?: string
+          des_user_agent?: string | null
+          des_valor_anterior?: Json | null
+          des_valor_novo?: Json | null
+          dta_cadastro?: string
+          seq_usuario?: string | null
+          seq_usuario_alvo?: string | null
+        }
+        Relationships: []
+      }
+      tab_menu_item: {
+        Row: {
+          cod_menu_item: string
+          des_caminho: string
+          des_icone: string | null
+          des_nome: string
+          dta_atualizacao: string
+          dta_cadastro: string
+          ind_admin_only: boolean | null
+          ind_ativo: boolean | null
+          ind_nova_aba: boolean | null
+          num_ordem: number | null
+          seq_menu_pai: string | null
+        }
+        Insert: {
+          cod_menu_item?: string
+          des_caminho: string
+          des_icone?: string | null
+          des_nome: string
+          dta_atualizacao?: string
+          dta_cadastro?: string
+          ind_admin_only?: boolean | null
+          ind_ativo?: boolean | null
+          ind_nova_aba?: boolean | null
+          num_ordem?: number | null
+          seq_menu_pai?: string | null
+        }
+        Update: {
+          cod_menu_item?: string
+          des_caminho?: string
+          des_icone?: string | null
+          des_nome?: string
+          dta_atualizacao?: string
+          dta_cadastro?: string
+          ind_admin_only?: boolean | null
+          ind_ativo?: boolean | null
+          ind_nova_aba?: boolean | null
+          num_ordem?: number | null
+          seq_menu_pai?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_items_parent_id_fkey"
+            columns: ["seq_menu_pai"]
+            isOneToOne: false
+            referencedRelation: "tab_menu_item"
+            referencedColumns: ["cod_menu_item"]
+          },
+        ]
+      }
+      tab_perfil_usuario: {
+        Row: {
+          cod_usuario: string
+          des_ad_object_id: string | null
+          des_avatar_url: string | null
+          des_cargo: string | null
+          des_departamento: string | null
+          des_email: string | null
+          des_nome_completo: string | null
+          des_telefone: string | null
+          des_unidade: string | null
+          dta_aniversario: string | null
+          dta_atualizacao: string | null
+          dta_cadastro: string | null
+          dta_sincronizacao_ad: string | null
+          ind_ativo: boolean | null
+        }
+        Insert: {
+          cod_usuario: string
+          des_ad_object_id?: string | null
+          des_avatar_url?: string | null
+          des_cargo?: string | null
+          des_departamento?: string | null
+          des_email?: string | null
+          des_nome_completo?: string | null
+          des_telefone?: string | null
+          des_unidade?: string | null
+          dta_aniversario?: string | null
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          dta_sincronizacao_ad?: string | null
+          ind_ativo?: boolean | null
+        }
+        Update: {
+          cod_usuario?: string
+          des_ad_object_id?: string | null
+          des_avatar_url?: string | null
+          des_cargo?: string | null
+          des_departamento?: string | null
+          des_email?: string | null
+          des_nome_completo?: string | null
+          des_telefone?: string | null
+          des_unidade?: string | null
+          dta_aniversario?: string | null
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          dta_sincronizacao_ad?: string | null
+          ind_ativo?: boolean | null
+        }
+        Relationships: []
+      }
+      tab_reserva_sala: {
+        Row: {
+          cod_reserva: string
+          des_nome_solicitante: string
+          des_observacao: string | null
+          dta_atualizacao: string | null
+          dta_cadastro: string | null
+          dta_reserva: string
+          hra_fim: string
+          hra_inicio: string
+          ind_notificado: boolean | null
+          num_participantes: number | null
+          seq_sala: string
+          seq_tipo_reuniao: string | null
+          seq_usuario: string
+        }
+        Insert: {
+          cod_reserva?: string
+          des_nome_solicitante: string
+          des_observacao?: string | null
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          dta_reserva: string
+          hra_fim: string
+          hra_inicio: string
+          ind_notificado?: boolean | null
+          num_participantes?: number | null
+          seq_sala: string
+          seq_tipo_reuniao?: string | null
+          seq_usuario: string
+        }
+        Update: {
+          cod_reserva?: string
+          des_nome_solicitante?: string
+          des_observacao?: string | null
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          dta_reserva?: string
+          hra_fim?: string
+          hra_inicio?: string
+          ind_notificado?: boolean | null
+          num_participantes?: number | null
+          seq_sala?: string
+          seq_tipo_reuniao?: string | null
+          seq_usuario?: string
         }
         Relationships: [
           {
             foreignKeyName: "room_reservations_meeting_type_id_fkey"
-            columns: ["meeting_type_id"]
+            columns: ["seq_tipo_reuniao"]
             isOneToOne: false
-            referencedRelation: "meeting_types"
-            referencedColumns: ["id"]
+            referencedRelation: "tab_tipo_reuniao"
+            referencedColumns: ["cod_tipo_reuniao"]
           },
           {
             foreignKeyName: "room_reservations_room_id_fkey"
-            columns: ["room_id"]
+            columns: ["seq_sala"]
             isOneToOne: false
-            referencedRelation: "meeting_rooms"
-            referencedColumns: ["id"]
+            referencedRelation: "tab_sala_reuniao"
+            referencedColumns: ["cod_sala"]
           },
         ]
       }
-      systems: {
+      tab_sala_reuniao: {
         Row: {
-          active: boolean | null
-          created_at: string | null
-          id: string
-          last_check: string | null
-          name: string
-          sort_order: number | null
-          status: string
-          updated_at: string | null
+          cod_sala: string
+          des_nome: string
+          des_roles_permitidos: string[] | null
+          dta_atualizacao: string | null
+          dta_cadastro: string | null
+          ind_ativo: boolean | null
+          num_capacidade: number
+          num_ordem: number | null
         }
         Insert: {
-          active?: boolean | null
-          created_at?: string | null
-          id?: string
-          last_check?: string | null
-          name: string
-          sort_order?: number | null
-          status?: string
-          updated_at?: string | null
+          cod_sala?: string
+          des_nome: string
+          des_roles_permitidos?: string[] | null
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_ativo?: boolean | null
+          num_capacidade?: number
+          num_ordem?: number | null
         }
         Update: {
-          active?: boolean | null
-          created_at?: string | null
-          id?: string
-          last_check?: string | null
-          name?: string
-          sort_order?: number | null
-          status?: string
-          updated_at?: string | null
+          cod_sala?: string
+          des_nome?: string
+          des_roles_permitidos?: string[] | null
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_ativo?: boolean | null
+          num_capacidade?: number
+          num_ordem?: number | null
         }
         Relationships: []
       }
-      user_roles: {
+      tab_sistema: {
         Row: {
-          created_at: string | null
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
+          cod_sistema: string
+          des_nome: string
+          des_status: string
+          dta_atualizacao: string | null
+          dta_cadastro: string | null
+          dta_ultima_verificacao: string | null
+          ind_ativo: boolean | null
+          num_ordem: number | null
         }
         Insert: {
-          created_at?: string | null
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
+          cod_sistema?: string
+          des_nome: string
+          des_status?: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          dta_ultima_verificacao?: string | null
+          ind_ativo?: boolean | null
+          num_ordem?: number | null
         }
         Update: {
-          created_at?: string | null
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
+          cod_sistema?: string
+          des_nome?: string
+          des_status?: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          dta_ultima_verificacao?: string | null
+          ind_ativo?: boolean | null
+          num_ordem?: number | null
+        }
+        Relationships: []
+      }
+      tab_tipo_reuniao: {
+        Row: {
+          cod_tipo_reuniao: string
+          des_nome: string
+          dta_atualizacao: string | null
+          dta_cadastro: string | null
+          ind_ativo: boolean | null
+          num_ordem: number | null
+        }
+        Insert: {
+          cod_tipo_reuniao?: string
+          des_nome: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_ativo?: boolean | null
+          num_ordem?: number | null
+        }
+        Update: {
+          cod_tipo_reuniao?: string
+          des_nome?: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_ativo?: boolean | null
+          num_ordem?: number | null
+        }
+        Relationships: []
+      }
+      tab_usuario_role: {
+        Row: {
+          cod_usuario_role: string
+          des_role: Database["public"]["Enums"]["app_role"]
+          dta_cadastro: string | null
+          seq_usuario: string
+        }
+        Insert: {
+          cod_usuario_role?: string
+          des_role: Database["public"]["Enums"]["app_role"]
+          dta_cadastro?: string | null
+          seq_usuario: string
+        }
+        Update: {
+          cod_usuario_role?: string
+          des_role?: Database["public"]["Enums"]["app_role"]
+          dta_cadastro?: string | null
+          seq_usuario?: string
         }
         Relationships: []
       }

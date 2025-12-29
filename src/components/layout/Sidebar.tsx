@@ -17,15 +17,15 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DbMenuItem {
-  id: string;
-  name: string;
-  path: string;
-  icon: string;
-  parent_id: string | null;
-  open_in_new_tab: boolean;
-  sort_order: number;
-  is_admin_only: boolean;
-  active: boolean;
+  cod_menu_item: string;
+  des_nome: string;
+  des_caminho: string;
+  des_icone: string;
+  seq_menu_pai: string | null;
+  ind_nova_aba: boolean;
+  num_ordem: number;
+  ind_admin_only: boolean;
+  ind_ativo: boolean;
 }
 
 interface MenuItemType {
@@ -120,7 +120,11 @@ export function Sidebar() {
       if (cached) {
         const processedItems = processMenuItems(cached);
         setMenuItems(processedItems);
-        setAllSubmenus(cached.filter(item => item.parent_id));
+        setAllSubmenus(cached.filter(item => item.seq_menu_pai));
+        autoExpandMenus(processedItems);
+        setIsLoading(false);
+        return;
+      }
         autoExpandMenus(processedItems);
         setIsLoading(false);
         return;
@@ -129,16 +133,26 @@ export function Sidebar() {
 
     try {
       const { data, error } = await supabase
-        .from('menu_items')
+        .from('tab_menu_item')
         .select('*')
-        .eq('active', true)
-        .order('sort_order');
+        .eq('ind_ativo', true)
+        .order('num_ordem');
 
       if (error) throw error;
 
-      const items = data as DbMenuItem[];
+      const items: DbMenuItem[] = (data || []).map(d => ({
+        cod_menu_item: d.cod_menu_item,
+        des_nome: d.des_nome,
+        des_caminho: d.des_caminho,
+        des_icone: d.des_icone,
+        seq_menu_pai: d.seq_menu_pai,
+        ind_nova_aba: d.ind_nova_aba,
+        num_ordem: d.num_ordem,
+        ind_admin_only: d.ind_admin_only,
+        ind_ativo: d.ind_ativo,
+      }));
       setCachedMenus(items);
-      setAllSubmenus(items.filter(item => item.parent_id));
+      setAllSubmenus(items.filter(item => item.seq_menu_pai));
       
       const processedItems = processMenuItems(items);
       setMenuItems(processedItems);
@@ -164,28 +178,28 @@ export function Sidebar() {
   };
 
   const processMenuItems = (items: DbMenuItem[]): MenuItemType[] => {
-    const parentItems = items.filter(item => !item.parent_id);
+    const parentItems = items.filter(item => !item.seq_menu_pai);
     
     return parentItems.map(parent => {
       const children = items
-        .filter(item => item.parent_id === parent.id)
+        .filter(item => item.seq_menu_pai === parent.cod_menu_item)
         .map(child => ({
-          id: child.id,
-          name: child.name,
-          path: child.path,
-          icon: getIconComponent(child.icon),
-          openInNewTab: child.open_in_new_tab,
-          isAdminOnly: child.is_admin_only,
+          id: child.cod_menu_item,
+          name: child.des_nome,
+          path: child.des_caminho,
+          icon: getIconComponent(child.des_icone),
+          openInNewTab: child.ind_nova_aba,
+          isAdminOnly: child.ind_admin_only,
           isParent: false,
         }));
 
       return {
-        id: parent.id,
-        name: parent.name,
-        path: parent.path,
-        icon: getIconComponent(parent.icon),
-        openInNewTab: parent.open_in_new_tab,
-        isAdminOnly: parent.is_admin_only,
+        id: parent.cod_menu_item,
+        name: parent.des_nome,
+        path: parent.des_caminho,
+        icon: getIconComponent(parent.des_icone),
+        openInNewTab: parent.ind_nova_aba,
+        isAdminOnly: parent.ind_admin_only,
         isParent: true,
         children: children.length > 0 ? children : undefined,
       };
@@ -217,15 +231,15 @@ export function Sidebar() {
 
     // Search in submenus
     allSubmenus.forEach(menu => {
-      if (menu.name.toLowerCase().includes(lowerQuery)) {
+      if (menu.des_nome.toLowerCase().includes(lowerQuery)) {
         // Check if it's admin only and user is not admin
-        if (menu.is_admin_only && !isAdmin) return;
+        if (menu.ind_admin_only && !isAdmin) return;
         
         results.push({
-          id: menu.id,
-          title: menu.name,
+          id: menu.cod_menu_item,
+          title: menu.des_nome,
           type: 'menu',
-          path: menu.path,
+          path: menu.des_caminho,
           icon: 'menu'
         });
       }
@@ -234,17 +248,17 @@ export function Sidebar() {
     // Search in announcements (title and summary/description)
     try {
       const { data: announcements } = await supabase
-        .from('announcements')
-        .select('id, title, summary')
-        .eq('active', true)
-        .or(`title.ilike.%${query}%,summary.ilike.%${query}%`)
+        .from('tab_comunicado')
+        .select('cod_comunicado, des_titulo, des_resumo')
+        .eq('ind_ativo', true)
+        .or(`des_titulo.ilike.%${query}%,des_resumo.ilike.%${query}%`)
         .limit(5);
 
       if (announcements) {
         announcements.forEach(ann => {
           results.push({
-            id: ann.id,
-            title: ann.title,
+            id: ann.cod_comunicado,
+            title: ann.des_titulo,
             type: 'announcement',
             path: '/comunicados',
             icon: 'announcement'

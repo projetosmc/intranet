@@ -23,15 +23,19 @@ export function useCalendarEvents() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('calendar_events')
+        .from('tab_evento_calendario')
         .select('*')
-        .order('event_date');
+        .order('dta_evento');
 
       if (error) throw error;
 
-      const formattedEvents = (data || []).map(event => ({
-        ...event,
-        event_date: new Date(event.event_date),
+      const formattedEvents: CalendarEvent[] = (data || []).map(event => ({
+        id: event.cod_evento,
+        title: event.des_titulo,
+        description: event.des_descricao || undefined,
+        event_date: new Date(event.dta_evento),
+        event_type: event.des_tipo_evento || 'general',
+        created_by: event.seq_criado_por || undefined,
       }));
 
       setEvents(formattedEvents);
@@ -47,13 +51,13 @@ export function useCalendarEvents() {
       const { data: { user } } = await supabase.auth.getUser();
       
       const { error } = await supabase
-        .from('calendar_events')
+        .from('tab_evento_calendario')
         .insert({
-          title: event.title,
-          description: event.description,
-          event_date: event.event_date.toISOString().split('T')[0],
-          event_type: event.event_type,
-          created_by: user?.id,
+          des_titulo: event.title,
+          des_descricao: event.description,
+          dta_evento: event.event_date.toISOString().split('T')[0],
+          des_tipo_evento: event.event_type,
+          seq_criado_por: user?.id,
         });
 
       if (error) throw error;
@@ -71,15 +75,15 @@ export function useCalendarEvents() {
   const updateEvent = async (id: string, event: Partial<CalendarEvent>) => {
     try {
       const updateData: any = {};
-      if (event.title) updateData.title = event.title;
-      if (event.description !== undefined) updateData.description = event.description;
-      if (event.event_date) updateData.event_date = event.event_date.toISOString().split('T')[0];
-      if (event.event_type) updateData.event_type = event.event_type;
+      if (event.title) updateData.des_titulo = event.title;
+      if (event.description !== undefined) updateData.des_descricao = event.description;
+      if (event.event_date) updateData.dta_evento = event.event_date.toISOString().split('T')[0];
+      if (event.event_type) updateData.des_tipo_evento = event.event_type;
 
       const { error } = await supabase
-        .from('calendar_events')
+        .from('tab_evento_calendario')
         .update(updateData)
-        .eq('id', id);
+        .eq('cod_evento', id);
 
       if (error) throw error;
 
@@ -96,9 +100,9 @@ export function useCalendarEvents() {
   const deleteEvent = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('calendar_events')
+        .from('tab_evento_calendario')
         .delete()
-        .eq('id', id);
+        .eq('cod_evento', id);
 
       if (error) throw error;
 
