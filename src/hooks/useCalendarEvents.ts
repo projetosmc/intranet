@@ -55,14 +55,19 @@ export function useCalendarEvents() {
 
       if (error) throw error;
 
-      const formattedEvents: CalendarEvent[] = (data || []).map(event => ({
-        id: event.cod_evento,
-        title: event.des_titulo,
-        description: event.des_descricao || undefined,
-        event_date: new Date(event.dta_evento),
-        event_type: event.des_tipo_evento || 'general',
-        created_by: event.seq_criado_por || undefined,
-      }));
+      const formattedEvents: CalendarEvent[] = (data || []).map(event => {
+        // Criar Date evitando problemas de timezone
+        // dta_evento vem como 'YYYY-MM-DD'
+        const [year, month, day] = event.dta_evento.split('-').map(Number);
+        return {
+          id: event.cod_evento,
+          title: event.des_titulo,
+          description: event.des_descricao || undefined,
+          event_date: new Date(year, month - 1, day),
+          event_type: event.des_tipo_evento || 'general',
+          created_by: event.seq_criado_por || undefined,
+        };
+      });
 
       setEvents(formattedEvents);
     } catch (error) {

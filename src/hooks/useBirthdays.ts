@@ -49,13 +49,18 @@ export function useBirthdays() {
 
       if (error) throw error;
 
-      const formattedBirthdays: Birthday[] = (data || []).map(profile => ({
-        id: profile.cod_usuario,
-        fullName: profile.des_nome_completo || 'Sem nome',
-        birthdayDate: new Date(profile.dta_aniversario),
-        unit: profile.des_unidade || undefined,
-        avatarUrl: profile.des_avatar_url || undefined,
-      }));
+      const formattedBirthdays: Birthday[] = (data || []).map(profile => {
+        // Criar Date evitando problemas de timezone
+        // dta_aniversario vem como 'YYYY-MM-DD'
+        const [year, month, day] = profile.dta_aniversario.split('-').map(Number);
+        return {
+          id: profile.cod_usuario,
+          fullName: profile.des_nome_completo || 'Sem nome',
+          birthdayDate: new Date(year, month - 1, day),
+          unit: profile.des_unidade || undefined,
+          avatarUrl: profile.des_avatar_url || undefined,
+        };
+      });
 
       setBirthdays(formattedBirthdays);
     } catch (error) {

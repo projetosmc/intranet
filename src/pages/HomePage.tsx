@@ -43,18 +43,27 @@ export default function HomePage() {
 
   // Memoizar combinação de eventos para evitar re-renders
   const allEvents = useMemo(() => {
-    const birthdayEvents = birthdays.map(b => ({
-      date: b.birthdayDate,
-      title: `🎂 ${b.fullName}`,
-      type: 'birthday'
-    }));
+    const birthdayEvents = birthdays.map(b => {
+      // birthdayDate já é um Date, mas pode ter problema de timezone
+      // Criar novo Date usando ano, mês e dia locais
+      const bd = b.birthdayDate;
+      return {
+        date: new Date(bd.getFullYear(), bd.getMonth(), bd.getDate()),
+        title: `🎂 ${b.fullName}`,
+        type: 'birthday'
+      };
+    });
 
-    const calEvents = calendarEvents.map(e => ({
-      date: e.event_date,
-      title: e.title,
-      type: e.event_type,
-      id: e.id
-    }));
+    const calEvents = calendarEvents.map(e => {
+      // event_date já é um Date
+      const ed = e.event_date;
+      return {
+        date: new Date(ed.getFullYear(), ed.getMonth(), ed.getDate()),
+        title: e.title,
+        type: e.event_type,
+        id: e.id
+      };
+    });
 
     return [...birthdayEvents, ...calEvents, ...reservationEvents];
   }, [birthdays, calendarEvents, reservationEvents]);
