@@ -156,44 +156,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true;
 
-    const initializeAuth = async () => {
-      try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-        
-        if (!isMounted) return;
-        
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
-        
-        if (initialSession?.user) {
-          const userRoles = await fetchRoles(initialSession.user.id);
-          const userIsAdmin = userRoles.includes('admin');
-          await fetchPermissions(userRoles, userIsAdmin);
-        } else {
-          setRoles([]);
-          setRolesLoading(false);
-          setPermissions([]);
-          setPermissionsLoading(false);
-        }
-        
-        setAuthLoading(false);
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-        if (isMounted) {
-          setAuthLoading(false);
-          setRolesLoading(false);
-          setPermissionsLoading(false);
-        }
-      }
-    };
-
-    initializeAuth();
-
-    // Listen to auth state changes
+    // Set up auth state listener FIRST (as per Supabase best practices)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
+      (event, newSession) => {
         if (!isMounted) return;
 
+        // Only synchronous state updates here - no async calls in callback!
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
@@ -205,14 +173,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRolesLoading(false);
           setPermissionsLoading(false);
         } else if (newSession?.user) {
+          // Defer Supabase calls with setTimeout to prevent deadlock
           setRolesLoading(true);
           setPermissionsLoading(true);
-          const userRoles = await fetchRoles(newSession.user.id);
-          const userIsAdmin = userRoles.includes('admin');
-          await fetchPermissions(userRoles, userIsAdmin);
+          setTimeout(() => {
+            if (!isMounted) return;
+            fetchRoles(newSession.user.id).then((userRoles) => {
+              if (!isMounted) return;
+              const userIsAdmin = userRoles.includes('admin');
+              fetchPermissions(userRoles, userIsAdmin);
+            });
+          }, 0);
         }
       }
     );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (!isMounted) return;
+      
+      setSession(initialSession);
+      setUser(initialSession?.user ?? null);
+      
+      if (initialSession?.user) {
+        fetchRoles(initialSession.user.id).then((userRoles) => {
+          if (!isMounted) return;
+          const userIsAdmin = userRoles.includes('admin');
+          fetchPermissions(userRoles, userIsAdmin);
+          setAuthLoading(false);
+        }).catch(() => {
+          if (isMounted) {
+            setAuthLoading(false);
+            setRolesLoading(false);
+            setPermissionsLoading(false);
+          }
+        });
+      } else {
+        setRoles([]);
+        setRolesLoading(false);
+        setPermissions([]);
+        setPermissionsLoading(false);
+        setAuthLoading(false);
+      }
+    }).catch((error) => {
+      console.error('Error getting session:', error);
+      if (isMounted) {
+        setAuthLoading(false);
+        setRolesLoading(false);
+        setPermissionsLoading(false);
+      }
+    });
 
     return () => {
       isMounted = false;
