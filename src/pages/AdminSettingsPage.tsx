@@ -124,8 +124,38 @@ export default function AdminSettingsPage() {
       if (parentId) {
         if (pathType === 'internal') {
           pathValue = selectedPath;
+          if (!pathValue) {
+            toast({ 
+              title: 'Selecione uma página', 
+              description: 'Escolha uma página interna para o submenu.', 
+              variant: 'destructive' 
+            });
+            return;
+          }
         } else {
           pathValue = (formData.get('external_url') as string)?.trim() || '';
+          // Validar URL externa
+          if (!pathValue) {
+            toast({ 
+              title: 'URL obrigatória', 
+              description: 'Digite uma URL externa válida.', 
+              variant: 'destructive' 
+            });
+            return;
+          }
+          try {
+            const url = new URL(pathValue);
+            if (!['http:', 'https:'].includes(url.protocol)) {
+              throw new Error('Protocolo inválido');
+            }
+          } catch {
+            toast({ 
+              title: 'URL inválida', 
+              description: 'Digite uma URL válida começando com http:// ou https://', 
+              variant: 'destructive' 
+            });
+            return;
+          }
         }
       } else {
         // Para menus pai, gerar caminho baseado no nome
@@ -428,14 +458,6 @@ export default function AdminSettingsPage() {
     });
   };
 
-  const expandAll = () => {
-    setExpandedMenus(new Set(parentItems.map(p => p.cod_menu_item)));
-  };
-
-  const collapseAll = () => {
-    setExpandedMenus(new Set());
-  };
-
   const SortableMenuItem = ({ item, isChild = false }: { item: MenuItem; isChild?: boolean }) => {
     const {
       attributes,
@@ -447,6 +469,9 @@ export default function AdminSettingsPage() {
     } = useSortable({ id: item.cod_menu_item });
 
     const isOver = overId === item.cod_menu_item && !isDragging;
+    const childCount = menuItems.filter(m => m.seq_menu_pai === item.cod_menu_item).length;
+    const hasChildren = !isChild && childCount > 0;
+    const isExpanded = expandedMenus.has(item.cod_menu_item);
 
     const style = {
       transform: CSS.Transform.toString(transform),
@@ -479,12 +504,35 @@ export default function AdminSettingsPage() {
         >
           <GripVertical className={`h-4 w-4 transition-colors ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
         </motion.div>
+        
+        {/* Ícone de expandir/retrair para menus com submenus */}
+        {hasChildren ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="h-6 w-6 p-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleExpand(item.cod_menu_item);
+            }}
+          >
+            <motion.div
+              animate={{ rotate: isExpanded ? 90 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </motion.div>
+          </Button>
+        ) : !isChild ? (
+          <div className="w-6" /> // Espaço para alinhar
+        ) : null}
+        
         <div className="flex items-center gap-2 flex-1">
           {getIconComponent(item.des_icone)}
           <span className="font-medium">{item.des_nome}</span>
-          {!isChild && (
+          {hasChildren && (
             <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">
-              {menuItems.filter(m => m.seq_menu_pai === item.cod_menu_item).length} submenus
+              {childCount} submenu{childCount > 1 ? 's' : ''}
             </span>
           )}
           <span className="text-sm text-muted-foreground">{item.des_caminho}</span>
@@ -508,6 +556,9 @@ export default function AdminSettingsPage() {
               setSelectedParentId(item.seq_menu_pai || '__none__'); 
               setSelectedIcon(item.des_icone || 'Circle');
               setNamePreview(item.des_nome);
+              const isExternal = item.des_caminho?.startsWith('http');
+              setPathType(isExternal ? 'external' : 'internal');
+              setSelectedPath(isExternal ? '' : item.des_caminho || '');
               setIsDialogOpen(true); 
             }}
           >
@@ -578,14 +629,6 @@ export default function AdminSettingsPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={expandAll}>
-                  <ChevronDown className="h-4 w-4 mr-1" />
-                  Expandir
-                </Button>
-                <Button variant="outline" size="sm" onClick={collapseAll}>
-                  <ChevronRight className="h-4 w-4 mr-1" />
-                  Retrair
-                </Button>
                 <Dialog open={isDialogOpen} onOpenChange={(o) => {
                 setIsDialogOpen(o); 
                 if (!o) {
@@ -841,35 +884,49 @@ export default function AdminSettingsPage() {
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="divide-y divide-border">
-                      {parentItems.map((item) => (
-                        <div key={item.cod_menu_item}>
-                          <SortableMenuItem item={item} />
-                          
-                          {getChildItems(item.cod_menu_item).length > 0 && (
-                            <DndContext
-                              sensors={sensors}
-                              collisionDetection={closestCenter}
-                              onDragStart={handleDragStart}
-                              onDragOver={handleDragOver}
-                              onDragEnd={(event) => handleChildDragEnd(item.cod_menu_item, event)}
-                            >
-                              <SortableContext
-                                items={getChildItems(item.cod_menu_item).map(child => child.cod_menu_item)}
-                                strategy={verticalListSortingStrategy}
-                              >
-                                {getChildItems(item.cod_menu_item).map((child) => (
-                                  <SortableMenuItem key={child.cod_menu_item} item={child} isChild />
-                                ))}
-                              </SortableContext>
-                              <DragOverlay>
-                                {activeId && getActiveItem()?.seq_menu_pai === item.cod_menu_item ? (
-                                  <DragOverlayItem item={getActiveItem()!} />
-                                ) : null}
-                              </DragOverlay>
-                            </DndContext>
-                          )}
-                        </div>
-                      ))}
+                      {parentItems.map((item) => {
+                        const children = getChildItems(item.cod_menu_item);
+                        const isExpanded = expandedMenus.has(item.cod_menu_item);
+                        
+                        return (
+                          <div key={item.cod_menu_item}>
+                            <SortableMenuItem item={item} />
+                            
+                            {children.length > 0 && isExpanded && (
+                              <AnimatePresence>
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                >
+                                  <DndContext
+                                    sensors={sensors}
+                                    collisionDetection={closestCenter}
+                                    onDragStart={handleDragStart}
+                                    onDragOver={handleDragOver}
+                                    onDragEnd={(event) => handleChildDragEnd(item.cod_menu_item, event)}
+                                  >
+                                    <SortableContext
+                                      items={children.map(child => child.cod_menu_item)}
+                                      strategy={verticalListSortingStrategy}
+                                    >
+                                      {children.map((child) => (
+                                        <SortableMenuItem key={child.cod_menu_item} item={child} isChild />
+                                      ))}
+                                    </SortableContext>
+                                    <DragOverlay>
+                                      {activeId && getActiveItem()?.seq_menu_pai === item.cod_menu_item ? (
+                                        <DragOverlayItem item={getActiveItem()!} />
+                                      ) : null}
+                                    </DragOverlay>
+                                  </DndContext>
+                                </motion.div>
+                              </AnimatePresence>
+                            )}
+                          </div>
+                        );
+                      })}
 
                       {menuItems.filter(item => item.seq_menu_pai && !parentItems.find(p => p.cod_menu_item === item.seq_menu_pai)).map((item) => (
                         <SortableMenuItem key={item.cod_menu_item} item={item} />
