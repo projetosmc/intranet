@@ -34,7 +34,7 @@ export const AnnouncementCard = forwardRef<HTMLElement, AnnouncementCardProps>(
           src={announcement.imageUrl || placeholderImage}
           alt={announcement.title}
           customGrid={{ rows: 3, cols: 4 }}
-          grayscaleAnimation
+          grayscaleAnimation={false}
           pixelFadeInDuration={400}
           maxAnimationDelay={500}
           className="w-full h-full"

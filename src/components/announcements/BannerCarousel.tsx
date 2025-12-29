@@ -51,7 +51,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
               src={currentBanner.imageUrl || ''}
               alt={currentBanner.title}
               customGrid={{ rows: 2, cols: 6 }}
-              grayscaleAnimation
+              grayscaleAnimation={false}
               pixelFadeInDuration={500}
               maxAnimationDelay={600}
               className="absolute inset-0 w-full h-full"
