@@ -111,13 +111,13 @@ export function useUserRole() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
+        .from('tab_usuario_role')
+        .select('des_role')
+        .eq('seq_usuario', userId);
 
       if (error) throw error;
 
-      const fetchedRoles = (data || []).map((r) => r.role as AppRole);
+      const fetchedRoles = (data || []).map((r) => r.des_role as AppRole);
       setRoles(fetchedRoles);
       setCachedRoles(userId, fetchedRoles);
     } catch (error) {

@@ -14,10 +14,10 @@ export function useDbAnnouncements() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('announcements')
+        .from('tab_comunicado')
         .select('*')
-        .order('pinned', { ascending: false })
-        .order('published_at', { ascending: false });
+        .order('ind_fixado', { ascending: false })
+        .order('dta_publicacao', { ascending: false });
 
       if (error) throw error;
 
@@ -26,34 +26,34 @@ export function useDbAnnouncements() {
         (data || []).map(async (item) => {
           let pollOptions: PollOption[] = [];
 
-          if (item.template_type === 'poll') {
+          if (item.des_tipo_template === 'poll') {
             const { data: optionsData } = await supabase
-              .from('poll_options')
-              .select('id, option_text')
-              .eq('announcement_id', item.id);
+              .from('tab_enquete_opcao')
+              .select('cod_opcao, des_texto_opcao')
+              .eq('seq_comunicado', item.cod_comunicado);
 
             if (optionsData) {
               pollOptions = await Promise.all(
                 optionsData.map(async (opt) => {
                   const { count } = await supabase
-                    .from('poll_votes')
+                    .from('tab_enquete_voto')
                     .select('*', { count: 'exact', head: true })
-                    .eq('option_id', opt.id);
+                    .eq('seq_opcao', opt.cod_opcao);
 
                   let userVoted = false;
                   if (user) {
                     const { data: voteData } = await supabase
-                      .from('poll_votes')
-                      .select('id')
-                      .eq('option_id', opt.id)
-                      .eq('user_id', user.id)
+                      .from('tab_enquete_voto')
+                      .select('cod_voto')
+                      .eq('seq_opcao', opt.cod_opcao)
+                      .eq('seq_usuario', user.id)
                       .maybeSingle();
                     userVoted = !!voteData;
                   }
 
                   return {
-                    id: opt.id,
-                    optionText: opt.option_text,
+                    id: opt.cod_opcao,
+                    optionText: opt.des_texto_opcao,
                     voteCount: count || 0,
                     userVoted,
                   };
@@ -63,16 +63,16 @@ export function useDbAnnouncements() {
           }
 
           return {
-            id: item.id,
-            title: item.title,
-            summary: item.summary,
-            content: item.content,
-            pinned: item.pinned ?? false,
-            publishedAt: item.published_at,
-            active: item.active ?? true,
-            templateType: (item.template_type as TemplateType) || 'simple',
-            imageUrl: item.image_url || undefined,
-            pollType: (item.poll_type as PollType) || undefined,
+            id: item.cod_comunicado,
+            title: item.des_titulo,
+            summary: item.des_resumo,
+            content: item.des_conteudo,
+            pinned: item.ind_fixado ?? false,
+            publishedAt: item.dta_publicacao,
+            active: item.ind_ativo ?? true,
+            templateType: (item.des_tipo_template as TemplateType) || 'simple',
+            imageUrl: item.des_imagem_url || undefined,
+            pollType: (item.des_tipo_enquete as PollType) || undefined,
             pollOptions,
           };
         })
@@ -129,16 +129,16 @@ export function useDbAnnouncements() {
   ) => {
     try {
       const { data, error } = await supabase
-        .from('announcements')
+        .from('tab_comunicado')
         .insert({
-          title: announcement.title,
-          summary: announcement.summary,
-          content: announcement.content,
-          pinned: announcement.pinned,
-          active: announcement.active,
-          template_type: announcement.templateType,
-          image_url: announcement.imageUrl,
-          poll_type: announcement.pollType,
+          des_titulo: announcement.title,
+          des_resumo: announcement.summary,
+          des_conteudo: announcement.content,
+          ind_fixado: announcement.pinned,
+          ind_ativo: announcement.active,
+          des_tipo_template: announcement.templateType,
+          des_imagem_url: announcement.imageUrl,
+          des_tipo_enquete: announcement.pollType,
         })
         .select()
         .single();
@@ -148,11 +148,11 @@ export function useDbAnnouncements() {
       // Add poll options if it's a poll
       if (announcement.templateType === 'poll' && pollOptions?.length) {
         const { error: optionsError } = await supabase
-          .from('poll_options')
+          .from('tab_enquete_opcao')
           .insert(
             pollOptions.map((text) => ({
-              announcement_id: data.id,
-              option_text: text,
+              seq_comunicado: data.cod_comunicado,
+              des_texto_opcao: text,
             }))
           );
 
@@ -184,31 +184,31 @@ export function useDbAnnouncements() {
   ) => {
     try {
       const dbUpdates: Record<string, unknown> = {};
-      if (updates.title !== undefined) dbUpdates.title = updates.title;
-      if (updates.summary !== undefined) dbUpdates.summary = updates.summary;
-      if (updates.content !== undefined) dbUpdates.content = updates.content;
-      if (updates.pinned !== undefined) dbUpdates.pinned = updates.pinned;
-      if (updates.active !== undefined) dbUpdates.active = updates.active;
-      if (updates.templateType !== undefined) dbUpdates.template_type = updates.templateType;
-      if (updates.imageUrl !== undefined) dbUpdates.image_url = updates.imageUrl;
-      if (updates.pollType !== undefined) dbUpdates.poll_type = updates.pollType;
+      if (updates.title !== undefined) dbUpdates.des_titulo = updates.title;
+      if (updates.summary !== undefined) dbUpdates.des_resumo = updates.summary;
+      if (updates.content !== undefined) dbUpdates.des_conteudo = updates.content;
+      if (updates.pinned !== undefined) dbUpdates.ind_fixado = updates.pinned;
+      if (updates.active !== undefined) dbUpdates.ind_ativo = updates.active;
+      if (updates.templateType !== undefined) dbUpdates.des_tipo_template = updates.templateType;
+      if (updates.imageUrl !== undefined) dbUpdates.des_imagem_url = updates.imageUrl;
+      if (updates.pollType !== undefined) dbUpdates.des_tipo_enquete = updates.pollType;
 
       const { error } = await supabase
-        .from('announcements')
+        .from('tab_comunicado')
         .update(dbUpdates)
-        .eq('id', id);
+        .eq('cod_comunicado', id);
 
       if (error) throw error;
 
       // Update poll options if provided
       if (pollOptions !== undefined) {
-        await supabase.from('poll_options').delete().eq('announcement_id', id);
+        await supabase.from('tab_enquete_opcao').delete().eq('seq_comunicado', id);
         
         if (pollOptions.length > 0) {
-          await supabase.from('poll_options').insert(
+          await supabase.from('tab_enquete_opcao').insert(
             pollOptions.map((text) => ({
-              announcement_id: id,
-              option_text: text,
+              seq_comunicado: id,
+              des_texto_opcao: text,
             }))
           );
         }
@@ -233,9 +233,9 @@ export function useDbAnnouncements() {
   const deleteAnnouncement = useCallback(async (id: string) => {
     try {
       const { error } = await supabase
-        .from('announcements')
+        .from('tab_comunicado')
         .delete()
-        .eq('id', id);
+        .eq('cod_comunicado', id);
 
       if (error) throw error;
 
@@ -261,20 +261,20 @@ export function useDbAnnouncements() {
     try {
       // Check if user already voted
       const { data: existingVote } = await supabase
-        .from('poll_votes')
-        .select('id')
-        .eq('option_id', optionId)
-        .eq('user_id', user.id)
+        .from('tab_enquete_voto')
+        .select('cod_voto')
+        .eq('seq_opcao', optionId)
+        .eq('seq_usuario', user.id)
         .maybeSingle();
 
       if (existingVote) {
         // Remove vote
-        await supabase.from('poll_votes').delete().eq('id', existingVote.id);
+        await supabase.from('tab_enquete_voto').delete().eq('cod_voto', existingVote.cod_voto);
       } else {
         // Add vote
-        await supabase.from('poll_votes').insert({
-          option_id: optionId,
-          user_id: user.id,
+        await supabase.from('tab_enquete_voto').insert({
+          seq_opcao: optionId,
+          seq_usuario: user.id,
         });
       }
 

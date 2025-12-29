@@ -21,18 +21,18 @@ export function useBirthdays() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, birthday_date, unit, avatar_url')
-        .not('birthday_date', 'is', null);
+        .from('tab_perfil_usuario')
+        .select('cod_usuario, des_nome_completo, dta_aniversario, des_unidade, des_avatar_url')
+        .not('dta_aniversario', 'is', null);
 
       if (error) throw error;
 
       const formattedBirthdays: Birthday[] = (data || []).map(profile => ({
-        id: profile.id,
-        fullName: profile.full_name || 'Sem nome',
-        birthdayDate: new Date(profile.birthday_date),
-        unit: profile.unit || undefined,
-        avatarUrl: profile.avatar_url || undefined,
+        id: profile.cod_usuario,
+        fullName: profile.des_nome_completo || 'Sem nome',
+        birthdayDate: new Date(profile.dta_aniversario),
+        unit: profile.des_unidade || undefined,
+        avatarUrl: profile.des_avatar_url || undefined,
       }));
 
       setBirthdays(formattedBirthdays);

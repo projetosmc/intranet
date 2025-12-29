@@ -2,17 +2,17 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AuditLog {
-  id: string;
-  user_id: string;
-  target_user_id?: string;
-  action: string;
-  entity_type: string;
-  entity_id?: string;
-  old_value?: any;
-  new_value?: any;
-  ip_address?: string;
-  user_agent?: string;
-  created_at: string;
+  cod_log: string;
+  seq_usuario: string;
+  seq_usuario_alvo?: string;
+  des_acao: string;
+  des_tipo_entidade: string;
+  des_id_entidade?: string;
+  des_valor_anterior?: any;
+  des_valor_novo?: any;
+  des_ip?: string;
+  des_user_agent?: string;
+  dta_cadastro: string;
   user_email?: string;
   user_name?: string;
   target_user_email?: string;
@@ -39,19 +39,19 @@ export function useAuditLogs(options: UseAuditLogsOptions = {}) {
     setIsLoading(true);
     try {
       let query = supabase
-        .from('audit_logs')
+        .from('tab_log_auditoria')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('dta_cadastro', { ascending: false })
         .limit(limit);
 
       if (entityType) {
-        query = query.eq('entity_type', entityType);
+        query = query.eq('des_tipo_entidade', entityType);
       }
       if (action) {
-        query = query.eq('action', action);
+        query = query.eq('des_acao', action);
       }
       if (userId) {
-        query = query.or(`user_id.eq.${userId},target_user_id.eq.${userId}`);
+        query = query.or(`seq_usuario.eq.${userId},seq_usuario_alvo.eq.${userId}`);
       }
 
       const { data, error } = await query;
@@ -61,23 +61,23 @@ export function useAuditLogs(options: UseAuditLogsOptions = {}) {
       // Fetch user details for each log
       const userIds = new Set<string>();
       (data || []).forEach(log => {
-        if (log.user_id) userIds.add(log.user_id);
-        if (log.target_user_id) userIds.add(log.target_user_id);
+        if (log.seq_usuario) userIds.add(log.seq_usuario);
+        if (log.seq_usuario_alvo) userIds.add(log.seq_usuario_alvo);
       });
 
       const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, email, full_name')
-        .in('id', Array.from(userIds));
+        .from('tab_perfil_usuario')
+        .select('cod_usuario, des_email, des_nome_completo')
+        .in('cod_usuario', Array.from(userIds));
 
-      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+      const profileMap = new Map((profiles || []).map(p => [p.cod_usuario, p]));
 
       const enrichedLogs = (data || []).map(log => ({
         ...log,
-        user_email: profileMap.get(log.user_id)?.email,
-        user_name: profileMap.get(log.user_id)?.full_name,
-        target_user_email: log.target_user_id ? profileMap.get(log.target_user_id)?.email : undefined,
-        target_user_name: log.target_user_id ? profileMap.get(log.target_user_id)?.full_name : undefined,
+        user_email: profileMap.get(log.seq_usuario)?.des_email,
+        user_name: profileMap.get(log.seq_usuario)?.des_nome_completo,
+        target_user_email: log.seq_usuario_alvo ? profileMap.get(log.seq_usuario_alvo)?.des_email : undefined,
+        target_user_name: log.seq_usuario_alvo ? profileMap.get(log.seq_usuario_alvo)?.des_nome_completo : undefined,
       }));
 
       setLogs(enrichedLogs);

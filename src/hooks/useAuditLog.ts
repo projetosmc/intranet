@@ -42,16 +42,16 @@ export async function logAudit(entry: AuditLogEntry): Promise<boolean> {
     }
 
     const { error } = await supabase
-      .from('audit_logs')
+      .from('tab_log_auditoria')
       .insert({
-        user_id: user.id,
-        target_user_id: entry.target_user_id,
-        action: entry.action,
-        entity_type: entry.entity_type,
-        entity_id: entry.entity_id,
-        old_value: entry.old_value,
-        new_value: entry.new_value,
-        user_agent: navigator.userAgent,
+        seq_usuario: user.id,
+        seq_usuario_alvo: entry.target_user_id,
+        des_acao: entry.action,
+        des_tipo_entidade: entry.entity_type,
+        des_id_entidade: entry.entity_id,
+        des_valor_anterior: entry.old_value,
+        des_valor_novo: entry.new_value,
+        des_user_agent: navigator.userAgent,
       });
 
     if (error) {
