@@ -15,6 +15,7 @@ import { PollCard } from '@/components/announcements/PollCard';
 import { CommentSection } from '@/components/announcements/CommentSection';
 import { AnnouncementsPageSkeleton } from '@/components/announcements/AnnouncementSkeleton';
 import { RichTextContent } from '@/components/ui/rich-text-editor';
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { useDbAnnouncements } from '@/hooks/useDbAnnouncements';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -160,6 +161,7 @@ export default function AnnouncementsPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

@@ -354,39 +354,30 @@ export function Sidebar() {
 
     if (hasChildren && visibleChildren && visibleChildren.length > 0) {
       return (
-        <div className="space-y-1">
-          <motion.button
-            whileHover={{ x: 2 }}
-            whileTap={{ scale: 0.98 }}
+        <div>
+          <button
             onClick={() => toggleMenu(item.name)}
             className={cn(
-              "w-full group flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-xs font-semibold uppercase tracking-wider transition-all duration-200 relative overflow-hidden",
-              "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              "w-full ripple-container group flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all duration-200 relative overflow-hidden",
+              "text-sidebar-foreground/70 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
             )}
           >
             <span>{item.name}</span>
-            <motion.div
-              animate={{ rotate: expanded ? 180 : 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <ChevronDown className="h-4 w-4 text-sidebar-foreground/50" />
-            </motion.div>
-          </motion.button>
-          <motion.div
-            initial={false}
-            animate={{
-              height: expanded ? "auto" : 0,
-              opacity: expanded ? 1 : 0
-            }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="overflow-hidden pl-2"
+            <ChevronDown className={cn(
+              "h-4 w-4 text-sidebar-foreground/50 transition-transform duration-200",
+              expanded && "rotate-180"
+            )} />
+          </button>
+          <div
+            className={cn(
+              "space-y-1 overflow-hidden transition-all duration-200",
+              expanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+            )}
           >
-            <div className="space-y-1 border-l-2 border-sidebar-border/50 pl-2">
-              {visibleChildren.map((child) => (
-                <MenuItem key={child.path} item={child} isChild />
-              ))}
-            </div>
-          </motion.div>
+            {visibleChildren.map((child) => (
+              <MenuItem key={child.path} item={child} isChild />
+            ))}
+          </div>
         </div>
       );
     }
@@ -413,31 +404,25 @@ export function Sidebar() {
       <NavLink
         to={item.path}
         {...linkProps}
-        className={({ isActive: routeActive }) => cn(
-          "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 relative overflow-hidden",
+        className={cn(
+          "ripple-container group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 relative overflow-hidden",
           isChild && "py-1.5 text-sm",
-          active || routeActive
-            ? "bg-primary/10 text-primary font-semibold" 
-            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          active 
+            ? "bg-gray-100 dark:bg-gray-800 text-primary font-semibold" 
+            : "text-sidebar-foreground hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
         )}
       >
-        {({ isActive: routeActive }) => (
-          <>
-            {(active || routeActive) && (
-              <motion.div
-                layoutId="activeIndicator"
-                className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full"
-                transition={{ type: "spring", stiffness: 380, damping: 30 }}
-              />
-            )}
-            <Icon className={cn(
-              "h-5 w-5 shrink-0 transition-all duration-200",
-              isChild && "h-4 w-4",
-              active ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-primary group-hover:scale-110"
-            )} />
-            <span className="transition-transform duration-200 group-hover:translate-x-0.5">{item.name}</span>
-          </>
+        {active && (
+          <div
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full"
+          />
         )}
+        <Icon className={cn(
+          "h-5 w-5 shrink-0 transition-colors",
+          isChild && "h-4 w-4",
+          active ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-primary"
+        )} />
+        <span>{item.name}</span>
       </NavLink>
     );
   };
