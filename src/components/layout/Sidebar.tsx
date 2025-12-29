@@ -92,7 +92,7 @@ export function Sidebar() {
   const [menuItems, setMenuItems] = useState<MenuItemType[]>([]);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [allSubmenus, setAllSubmenus] = useState<DbMenuItem[]>([]);
+  const [allMenuItems, setAllMenuItems] = useState<DbMenuItem[]>([]);
   const [cachedAnnouncements, setCachedAnnouncements] = useState<Array<{cod_comunicado: string; des_titulo: string; des_resumo: string}>>([]);
   const [cachedFaqs, setCachedFaqs] = useState<CachedFaq[]>([]);
   const [cachedKBArticles, setCachedKBArticles] = useState<CachedKBArticle[]>([]);
@@ -176,7 +176,7 @@ export function Sidebar() {
       if (cached) {
         const processedItems = processMenuItems(cached);
         setMenuItems(processedItems);
-        setAllSubmenus(cached.filter(item => item.seq_menu_pai));
+        setAllMenuItems(cached);
         autoExpandMenus(processedItems);
         setIsLoading(false);
         return;
@@ -205,7 +205,7 @@ export function Sidebar() {
         des_tags: d.des_tags || [],
       }));
       setCachedMenus(items);
-      setAllSubmenus(items.filter(item => item.seq_menu_pai));
+      setAllMenuItems(items);
       
       const processedItems = processMenuItems(items);
       setMenuItems(processedItems);
@@ -282,13 +282,17 @@ export function Sidebar() {
     const results: SearchResult[] = [];
     const lowerQuery = searchQuery.toLowerCase();
 
-    // Buscar em todos os menus (incluindo submenus) - verifica nome e tags
-    allSubmenus.forEach(menu => {
+    // Buscar em todos os menus (pais e filhos) - verifica nome e tags
+    allMenuItems.forEach(menu => {
       // Check if it's admin only and user is not admin
       if (menu.ind_admin_only && !isAdmin) return;
       
       // Verificar se o usuário tem permissão para acessar esta rota
       if (!canAccess(menu.des_caminho)) return;
+      
+      // Ignora menus pai que são apenas categorias (não têm path navegável próprio)
+      const isParentCategory = !menu.seq_menu_pai && allMenuItems.some(m => m.seq_menu_pai === menu.cod_menu_item);
+      if (isParentCategory) return;
       
       const nameMatch = menu.des_nome.toLowerCase().includes(lowerQuery);
       const tagMatch = menu.des_tags?.some(tag => tag.toLowerCase().includes(lowerQuery));
@@ -358,7 +362,7 @@ export function Sidebar() {
     }
 
     return results.slice(0, 10);
-  }, [searchQuery, allSubmenus, cachedAnnouncements, cachedFaqs, cachedKBArticles, isAdmin, canAccess, permissionsLoading]);
+  }, [searchQuery, allMenuItems, cachedAnnouncements, cachedFaqs, cachedKBArticles, isAdmin, canAccess, permissionsLoading]);
 
   const handleResultClick = useCallback((result: SearchResult) => {
     navigate(result.path);
