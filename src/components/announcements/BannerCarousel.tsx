@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,77 +25,10 @@ const getOptimizedBannerUrl = (url: string | null): string => {
   return url;
 };
 
-// Pré-carregar imagem usando service worker ou link preload
-const preloadImage = (url: string) => {
-  if (!url || url === '/placeholder.svg') return;
-  
-  // Usar service worker se disponível
-  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.controller.postMessage({
-      type: 'CACHE_IMAGE',
-      urls: [url],
-    });
-  } else {
-    // Fallback: pré-carregar com Image object
-    const img = new Image();
-    img.src = url;
-  }
-};
-
 export function BannerCarousel({ banners }: BannerCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [preloadedIndexes, setPreloadedIndexes] = useState<Set<number>>(new Set([0]));
   const navigate = useNavigate();
-
-  // Memoizar URLs otimizadas de todos os banners
-  const optimizedUrls = useMemo(() => 
-    banners.map(b => getOptimizedBannerUrl(b.imageUrl)),
-    [banners]
-  );
-
-  // Pré-carregar imagens adjacentes quando o índice mudar
-  useEffect(() => {
-    if (banners.length <= 1) return;
-
-    const nextIndex = (currentIndex + 1) % banners.length;
-    const prevIndex = (currentIndex - 1 + banners.length) % banners.length;
-    
-    // Pré-carregar próxima e anterior se ainda não foram
-    [nextIndex, prevIndex].forEach(index => {
-      if (!preloadedIndexes.has(index)) {
-        preloadImage(optimizedUrls[index]);
-        setPreloadedIndexes(prev => new Set([...prev, index]));
-      }
-    });
-  }, [currentIndex, banners.length, optimizedUrls, preloadedIndexes]);
-
-  // Pré-carregar todas as imagens na inicialização (em background)
-  useEffect(() => {
-    if (banners.length <= 1) return;
-
-    // Agendar pré-carregamento após a primeira imagem carregar
-    const timer = setTimeout(() => {
-      const urlsToPreload = optimizedUrls.filter((_, i) => i !== 0);
-      
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({
-          type: 'PREFETCH_IMAGES',
-          urls: urlsToPreload,
-        });
-      } else {
-        // Fallback: pré-carregar uma por vez com delay
-        urlsToPreload.forEach((url, i) => {
-          setTimeout(() => {
-            const img = new Image();
-            img.src = url;
-          }, i * 500);
-        });
-      }
-    }, 2000); // Aguardar 2s antes de pré-carregar as demais
-
-    return () => clearTimeout(timer);
-  }, [banners.length, optimizedUrls]);
 
   const nextSlide = useCallback(() => {
     setImageLoaded(false);
@@ -117,7 +50,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   if (banners.length === 0) return null;
 
   const currentBanner = banners[currentIndex];
-  const bannerImageUrl = optimizedUrls[currentIndex];
+  const bannerImageUrl = getOptimizedBannerUrl(currentBanner.imageUrl);
 
   return (
     <div className="relative w-full rounded-2xl overflow-hidden bg-card border border-border shadow-lg">
@@ -142,7 +75,6 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
               className="absolute inset-0 w-full h-full object-cover"
               loading="eager"
               decoding="async"
-              fetchPriority="high"
               onLoad={() => setImageLoaded(true)}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
@@ -204,7 +136,10 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
           {banners.map((_, index) => (
             <button
               key={index}
-              onClick={() => setCurrentIndex(index)}
+              onClick={() => {
+                setImageLoaded(false);
+                setCurrentIndex(index);
+              }}
               className={`h-2 rounded-full transition-all duration-300 ${
                 index === currentIndex
                   ? 'bg-primary w-8'
