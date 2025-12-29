@@ -11,12 +11,14 @@ import HomePage from "./pages/HomePage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
 import StatusPage from "./pages/StatusPage";
 import SupportPage from "./pages/SupportPage";
+import RoomReservationPage from "./pages/RoomReservationPage";
 import AdminSettingsPage from "./pages/AdminSettingsPage";
 import AdminAnnouncementsPage from "./pages/AdminAnnouncementsPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminAuditLogsPage from "./pages/AdminAuditLogsPage";
 import AdminSystemsPage from "./pages/AdminSystemsPage";
 import AdminFaqsPage from "./pages/AdminFaqsPage";
+import AdminRoomConfigPage from "./pages/AdminRoomConfigPage";
 import AuthPage from "./pages/AuthPage";
 import SetupAdminPage from "./pages/SetupAdminPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -40,6 +42,7 @@ const App = () => (
               <Route path="/comunicados/:id" element={<AnnouncementsPage />} />
               <Route path="/status" element={<StatusPage />} />
               <Route path="/suporte" element={<SupportPage />} />
+              <Route path="/reserva-salas" element={<RoomReservationPage />} />
               <Route path="/perfil" element={<ProfilePage />} />
               <Route path="/admin/configuracoes" element={<AdminRoute><AdminSettingsPage /></AdminRoute>} />
               <Route path="/admin/comunicados" element={<AdminRoute><AdminAnnouncementsPage /></AdminRoute>} />
@@ -47,6 +50,7 @@ const App = () => (
               <Route path="/admin/auditoria" element={<AdminRoute><AdminAuditLogsPage /></AdminRoute>} />
               <Route path="/admin/sistemas" element={<AdminRoute><AdminSystemsPage /></AdminRoute>} />
               <Route path="/admin/faqs" element={<AdminRoute><AdminFaqsPage /></AdminRoute>} />
+              <Route path="/admin/reserva-salas" element={<AdminRoute><AdminRoomConfigPage /></AdminRoute>} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
