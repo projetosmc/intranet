@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import Fuse from 'fuse.js';
 import { 
   Fuel,
   Shield,
@@ -230,33 +231,27 @@ export function Sidebar() {
     return Icon || LucideIcons.Circle;
   };
 
+  // Processa items de menu recursivamente para suportar N níveis
   const processMenuItems = (items: DbMenuItem[]): MenuItemType[] => {
-    const parentItems = items.filter(item => !item.seq_menu_pai);
-    
-    return parentItems.map(parent => {
-      const children = items
-        .filter(item => item.seq_menu_pai === parent.cod_menu_item)
-        .map(child => ({
-          id: child.cod_menu_item,
-          name: child.des_nome,
-          path: child.des_caminho,
-          icon: getIconComponent(child.des_icone),
-          openInNewTab: child.ind_nova_aba,
-          isAdminOnly: child.ind_admin_only,
-          isParent: false,
-        }));
+    const buildMenuTree = (parentId: string | null): MenuItemType[] => {
+      return items
+        .filter(item => item.seq_menu_pai === parentId)
+        .map(item => {
+          const children = buildMenuTree(item.cod_menu_item);
+          return {
+            id: item.cod_menu_item,
+            name: item.des_nome,
+            path: item.des_caminho,
+            icon: getIconComponent(item.des_icone),
+            openInNewTab: item.ind_nova_aba,
+            isAdminOnly: item.ind_admin_only,
+            isParent: !item.seq_menu_pai, // Top-level items are parents
+            children: children.length > 0 ? children : undefined,
+          };
+        });
+    };
 
-      return {
-        id: parent.cod_menu_item,
-        name: parent.des_nome,
-        path: parent.des_caminho,
-        icon: getIconComponent(parent.des_icone),
-        openInNewTab: parent.ind_nova_aba,
-        isAdminOnly: parent.ind_admin_only,
-        isParent: true,
-        children: children.length > 0 ? children : undefined,
-      };
-    });
+    return buildMenuTree(null);
   };
 
   const isActive = (path: string) => {
@@ -272,97 +267,111 @@ export function Sidebar() {
     );
   };
 
-  // Busca instantânea usando useMemo - sem debounce
-  // Filtra apenas telas que o usuário tem permissão de acessar
+  // Fuse.js instances for fuzzy search
+  const fuseMenuItems = useMemo(() => {
+    const searchableItems = allMenuItems.filter(menu => {
+      if (menu.ind_admin_only && !isAdmin) return false;
+      if (!canAccess(menu.des_caminho)) return false;
+      // Ignora menus pai que são apenas categorias
+      const isParentCategory = !menu.seq_menu_pai && allMenuItems.some(m => m.seq_menu_pai === menu.cod_menu_item);
+      if (isParentCategory) return false;
+      return true;
+    });
+
+    return new Fuse(searchableItems, {
+      keys: ['des_nome', 'des_tags'],
+      threshold: 0.4, // 0.0 = exact match, 1.0 = match anything
+      distance: 100,
+      includeScore: true,
+    });
+  }, [allMenuItems, isAdmin, canAccess]);
+
+  const fuseKBArticles = useMemo(() => {
+    return new Fuse(cachedKBArticles, {
+      keys: ['des_titulo', 'des_resumo', 'arr_sinonimos', 'des_sistema'],
+      threshold: 0.4,
+      distance: 100,
+      includeScore: true,
+    });
+  }, [cachedKBArticles]);
+
+  const fuseAnnouncements = useMemo(() => {
+    return new Fuse(cachedAnnouncements, {
+      keys: ['des_titulo', 'des_resumo'],
+      threshold: 0.4,
+      distance: 100,
+      includeScore: true,
+    });
+  }, [cachedAnnouncements]);
+
+  const fuseFaqs = useMemo(() => {
+    return new Fuse(cachedFaqs, {
+      keys: ['des_pergunta', 'des_resposta', 'des_tags'],
+      threshold: 0.4,
+      distance: 100,
+      includeScore: true,
+    });
+  }, [cachedFaqs]);
+
+  // Busca fuzzy usando Fuse.js
   const searchResults = useMemo(() => {
-    // Se ainda está carregando permissões, não mostrar resultados
     if (permissionsLoading) return [];
     if (!searchQuery.trim()) return [];
     
     const results: SearchResult[] = [];
-    const lowerQuery = searchQuery.toLowerCase();
 
-    // Buscar em todos os menus (pais e filhos) - verifica nome e tags
-    allMenuItems.forEach(menu => {
-      // Check if it's admin only and user is not admin
-      if (menu.ind_admin_only && !isAdmin) return;
-      
-      // Verificar se o usuário tem permissão para acessar esta rota
-      if (!canAccess(menu.des_caminho)) return;
-      
-      // Ignora menus pai que são apenas categorias (não têm path navegável próprio)
-      const isParentCategory = !menu.seq_menu_pai && allMenuItems.some(m => m.seq_menu_pai === menu.cod_menu_item);
-      if (isParentCategory) return;
-      
-      const nameMatch = menu.des_nome.toLowerCase().includes(lowerQuery);
-      const tagMatch = menu.des_tags?.some(tag => tag.toLowerCase().includes(lowerQuery));
-      
-      if (nameMatch || tagMatch) {
-        results.push({
-          id: menu.cod_menu_item,
-          title: menu.des_nome,
-          type: 'menu',
-          path: menu.des_caminho,
-          icon: 'menu'
-        });
-      }
+    // Buscar em menus com fuzzy search
+    const menuResults = fuseMenuItems.search(searchQuery);
+    menuResults.slice(0, 5).forEach(result => {
+      results.push({
+        id: result.item.cod_menu_item,
+        title: result.item.des_nome,
+        type: 'menu',
+        path: result.item.des_caminho,
+        icon: 'menu'
+      });
     });
 
-    // Buscar em artigos da Base de Conhecimento
-    cachedKBArticles.forEach(article => {
-      const titleMatch = article.des_titulo.toLowerCase().includes(lowerQuery);
-      const summaryMatch = article.des_resumo?.toLowerCase().includes(lowerQuery);
-      const synonymMatch = article.arr_sinonimos?.some(s => s.toLowerCase().includes(lowerQuery));
-      const systemMatch = article.des_sistema?.toLowerCase().includes(lowerQuery);
-      
-      if (titleMatch || summaryMatch || synonymMatch || systemMatch) {
+    // Buscar em artigos KB com fuzzy search
+    const kbResults = fuseKBArticles.search(searchQuery);
+    kbResults.slice(0, 3).forEach(result => {
+      results.push({
+        id: result.item.cod_artigo,
+        title: result.item.des_titulo,
+        type: 'faq' as const,
+        path: `/base-conhecimento-ti/${result.item.cod_artigo}`,
+        icon: 'faq'
+      });
+    });
+
+    // Buscar em comunicados com fuzzy search
+    const annResults = fuseAnnouncements.search(searchQuery);
+    annResults.slice(0, 3).forEach(result => {
+      results.push({
+        id: result.item.cod_comunicado,
+        title: result.item.des_titulo,
+        type: 'announcement',
+        path: '/comunicados',
+        icon: 'announcement'
+      });
+    });
+
+    // Buscar em FAQs com fuzzy search
+    if (canAccess('/suporte')) {
+      const faqResults = fuseFaqs.search(searchQuery);
+      faqResults.slice(0, 3).forEach(result => {
         results.push({
-          id: article.cod_artigo,
-          title: article.des_titulo,
-          type: 'faq' as const, // Reuse FAQ icon for KB articles
-          path: `/base-conhecimento-ti/${article.cod_artigo}`,
+          id: result.item.cod_faq,
+          title: result.item.des_pergunta,
+          type: 'faq',
+          path: '/suporte',
           icon: 'faq'
         });
-      }
-    });
-
-    // Buscar em comunicados (já carregados em memória)
-    cachedAnnouncements.forEach(ann => {
-      const titleMatch = ann.des_titulo.toLowerCase().includes(lowerQuery);
-      const summaryMatch = ann.des_resumo?.toLowerCase().includes(lowerQuery);
-      
-      if (titleMatch || summaryMatch) {
-        results.push({
-          id: ann.cod_comunicado,
-          title: ann.des_titulo,
-          type: 'announcement',
-          path: '/comunicados',
-          icon: 'announcement'
-        });
-      }
-    });
-
-    // Buscar em FAQs - verifica pergunta, resposta e tags
-    if (canAccess('/suporte')) {
-      cachedFaqs.forEach(faq => {
-        const questionMatch = faq.des_pergunta.toLowerCase().includes(lowerQuery);
-        const answerMatch = faq.des_resposta?.toLowerCase().includes(lowerQuery);
-        const tagMatch = faq.des_tags?.some(tag => tag.toLowerCase().includes(lowerQuery));
-        
-        if (questionMatch || answerMatch || tagMatch) {
-          results.push({
-            id: faq.cod_faq,
-            title: faq.des_pergunta,
-            type: 'faq',
-            path: '/suporte',
-            icon: 'faq'
-          });
-        }
       });
     }
 
     return results.slice(0, 10);
-  }, [searchQuery, allMenuItems, cachedAnnouncements, cachedFaqs, cachedKBArticles, isAdmin, canAccess, permissionsLoading]);
+  }, [searchQuery, fuseMenuItems, fuseKBArticles, fuseAnnouncements, fuseFaqs, canAccess, permissionsLoading]);
 
   const handleResultClick = useCallback((result: SearchResult) => {
     navigate(result.path);
@@ -379,32 +388,40 @@ export function Sidebar() {
     (!item.isAdminOnly || isAdmin) && !topItemNames.includes(item.name)
   );
 
-  const MenuItem = ({ item, isChild = false }: { item: MenuItemType; isChild?: boolean }) => {
+  // Componente recursivo para renderizar menus de N níveis
+  const MenuItem = ({ item, depth = 0 }: { item: MenuItemType; depth?: number }) => {
     const Icon = item.icon;
     const hasChildren = item.children && item.children.length > 0;
     const active = isActive(item.path);
     const expanded = isMenuExpanded(item.name);
+    const isChild = depth > 0;
+    const isSubChild = depth > 1;
 
-    // Filter children based on admin status AND screen permissions
+    // Filter children based on admin status AND screen permissions recursively
     const visibleChildren = item.children?.filter(child => {
-      // Check admin-only flag
       if (child.isAdminOnly && !isAdmin) return false;
-      // Check screen permissions (canAccess verifies if user has permission)
       if (!canAccess(child.path)) return false;
       return true;
     });
 
+    // Menu com filhos - renderiza como dropdown expansível
     if (hasChildren && visibleChildren && visibleChildren.length > 0) {
       return (
-        <div>
+        <div className={cn(isSubChild && "ml-3")}>
           <button
             onClick={() => toggleMenu(item.name)}
             className={cn(
-              "w-full ripple-container group flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all duration-200 relative overflow-hidden",
-              "text-sidebar-foreground/70 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
+              "w-full ripple-container group flex items-center justify-between gap-3 rounded-lg px-3 py-2 transition-all duration-200 relative overflow-hidden",
+              depth === 0 
+                ? "text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70" 
+                : "text-sm font-medium text-sidebar-foreground/80",
+              "hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
             )}
           >
-            <span>{item.name}</span>
+            <div className="flex items-center gap-2">
+              {depth > 0 && <Icon className="h-4 w-4 text-sidebar-foreground/50" />}
+              <span>{item.name}</span>
+            </div>
             <ChevronDown className={cn(
               "h-4 w-4 text-sidebar-foreground/50 transition-transform duration-200",
               expanded && "rotate-180"
@@ -412,20 +429,21 @@ export function Sidebar() {
           </button>
           <div
             className={cn(
-              "space-y-1 overflow-hidden transition-all duration-200",
-              expanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+              "overflow-hidden transition-all duration-200",
+              depth === 0 ? "space-y-1" : "space-y-0.5 ml-2 border-l border-sidebar-border/50 pl-2",
+              expanded ? "max-h-[800px] opacity-100 mt-1" : "max-h-0 opacity-0"
             )}
           >
             {visibleChildren.map((child) => (
-              <MenuItem key={child.path} item={child} isChild />
+              <MenuItem key={child.id} item={child} depth={depth + 1} />
             ))}
           </div>
         </div>
       );
     }
 
-    // For parent items without visible children - show as category header (not clickable link)
-    if (item.isParent && !isChild) {
+    // Menu pai sem filhos visíveis - mostra como header
+    if (item.isParent && depth === 0) {
       return (
         <div
           className={cn(
@@ -438,8 +456,9 @@ export function Sidebar() {
       );
     }
 
+    // Item clicável (folha ou submenu sem filhos visíveis)
     const linkProps = item.openInNewTab 
-      ? { target: '_blank', rel: 'noopener noreferrer' }
+      ? { target: '_blank' as const, rel: 'noopener noreferrer' }
       : {};
 
     return (
@@ -448,7 +467,8 @@ export function Sidebar() {
         {...linkProps}
         className={cn(
           "ripple-container group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 relative overflow-hidden",
-          isChild && "py-1.5 text-sm",
+          isChild && "py-1.5",
+          isSubChild && "ml-3 text-xs",
           active 
             ? "bg-gray-100 dark:bg-gray-800 text-primary font-semibold" 
             : "text-sidebar-foreground hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
@@ -586,7 +606,7 @@ export function Sidebar() {
           <>
             {/* Top items (Meu Dia, Comunicados) */}
             {topItems.map((item) => (
-              <MenuItem key={item.id} item={{ ...item, isParent: false }} isChild />
+              <MenuItem key={item.id} item={{ ...item, isParent: false }} depth={1} />
             ))}
             
             {/* Separator if there are top items */}
