@@ -50,10 +50,10 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
             <PixelImage
               src={currentBanner.imageUrl || ''}
               alt={currentBanner.title}
-              customGrid={{ rows: 3, cols: 8 }}
+              customGrid={{ rows: 2, cols: 6 }}
               grayscaleAnimation
-              pixelFadeInDuration={800}
-              maxAnimationDelay={1000}
+              pixelFadeInDuration={500}
+              maxAnimationDelay={600}
               className="absolute inset-0 w-full h-full"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
