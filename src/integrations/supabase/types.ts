@@ -59,6 +59,45 @@ export type Database = {
         }
         Relationships: []
       }
+      tab_config_suporte: {
+        Row: {
+          cod_config: string
+          des_descricao: string | null
+          des_icone: string | null
+          des_nome: string
+          des_tipo: string
+          des_valor: string
+          dta_atualizacao: string | null
+          dta_cadastro: string | null
+          ind_ativo: boolean | null
+          num_ordem: number | null
+        }
+        Insert: {
+          cod_config?: string
+          des_descricao?: string | null
+          des_icone?: string | null
+          des_nome: string
+          des_tipo: string
+          des_valor: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_ativo?: boolean | null
+          num_ordem?: number | null
+        }
+        Update: {
+          cod_config?: string
+          des_descricao?: string | null
+          des_icone?: string | null
+          des_nome?: string
+          des_tipo?: string
+          des_valor?: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_ativo?: boolean | null
+          num_ordem?: number | null
+        }
+        Relationships: []
+      }
       tab_enquete_opcao: {
         Row: {
           cod_opcao: string

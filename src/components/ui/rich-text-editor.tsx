@@ -2,7 +2,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Bold, Italic, Link2, List, ListOrdered, Undo, Redo } from 'lucide-react';
+import { Bold, Italic, Link2, List, ListOrdered, Undo, Redo, Quote, Heading1, Heading2, Heading3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
@@ -13,6 +13,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -93,7 +99,47 @@ export function RichTextEditor({ content, onChange, placeholder, className }: Ri
   return (
     <div className={cn("border border-input rounded-md bg-background", className)}>
       {/* Toolbar */}
-      <div className="flex items-center gap-1 p-1 border-b border-border bg-muted/30 rounded-t-md">
+      <div className="flex items-center gap-1 p-1 border-b border-border bg-muted/30 rounded-t-md flex-wrap">
+        {/* Heading Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "h-8 px-2 text-xs",
+                (editor.isActive('heading', { level: 1 }) || 
+                 editor.isActive('heading', { level: 2 }) || 
+                 editor.isActive('heading', { level: 3 })) && "bg-muted"
+              )}
+              title="Títulos"
+            >
+              <Heading1 className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Título</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
+              <Heading1 className="h-4 w-4 mr-2" />
+              Título 1
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
+              <Heading2 className="h-4 w-4 mr-2" />
+              Título 2
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
+              <Heading3 className="h-4 w-4 mr-2" />
+              Título 3
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => editor.chain().focus().setParagraph().run()}>
+              Parágrafo normal
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        
+        <div className="w-px h-5 bg-border mx-1" />
+        
         <Button
           type="button"
           variant="ghost"
@@ -124,6 +170,16 @@ export function RichTextEditor({ content, onChange, placeholder, className }: Ri
           title="Inserir link"
         >
           <Link2 className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className={cn("h-8 w-8 p-0", editor.isActive('blockquote') && "bg-muted")}
+          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          title="Citação"
+        >
+          <Quote className="h-4 w-4" />
         </Button>
         <div className="w-px h-5 bg-border mx-1" />
         <Button
@@ -223,7 +279,18 @@ export function RichTextContent({ html, className }: { html: string; className?:
   return (
     <div 
       className={cn(
-        "max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-2 [&_li]:my-1 [&_p]:my-1 [&_strong]:font-semibold [&_em]:italic",
+        "max-w-none",
+        "[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-2",
+        "[&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-2",
+        "[&_li]:my-1",
+        "[&_p]:my-1",
+        "[&_strong]:font-semibold",
+        "[&_em]:italic",
+        "[&_h1]:text-2xl [&_h1]:font-bold [&_h1]:my-3",
+        "[&_h2]:text-xl [&_h2]:font-bold [&_h2]:my-2",
+        "[&_h3]:text-lg [&_h3]:font-semibold [&_h3]:my-2",
+        "[&_blockquote]:border-l-4 [&_blockquote]:border-primary/50 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:my-2 [&_blockquote]:text-muted-foreground",
+        "[&_a]:text-primary [&_a]:underline [&_a:hover]:no-underline",
         className
       )}
       dangerouslySetInnerHTML={{ __html: html }}
