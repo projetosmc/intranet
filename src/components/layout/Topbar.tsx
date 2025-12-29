@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, User, LogOut, Check, CheckCheck, Trash2 } from 'lucide-react';
+import { Bell, User, LogOut, CheckCheck, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -20,13 +20,15 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { useUser } from '@/contexts/UserContext';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { useNotificationsSystem } from '@/hooks/useNotificationsSystem';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export function Topbar() {
-  const { user, toggle3D, setToggle3D, signOut } = useUser();
+  const { user, signOut } = useUser();
+  const { profile } = useUserProfile();
   const navigate = useNavigate();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { 
@@ -177,11 +179,11 @@ export function Topbar() {
               <Button variant="ghost" className="flex items-center gap-3 h-auto py-1.5 px-2 hover:bg-accent">
                 <UserAvatar
                   size="md"
-                  src={user?.avatar}
-                  name={user?.name}
+                  src={profile?.avatarUrl || user?.avatar}
+                  name={profile?.fullName || user?.name}
                 />
                 <div className="hidden md:flex flex-col items-start">
-                  <span className="text-sm font-medium leading-none">{user?.name}</span>
+                  <span className="text-sm font-medium leading-none">{profile?.fullName || user?.name}</span>
                   <span className="text-xs text-muted-foreground leading-none mt-1">{user?.email}</span>
                 </div>
               </Button>
@@ -189,7 +191,7 @@ export function Topbar() {
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{user?.name}</p>
+                  <p className="text-sm font-medium leading-none">{profile?.fullName || user?.name}</p>
                   <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                 </div>
               </DropdownMenuLabel>
@@ -208,10 +210,9 @@ export function Topbar() {
 
           {/* Botão Sair (separado/visível em desktop) */}
           <Button
-            variant="ghost"
             size="sm"
             onClick={signOut}
-            className="hidden lg:flex items-center gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+            className="hidden lg:flex items-center gap-2 bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             <LogOut className="h-4 w-4" />
             Sair
