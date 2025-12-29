@@ -405,7 +405,7 @@ export type Database = {
         Row: {
           cod_permissao: string
           des_nome_tela: string
-          des_role: Database["public"]["Enums"]["app_role"]
+          des_role: string
           des_rota: string
           dta_atualizacao: string | null
           dta_cadastro: string | null
@@ -415,7 +415,7 @@ export type Database = {
         Insert: {
           cod_permissao?: string
           des_nome_tela: string
-          des_role: Database["public"]["Enums"]["app_role"]
+          des_role: string
           des_rota: string
           dta_atualizacao?: string | null
           dta_cadastro?: string | null
@@ -425,7 +425,7 @@ export type Database = {
         Update: {
           cod_permissao?: string
           des_nome_tela?: string
-          des_role?: Database["public"]["Enums"]["app_role"]
+          des_role?: string
           des_rota?: string
           dta_atualizacao?: string | null
           dta_cadastro?: string | null
