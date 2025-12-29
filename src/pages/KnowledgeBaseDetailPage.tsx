@@ -152,7 +152,8 @@ export default function KnowledgeBaseDetailPage() {
     };
 
     loadArticle();
-  }, [id, getArticleById, registerView, startLoading, stopLoading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const handleFeedback = async (helpful: boolean) => {
     if (!id) return;
