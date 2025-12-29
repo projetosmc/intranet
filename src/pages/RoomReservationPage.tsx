@@ -937,6 +937,83 @@ export default function RoomReservationPage() {
     ).sort((a, b) => a.hra_inicio.localeCompare(b.hra_inicio));
   }, [selectedRoom, reservationDate, reservations, editingReservation]);
 
+  // Generate available time slots for start time
+  const availableStartTimes = useMemo(() => {
+    const slots: string[] = [];
+    const startHour = 7; // 7:00
+    const endHour = 20; // 20:00
+    
+    for (let hour = startHour; hour < endHour; hour++) {
+      for (let min = 0; min < 60; min += 30) {
+        const timeStr = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+        
+        // For today, skip times in the past
+        if (reservationDate && isToday(reservationDate)) {
+          const now = new Date();
+          const [h, m] = timeStr.split(':').map(Number);
+          const timeDate = new Date();
+          timeDate.setHours(h, m, 0, 0);
+          if (timeDate <= now) continue;
+        }
+        
+        // Check if this time falls within any existing reservation
+        let isOccupied = false;
+        for (const r of occupiedTimesForForm) {
+          const rStart = r.hra_inicio.slice(0, 5);
+          const rEnd = r.hra_fim.slice(0, 5);
+          // Time is occupied if it's >= start and < end of a reservation
+          if (timeStr >= rStart && timeStr < rEnd) {
+            isOccupied = true;
+            break;
+          }
+        }
+        
+        if (!isOccupied) {
+          slots.push(timeStr);
+        }
+      }
+    }
+    
+    return slots;
+  }, [reservationDate, occupiedTimesForForm]);
+
+  // Generate available time slots for end time (must be after start time)
+  const availableEndTimes = useMemo(() => {
+    const slots: string[] = [];
+    const startHour = 7;
+    const endHour = 21; // Allow ending at 21:00
+    
+    const [startH, startM] = startTime.split(':').map(Number);
+    const startMinutes = startH * 60 + startM;
+    
+    // Find the next reservation after start time to limit end time options
+    let maxEndTime = '21:00';
+    for (const r of occupiedTimesForForm) {
+      const rStart = r.hra_inicio.slice(0, 5);
+      if (rStart > startTime) {
+        maxEndTime = rStart;
+        break;
+      }
+    }
+    
+    for (let hour = startHour; hour <= endHour; hour++) {
+      for (let min = 0; min < 60; min += 30) {
+        const timeStr = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+        const timeMinutes = hour * 60 + min;
+        
+        // Must be after start time
+        if (timeMinutes <= startMinutes) continue;
+        
+        // Must be at or before the next reservation start
+        if (timeStr > maxEndTime) continue;
+        
+        slots.push(timeStr);
+      }
+    }
+    
+    return slots;
+  }, [startTime, occupiedTimesForForm]);
+
   const duration = calculateDuration(startTime, endTime);
 
   return (
@@ -1091,11 +1168,45 @@ export default function RoomReservationPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="mb-1.5 block">Hora Início</Label>
-                    <Input type="time" value={startTime} onChange={(e) => handleStartTimeChange(e.target.value)} />
+                    <Select value={startTime} onValueChange={handleStartTimeChange} disabled={!reservationDate}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {availableStartTimes.length > 0 ? (
+                          availableStartTimes.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                            Nenhum horário disponível
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label className="mb-1.5 block">Hora Fim</Label>
-                    <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                    <Select value={endTime} onValueChange={setEndTime} disabled={!reservationDate || !startTime}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {availableEndTimes.length > 0 ? (
+                          availableEndTimes.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                            Nenhum horário disponível
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
