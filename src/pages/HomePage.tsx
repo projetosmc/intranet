@@ -1,4 +1,4 @@
-import { useMemo, lazy, Suspense } from 'react';
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Megaphone, ArrowRight, Calendar, Clock, DoorOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,8 @@ import { AnnouncementCard } from '@/components/announcements/AnnouncementCard';
 import { BannerCarousel } from '@/components/announcements/BannerCarousel';
 import { EventCalendar } from '@/components/calendar/EventCalendar';
 import { BirthdayList } from '@/components/birthday/BirthdayList';
+import { AnnouncementCardSkeleton } from '@/components/announcements/AnnouncementSkeleton';
+import { CalendarSkeleton, BirthdayListSkeleton, UpcomingMeetingsSkeleton } from '@/components/calendar/CalendarSkeleton';
 import { useDbAnnouncements } from '@/hooks/useDbAnnouncements';
 import { useBirthdays } from '@/hooks/useBirthdays';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
@@ -19,9 +21,9 @@ import { ptBR } from 'date-fns/locale';
 export default function HomePage() {
   const navigate = useNavigate();
   const { user } = useUser();
-  const { activeAnnouncements, bannerAnnouncements } = useDbAnnouncements();
+  const { activeAnnouncements, bannerAnnouncements, isLoading: announcementsLoading } = useDbAnnouncements();
   const { birthdays, isLoading: birthdaysLoading } = useBirthdays();
-  const { events: calendarEvents, addEvent, deleteEvent } = useCalendarEvents();
+  const { events: calendarEvents, addEvent, deleteEvent, isLoading: calendarLoading } = useCalendarEvents();
   const { calendarEvents: reservationEvents, upcomingMeetings, isLoading: reservationsLoading } = useUserReservations();
 
   // Ativar notificações para reuniões próximas
@@ -84,8 +86,16 @@ export default function HomePage() {
           </div>
         </motion.section>
 
-        {/* Próximas Reuniões - Mostrar se houver */}
-        {upcomingMeetings.length > 0 && (
+        {/* Próximas Reuniões - Mostrar skeleton ou conteúdo */}
+        {reservationsLoading ? (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.05 }}
+          >
+            <UpcomingMeetingsSkeleton />
+          </motion.section>
+        ) : upcomingMeetings.length > 0 && (
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -159,14 +169,23 @@ export default function HomePage() {
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {activeAnnouncements.slice(0, 4).map((announcement, index) => (
-                  <AnnouncementCard
-                    key={announcement.id}
-                    announcement={announcement}
-                    onClick={() => navigate(`/comunicados/${announcement.id}`)}
-                    delay={index}
-                  />
-                ))}
+                {announcementsLoading ? (
+                  <>
+                    <AnnouncementCardSkeleton />
+                    <AnnouncementCardSkeleton />
+                    <AnnouncementCardSkeleton />
+                    <AnnouncementCardSkeleton />
+                  </>
+                ) : (
+                  activeAnnouncements.slice(0, 4).map((announcement, index) => (
+                    <AnnouncementCard
+                      key={announcement.id}
+                      announcement={announcement}
+                      onClick={() => navigate(`/comunicados/${announcement.id}`)}
+                      delay={index}
+                    />
+                  ))
+                )}
               </div>
             </div>
 
@@ -177,13 +196,21 @@ export default function HomePage() {
                 <h2 className="text-xl font-semibold text-foreground">Calendário</h2>
               </div>
               
-              <EventCalendar 
-                events={allEvents} 
-                onAddEvent={addEvent}
-                onDeleteEvent={deleteEvent}
-              />
+              {calendarLoading ? (
+                <CalendarSkeleton />
+              ) : (
+                <EventCalendar 
+                  events={allEvents} 
+                  onAddEvent={addEvent}
+                  onDeleteEvent={deleteEvent}
+                />
+              )}
               
-              <BirthdayList birthdays={birthdays} isLoading={birthdaysLoading} />
+              {birthdaysLoading ? (
+                <BirthdayListSkeleton />
+              ) : (
+                <BirthdayList birthdays={birthdays} isLoading={birthdaysLoading} />
+              )}
             </div>
           </div>
         </motion.section>
