@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Lock, Save, Loader2, Check, X, Info, Copy, GripVertical } from 'lucide-react';
+import { Lock, Save, Loader2, Check, X, Info, Copy, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -31,6 +33,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   DndContext,
   closestCenter,
@@ -81,6 +93,7 @@ function SortableScreenRow({
   roleLabels,
   pendingChanges,
   onToggle,
+  onDelete,
 }: {
   screen: string;
   screenData: ScreenGroup;
@@ -88,6 +101,7 @@ function SortableScreenRow({
   roleLabels: Record<string, { label: string; abbrev: string; color: string }>;
   pendingChanges: Map<string, boolean>;
   onToggle: (permissao: Permissao) => void;
+  onDelete: (screenName: string) => void;
 }) {
   const firstPermission = Object.values(screenData.permissions)[0];
   const {
@@ -151,6 +165,23 @@ function SortableScreenRow({
           </TableCell>
         );
       })}
+      <TableCell className="w-[60px]">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => onDelete(screen)}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Remover tela</p>
+          </TooltipContent>
+        </Tooltip>
+      </TableCell>
     </TableRow>
   );
 }
@@ -165,6 +196,15 @@ export function ScreenPermissionsTab() {
   const [sourceRole, setSourceRole] = useState<string>('');
   const [targetRole, setTargetRole] = useState<string>('');
   const [isCopying, setIsCopying] = useState(false);
+  
+  // Estado para adicionar nova tela
+  const [addScreenDialogOpen, setAddScreenDialogOpen] = useState(false);
+  const [newScreenName, setNewScreenName] = useState('');
+  const [newScreenRoute, setNewScreenRoute] = useState('');
+  const [isAddingScreen, setIsAddingScreen] = useState(false);
+  
+  // Estado para deletar tela
+  const [deleteScreenName, setDeleteScreenName] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -350,6 +390,87 @@ export function ScreenPermissionsTab() {
     }
   };
 
+  const handleAddScreen = async () => {
+    if (!newScreenName.trim() || !newScreenRoute.trim()) {
+      toast({ title: 'Preencha todos os campos', variant: 'destructive' });
+      return;
+    }
+
+    // Validar formato da rota
+    if (!newScreenRoute.startsWith('/')) {
+      toast({ title: 'A rota deve começar com /', variant: 'destructive' });
+      return;
+    }
+
+    // Verificar se a rota já existe
+    const existingRoute = permissoes.find(p => p.des_rota === newScreenRoute.trim());
+    if (existingRoute) {
+      toast({ title: 'Esta rota já existe', variant: 'destructive' });
+      return;
+    }
+
+    setIsAddingScreen(true);
+    try {
+      // Calcular próxima ordem
+      const maxOrder = Math.max(...permissoes.map(p => p.num_ordem), 0);
+      
+      // Inserir para o primeiro perfil (o trigger criará para os demais)
+      const firstRole = roleTypes[0];
+      if (!firstRole) {
+        toast({ title: 'Nenhum tipo de perfil encontrado', variant: 'destructive' });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('tab_permissao_tela')
+        .insert({
+          des_role: firstRole.des_codigo,
+          des_rota: newScreenRoute.trim(),
+          des_nome_tela: newScreenName.trim(),
+          ind_pode_acessar: false,
+          num_ordem: maxOrder + 1,
+        });
+
+      if (error) throw error;
+
+      toast({ title: 'Tela adicionada com sucesso!' });
+      setAddScreenDialogOpen(false);
+      setNewScreenName('');
+      setNewScreenRoute('');
+      await fetchData();
+    } catch (error) {
+      console.error('Erro ao adicionar tela:', error);
+      toast({ title: 'Erro ao adicionar tela', variant: 'destructive' });
+    } finally {
+      setIsAddingScreen(false);
+    }
+  };
+
+  const handleDeleteScreen = async () => {
+    if (!deleteScreenName) return;
+
+    try {
+      // Buscar todas as permissões da tela
+      const screenPerms = permissoes.filter(p => p.des_nome_tela === deleteScreenName);
+      
+      for (const perm of screenPerms) {
+        const { error } = await supabase
+          .from('tab_permissao_tela')
+          .delete()
+          .eq('cod_permissao', perm.cod_permissao);
+
+        if (error) throw error;
+      }
+
+      toast({ title: 'Tela removida com sucesso!' });
+      setDeleteScreenName(null);
+      await fetchData();
+    } catch (error) {
+      console.error('Erro ao remover tela:', error);
+      toast({ title: 'Erro ao remover tela', variant: 'destructive' });
+    }
+  };
+
   // Agrupa permissões por tela
   const groupedByScreen = useMemo(() => {
     const grouped: Record<string, ScreenGroup> = {};
@@ -401,7 +522,11 @@ export function ScreenPermissionsTab() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => setAddScreenDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Tela
+          </Button>
           <Button variant="outline" onClick={() => setCopyDialogOpen(true)}>
             <Copy className="h-4 w-4 mr-2" />
             Copiar Permissões
@@ -472,6 +597,7 @@ export function ScreenPermissionsTab() {
                     </Tooltip>
                   </TableHead>
                 ))}
+                <TableHead className="w-[60px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -485,6 +611,7 @@ export function ScreenPermissionsTab() {
                     roleLabels={roleLabels}
                     pendingChanges={pendingChanges}
                     onToggle={handleToggle}
+                    onDelete={setDeleteScreenName}
                   />
                 ))}
               </SortableContext>
@@ -558,6 +685,81 @@ export function ScreenPermissionsTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de adicionar tela */}
+      <Dialog open={addScreenDialogOpen} onOpenChange={setAddScreenDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar Nova Tela</DialogTitle>
+            <DialogDescription>
+              Adicione uma nova tela ao sistema de permissões. A tela será criada com acesso desabilitado para todos os perfis.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="screen-name">Nome da Tela</Label>
+              <Input
+                id="screen-name"
+                value={newScreenName}
+                onChange={(e) => setNewScreenName(e.target.value)}
+                placeholder="Ex: Relatórios, Dashboard, Configurações"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="screen-route">Rota</Label>
+              <Input
+                id="screen-route"
+                value={newScreenRoute}
+                onChange={(e) => setNewScreenRoute(e.target.value)}
+                placeholder="Ex: /admin/relatorios, /dashboard"
+              />
+              <p className="text-xs text-muted-foreground">
+                A rota deve começar com / e corresponder ao caminho da página no sistema.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddScreenDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleAddScreen}
+              disabled={!newScreenName.trim() || !newScreenRoute.trim() || isAddingScreen}
+            >
+              {isAddingScreen ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              Adicionar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de confirmação de exclusão */}
+      <AlertDialog open={!!deleteScreenName} onOpenChange={(open) => !open && setDeleteScreenName(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover Tela</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover a tela "{deleteScreenName}"? Esta ação irá remover todas as permissões associadas e não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteScreen}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

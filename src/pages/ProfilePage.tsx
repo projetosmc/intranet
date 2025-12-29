@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { User, Camera, Mail, Save, Shield, LogOut, Cake, Building2, Briefcase, Phone } from 'lucide-react';
+import { User, Camera, Mail, Save, Shield, LogOut, Cake, Building2, Briefcase, Phone, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,34 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { z } from 'zod';
+
+// Schema de validação
+const profileSchema = z.object({
+  fullName: z.string()
+    .trim()
+    .min(1, 'Nome é obrigatório')
+    .max(100, 'Nome deve ter no máximo 100 caracteres'),
+  phone: z.string()
+    .trim()
+    .regex(/^$|^\(?[1-9]{2}\)?\s?9?[0-9]{4}[-\s]?[0-9]{4}$/, 'Telefone inválido. Use o formato (11) 99999-9999')
+    .optional()
+    .or(z.literal('')),
+  unit: z.string()
+    .trim()
+    .max(50, 'Unidade deve ter no máximo 50 caracteres')
+    .optional(),
+  department: z.string()
+    .trim()
+    .max(50, 'Departamento deve ter no máximo 50 caracteres')
+    .optional(),
+  jobTitle: z.string()
+    .trim()
+    .max(50, 'Cargo deve ter no máximo 50 caracteres')
+    .optional(),
+});
+
+type FieldErrors = Partial<Record<keyof z.infer<typeof profileSchema>, string>>;
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth();
@@ -26,6 +54,8 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [touched, setTouched] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (user) {
@@ -51,6 +81,38 @@ export default function ProfilePage() {
       fetchProfile();
     }
   }, [user]);
+
+  // Validação em tempo real
+  const validateField = (field: string, value: string) => {
+    const data = { fullName, phone, unit, department, jobTitle, [field]: value };
+    const result = profileSchema.safeParse(data);
+    
+    if (!result.success) {
+      const fieldError = result.error.errors.find(e => e.path[0] === field);
+      setErrors(prev => ({
+        ...prev,
+        [field]: fieldError?.message || undefined
+      }));
+    } else {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field as keyof FieldErrors];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleFieldChange = (field: string, value: string, setter: (v: string) => void) => {
+    setter(value);
+    if (touched.has(field)) {
+      validateField(field, value);
+    }
+  };
+
+  const handleFieldBlur = (field: string, value: string) => {
+    setTouched(prev => new Set(prev).add(field));
+    validateField(field, value);
+  };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -104,25 +166,44 @@ export default function ProfilePage() {
   const handleSave = async () => {
     if (!user) return;
 
+    // Validar todos os campos
+    const result = profileSchema.safeParse({ fullName, phone, unit, department, jobTitle });
+    
+    if (!result.success) {
+      const fieldErrors: FieldErrors = {};
+      result.error.errors.forEach(err => {
+        const field = err.path[0] as keyof FieldErrors;
+        fieldErrors[field] = err.message;
+      });
+      setErrors(fieldErrors);
+      setTouched(new Set(['fullName', 'phone', 'unit', 'department', 'jobTitle']));
+      toast({
+        title: 'Erro de validação',
+        description: 'Por favor, corrija os campos destacados.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       const { error } = await supabase
         .from('tab_perfil_usuario')
         .upsert({
           cod_usuario: user.id,
-          des_nome_completo: fullName,
+          des_nome_completo: fullName.trim(),
           des_email: user.email,
           dta_aniversario: birthdayDate || null,
-          des_unidade: unit || null,
-          des_departamento: department || null,
-          des_cargo: jobTitle || null,
-          des_telefone: phone || null,
+          des_unidade: unit.trim() || null,
+          des_departamento: department.trim() || null,
+          des_cargo: jobTitle.trim() || null,
+          des_telefone: phone.trim() || null,
         });
 
       if (error) throw error;
 
       await supabase.auth.updateUser({
-        data: { full_name: fullName },
+        data: { full_name: fullName.trim() },
       });
 
       toast({
@@ -140,6 +221,8 @@ export default function ProfilePage() {
       setIsLoading(false);
     }
   };
+
+  const hasErrors = Object.keys(errors).length > 0;
 
   const getInitials = () => {
     if (fullName) {
@@ -217,16 +300,25 @@ export default function ProfilePage() {
 
         <div className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="fullName" className="flex items-center gap-2">
+            <Label htmlFor="fullName" className={`flex items-center gap-2 ${errors.fullName ? 'text-destructive' : ''}`}>
               <User className="h-4 w-4" />
               Nome completo
+              {errors.fullName && <span className="text-xs font-normal">*</span>}
             </Label>
             <Input
               id="fullName"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(e) => handleFieldChange('fullName', e.target.value, setFullName)}
+              onBlur={() => handleFieldBlur('fullName', fullName)}
               placeholder="Seu nome completo"
+              className={errors.fullName ? 'border-destructive focus-visible:ring-destructive' : ''}
             />
+            {errors.fullName && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {errors.fullName}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -260,62 +352,94 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="unit" className="flex items-center gap-2">
+              <Label htmlFor="unit" className={`flex items-center gap-2 ${errors.unit ? 'text-destructive' : ''}`}>
                 <Building2 className="h-4 w-4" />
                 Unidade
               </Label>
               <Input
                 id="unit"
                 value={unit}
-                onChange={(e) => setUnit(e.target.value)}
+                onChange={(e) => handleFieldChange('unit', e.target.value, setUnit)}
+                onBlur={() => handleFieldBlur('unit', unit)}
                 placeholder="Ex: Matriz, Filial SP"
+                className={errors.unit ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
+              {errors.unit && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.unit}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="department" className="flex items-center gap-2">
+              <Label htmlFor="department" className={`flex items-center gap-2 ${errors.department ? 'text-destructive' : ''}`}>
                 <Building2 className="h-4 w-4" />
                 Departamento
               </Label>
               <Input
                 id="department"
                 value={department}
-                onChange={(e) => setDepartment(e.target.value)}
+                onChange={(e) => handleFieldChange('department', e.target.value, setDepartment)}
+                onBlur={() => handleFieldBlur('department', department)}
                 placeholder="Ex: TI, RH, Financeiro"
+                className={errors.department ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
+              {errors.department && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.department}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="jobTitle" className="flex items-center gap-2">
+              <Label htmlFor="jobTitle" className={`flex items-center gap-2 ${errors.jobTitle ? 'text-destructive' : ''}`}>
                 <Briefcase className="h-4 w-4" />
                 Cargo
               </Label>
               <Input
                 id="jobTitle"
                 value={jobTitle}
-                onChange={(e) => setJobTitle(e.target.value)}
+                onChange={(e) => handleFieldChange('jobTitle', e.target.value, setJobTitle)}
+                onBlur={() => handleFieldBlur('jobTitle', jobTitle)}
                 placeholder="Ex: Analista, Gerente"
+                className={errors.jobTitle ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
+              {errors.jobTitle && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.jobTitle}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone" className="flex items-center gap-2">
+            <Label htmlFor="phone" className={`flex items-center gap-2 ${errors.phone ? 'text-destructive' : ''}`}>
               <Phone className="h-4 w-4" />
               Telefone
             </Label>
             <Input
               id="phone"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => handleFieldChange('phone', e.target.value, setPhone)}
+              onBlur={() => handleFieldBlur('phone', phone)}
               placeholder="Ex: (11) 99999-9999"
+              className={errors.phone ? 'border-destructive focus-visible:ring-destructive' : ''}
             />
+            {errors.phone && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {errors.phone}
+              </p>
+            )}
           </div>
 
           <div className="flex gap-3 pt-4">
-            <Button onClick={handleSave} disabled={isLoading} className="gap-2">
+            <Button onClick={handleSave} disabled={isLoading || hasErrors} className="gap-2">
               {isLoading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
               ) : (
