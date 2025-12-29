@@ -164,6 +164,66 @@ export type Database = {
         }
         Relationships: []
       }
+      meeting_rooms: {
+        Row: {
+          active: boolean | null
+          allowed_roles: string[] | null
+          capacity: number
+          created_at: string | null
+          id: string
+          name: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          allowed_roles?: string[] | null
+          capacity?: number
+          created_at?: string | null
+          id?: string
+          name: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          allowed_roles?: string[] | null
+          capacity?: number
+          created_at?: string | null
+          id?: string
+          name?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      meeting_types: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          id: string
+          name: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          name: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       menu_items: {
         Row: {
           active: boolean | null
@@ -322,6 +382,69 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      room_reservations: {
+        Row: {
+          created_at: string | null
+          end_time: string
+          id: string
+          meeting_type_id: string | null
+          notes: string | null
+          notified: boolean | null
+          participants_count: number | null
+          requester_name: string
+          reservation_date: string
+          room_id: string
+          start_time: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_time: string
+          id?: string
+          meeting_type_id?: string | null
+          notes?: string | null
+          notified?: boolean | null
+          participants_count?: number | null
+          requester_name: string
+          reservation_date: string
+          room_id: string
+          start_time: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          end_time?: string
+          id?: string
+          meeting_type_id?: string | null
+          notes?: string | null
+          notified?: boolean | null
+          participants_count?: number | null
+          requester_name?: string
+          reservation_date?: string
+          room_id?: string
+          start_time?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_reservations_meeting_type_id_fkey"
+            columns: ["meeting_type_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_reservations_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       systems: {
         Row: {
