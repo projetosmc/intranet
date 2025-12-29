@@ -62,6 +62,7 @@ export default function AdminSettingsPage() {
   const { isAdmin } = useUser();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [selectedParentId, setSelectedParentId] = useState<string>('__none__');
@@ -72,6 +73,7 @@ export default function AdminSettingsPage() {
   const [overId, setOverId] = useState<string | null>(null);
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
   const [pathType, setPathType] = useState<'internal' | 'external'>('internal');
+  const [selectedPath, setSelectedPath] = useState<string>('');
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -113,67 +115,80 @@ export default function AdminSettingsPage() {
   };
 
   const handleSave = async (formData: FormData) => {
-    const parentId = (formData.get('parent_id') as string) === '__none__' ? null : (formData.get('parent_id') as string) || null;
-    const pathValue = (formData.get('path') as string)?.trim();
-    
-    const rawName = (formData.get('name') as string)?.trim();
-    const formattedName = parentId ? toTitleCase(rawName) : rawName.toUpperCase();
-    
-    const finalPath = parentId ? pathValue : (pathValue || `/${rawName.toLowerCase().replace(/\s+/g, '-')}`);
-    const iconValue = (formData.get('icon') as string)?.trim() || 'Circle';
-    const orderValue = parseInt(formData.get('sort_order') as string) || 0;
-    const openInNewTab = formData.get('open_mode') === 'new_tab';
-    const adminOnly = formData.get('is_admin_only') === 'on';
-
-    // Validar com Zod
-    const validation = validateForm(menuItemSchema, {
-      name: formattedName,
-      path: finalPath,
-      icon: iconValue,
-      order: orderValue,
-      parentId: parentId,
-      adminOnly,
-      openInNewTab,
-      active: true,
-    });
-
-    if (!validation.success) {
-      const validationResult = validation as { success: false; errors: Record<string, string> };
-      const firstError = Object.values(validationResult.errors)[0];
-      toast({
-        title: 'Erro de validação',
-        description: String(firstError),
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    const isDuplicate = menuItems.some(item => 
-      item.des_nome.toLowerCase() === formattedName.toLowerCase() && 
-      item.cod_menu_item !== editingItem?.cod_menu_item
-    );
-
-    if (isDuplicate) {
-      toast({ 
-        title: 'Nome duplicado', 
-        description: 'Já existe um item de menu com este nome.', 
-        variant: 'destructive' 
-      });
-      return;
-    }
-
-    const item = {
-      des_nome: formattedName,
-      des_caminho: finalPath,
-      des_icone: iconValue,
-      seq_menu_pai: parentId,
-      ind_nova_aba: openInNewTab,
-      ind_admin_only: adminOnly,
-      num_ordem: orderValue,
-      ind_ativo: true,
-    };
-
+    setIsSaving(true);
     try {
+      const parentId = (formData.get('parent_id') as string) === '__none__' ? null : (formData.get('parent_id') as string) || null;
+      
+      // Para submenus, usar o caminho selecionado ou digitado
+      let pathValue: string;
+      if (parentId) {
+        if (pathType === 'internal') {
+          pathValue = selectedPath;
+        } else {
+          pathValue = (formData.get('external_url') as string)?.trim() || '';
+        }
+      } else {
+        // Para menus pai, gerar caminho baseado no nome
+        const rawName = (formData.get('name') as string)?.trim();
+        pathValue = `/${rawName.toLowerCase().replace(/\s+/g, '-')}`;
+      }
+      
+      const rawName = (formData.get('name') as string)?.trim();
+      const formattedName = parentId ? toTitleCase(rawName) : rawName.toUpperCase();
+      
+      const iconValue = (formData.get('icon') as string)?.trim() || 'Circle';
+      const orderValue = parseInt(formData.get('sort_order') as string) || 0;
+      const openInNewTab = pathType === 'external' || formData.get('open_mode') === 'new_tab';
+      const adminOnly = formData.get('is_admin_only') === 'on';
+
+      // Validar com Zod
+      const validation = validateForm(menuItemSchema, {
+        name: formattedName,
+        path: pathValue,
+        icon: iconValue,
+        order: orderValue,
+        parentId: parentId,
+        adminOnly,
+        openInNewTab,
+        active: true,
+      });
+
+      if (!validation.success) {
+        const validationResult = validation as { success: false; errors: Record<string, string> };
+        const firstError = Object.values(validationResult.errors)[0];
+        toast({
+          title: 'Erro de validação',
+          description: String(firstError),
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      const isDuplicate = menuItems.some(item => 
+        item.des_nome.toLowerCase() === formattedName.toLowerCase() && 
+        item.cod_menu_item !== editingItem?.cod_menu_item
+      );
+
+      if (isDuplicate) {
+        toast({ 
+          title: 'Nome duplicado', 
+          description: 'Já existe um item de menu com este nome.', 
+          variant: 'destructive' 
+        });
+        return;
+      }
+
+      const item = {
+        des_nome: formattedName,
+        des_caminho: pathValue,
+        des_icone: iconValue,
+        seq_menu_pai: parentId,
+        ind_nova_aba: openInNewTab,
+        ind_admin_only: adminOnly,
+        num_ordem: orderValue,
+        ind_ativo: true,
+      };
+
       if (editingItem) {
         const { error } = await supabase
           .from('tab_menu_item')
@@ -196,6 +211,8 @@ export default function AdminSettingsPage() {
     } catch (error) {
       console.error('Error saving menu item:', error);
       toast({ title: 'Erro ao salvar item', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -576,20 +593,30 @@ export default function AdminSettingsPage() {
                   setSelectedParentId('__none__');
                   setNamePreview('');
                   setSelectedIcon('Circle');
+                  setPathType('internal');
+                  setSelectedPath('');
                 } else if (editingItem) {
                   setSelectedParentId(editingItem.seq_menu_pai || '__none__');
                   setNamePreview(editingItem.des_nome);
                   setSelectedIcon(editingItem.des_icone || 'Circle');
-                  setPathType(editingItem.des_caminho?.startsWith('http') ? 'external' : 'internal');
+                  const isExternal = editingItem.des_caminho?.startsWith('http');
+                  setPathType(isExternal ? 'external' : 'internal');
+                  setSelectedPath(isExternal ? '' : editingItem.des_caminho || '');
                 }
               }}>
                 <DialogTrigger asChild>
-                  <Button size="sm" onClick={() => { setSelectedParentId('__none__'); setNamePreview(''); setSelectedIcon('Circle'); }}>
+                  <Button size="sm" onClick={() => { 
+                    setSelectedParentId('__none__'); 
+                    setNamePreview(''); 
+                    setSelectedIcon('Circle'); 
+                    setPathType('internal');
+                    setSelectedPath('');
+                  }}>
                     <Plus className="h-4 w-4 mr-2" />
                     Novo Item
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-lg">
                   <DialogHeader>
                     <DialogTitle>{editingItem ? 'Editar' : 'Novo'} Item de Menu</DialogTitle>
                   </DialogHeader>
@@ -599,7 +626,13 @@ export default function AdminSettingsPage() {
                       <Select 
                         name="parent_id" 
                         value={selectedParentId}
-                        onValueChange={setSelectedParentId}
+                        onValueChange={(value) => {
+                          setSelectedParentId(value);
+                          // Reset path when changing parent
+                          if (value !== '__none__') {
+                            setSelectedPath('');
+                          }
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Nenhum (item principal)" />
@@ -643,9 +676,76 @@ export default function AdminSettingsPage() {
                     </div>
                     
                     {selectedParentId !== '__none__' && (
-                      <div>
-                        <Label className="mb-1.5 block">Caminho/URL</Label>
-                        <Input name="path" defaultValue={editingItem?.des_caminho} required placeholder="/pagina ou https://..." />
+                      <div className="space-y-3">
+                        <Label className="block">Tipo de Destino</Label>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant={pathType === 'internal' ? 'default' : 'outline'}
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => setPathType('internal')}
+                          >
+                            <FolderOpen className="h-4 w-4 mr-1" />
+                            Página Interna
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={pathType === 'external' ? 'default' : 'outline'}
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => setPathType('external')}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-1" />
+                            URL Externa
+                          </Button>
+                        </div>
+
+                        {pathType === 'internal' ? (
+                          <div>
+                            <Label className="mb-1.5 block text-sm">Selecione a Página</Label>
+                            <Select 
+                              value={selectedPath}
+                              onValueChange={setSelectedPath}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione uma página disponível" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availablePaths.length === 0 ? (
+                                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                                    Todas as páginas já estão em uso
+                                  </div>
+                                ) : (
+                                  availablePaths.map(route => (
+                                    <SelectItem key={route.path} value={route.path}>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground text-xs">{route.path}</span>
+                                        <span>{route.label}</span>
+                                      </div>
+                                    </SelectItem>
+                                  ))
+                                )}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Apenas páginas não utilizadas em outros menus são exibidas
+                            </p>
+                          </div>
+                        ) : (
+                          <div>
+                            <Label className="mb-1.5 block text-sm">URL Externa</Label>
+                            <Input 
+                              name="external_url" 
+                              defaultValue={editingItem?.des_caminho?.startsWith('http') ? editingItem.des_caminho : ''} 
+                              required={pathType === 'external'}
+                              placeholder="https://exemplo.com" 
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Links externos sempre abrem em nova aba
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -687,18 +787,20 @@ export default function AdminSettingsPage() {
                       />
                     </div>
 
-                    <div>
-                      <Label className="mb-1.5 block">Abrir em</Label>
-                      <Select name="open_mode" defaultValue={editingItem?.ind_nova_aba ? 'new_tab' : 'same_window'}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="same_window">Mesma janela</SelectItem>
-                          <SelectItem value="new_tab">Nova aba</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {pathType === 'internal' && selectedParentId !== '__none__' && (
+                      <div>
+                        <Label className="mb-1.5 block">Abrir em</Label>
+                        <Select name="open_mode" defaultValue={editingItem?.ind_nova_aba ? 'new_tab' : 'same_window'}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="same_window">Mesma janela</SelectItem>
+                            <SelectItem value="new_tab">Nova aba</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                       <div>
@@ -708,7 +810,9 @@ export default function AdminSettingsPage() {
                       <Switch name="is_admin_only" defaultChecked={editingItem?.ind_admin_only} />
                     </div>
 
-                    <Button type="submit" className="w-full">Salvar</Button>
+                    <Button type="submit" className="w-full" loading={isSaving}>
+                      {isSaving ? 'Salvando...' : 'Salvar'}
+                    </Button>
                   </form>
                 </DialogContent>
               </Dialog>
