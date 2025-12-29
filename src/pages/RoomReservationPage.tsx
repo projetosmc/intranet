@@ -937,32 +937,35 @@ export default function RoomReservationPage() {
     ).sort((a, b) => a.hra_inicio.localeCompare(b.hra_inicio));
   }, [selectedRoom, reservationDate, reservations, editingReservation]);
 
-  // Generate available time slots for start time
+  // Generate available time slots for start time (5-minute intervals, respecting 5-min buffer after reservations)
   const availableStartTimes = useMemo(() => {
     const slots: string[] = [];
     const startHour = 7; // 7:00
     const endHour = 20; // 20:00
     
     for (let hour = startHour; hour < endHour; hour++) {
-      for (let min = 0; min < 60; min += 30) {
+      for (let min = 0; min < 60; min += 5) {
         const timeStr = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+        const timeMinutes = hour * 60 + min;
         
-        // For today, skip times in the past
+        // For today, skip times in the past (+ 5 min buffer)
         if (reservationDate && isToday(reservationDate)) {
           const now = new Date();
-          const [h, m] = timeStr.split(':').map(Number);
-          const timeDate = new Date();
-          timeDate.setHours(h, m, 0, 0);
-          if (timeDate <= now) continue;
+          const nowMinutes = now.getHours() * 60 + now.getMinutes() + 5;
+          if (timeMinutes <= nowMinutes) continue;
         }
         
-        // Check if this time falls within any existing reservation
+        // Check if this time falls within any existing reservation (including 5-min buffer before)
         let isOccupied = false;
         for (const r of occupiedTimesForForm) {
-          const rStart = r.hra_inicio.slice(0, 5);
-          const rEnd = r.hra_fim.slice(0, 5);
-          // Time is occupied if it's >= start and < end of a reservation
-          if (timeStr >= rStart && timeStr < rEnd) {
+          const [rStartH, rStartM] = r.hra_inicio.slice(0, 5).split(':').map(Number);
+          const [rEndH, rEndM] = r.hra_fim.slice(0, 5).split(':').map(Number);
+          const rStartMinutes = rStartH * 60 + rStartM;
+          const rEndMinutes = rEndH * 60 + rEndM;
+          
+          // Time is occupied if it's within reservation or less than 5 min after it ends
+          // Also block times that are less than 5 min before a reservation starts
+          if (timeMinutes >= rStartMinutes - 5 && timeMinutes < rEndMinutes + 5) {
             isOccupied = true;
             break;
           }
@@ -977,7 +980,7 @@ export default function RoomReservationPage() {
     return slots;
   }, [reservationDate, occupiedTimesForForm]);
 
-  // Generate available time slots for end time (must be after start time)
+  // Generate available time slots for end time (5-minute intervals, must end 5 min before next reservation)
   const availableEndTimes = useMemo(() => {
     const slots: string[] = [];
     const startHour = 7;
@@ -986,27 +989,29 @@ export default function RoomReservationPage() {
     const [startH, startM] = startTime.split(':').map(Number);
     const startMinutes = startH * 60 + startM;
     
-    // Find the next reservation after start time to limit end time options
-    let maxEndTime = '21:00';
+    // Find the next reservation after start time to limit end time options (with 5-min buffer)
+    let maxEndMinutes = 21 * 60; // Default: 21:00
     for (const r of occupiedTimesForForm) {
-      const rStart = r.hra_inicio.slice(0, 5);
-      if (rStart > startTime) {
-        maxEndTime = rStart;
+      const [rStartH, rStartM] = r.hra_inicio.slice(0, 5).split(':').map(Number);
+      const rStartMinutes = rStartH * 60 + rStartM;
+      if (rStartMinutes > startMinutes) {
+        // End time must be at least 5 min before next reservation
+        maxEndMinutes = rStartMinutes - 5;
         break;
       }
     }
     
     for (let hour = startHour; hour <= endHour; hour++) {
-      for (let min = 0; min < 60; min += 30) {
-        const timeStr = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+      for (let min = 0; min < 60; min += 5) {
         const timeMinutes = hour * 60 + min;
         
-        // Must be after start time
-        if (timeMinutes <= startMinutes) continue;
+        // Must be after start time (at least 5 min)
+        if (timeMinutes <= startMinutes + 5) continue;
         
-        // Must be at or before the next reservation start
-        if (timeStr > maxEndTime) continue;
+        // Must be at or before the max end time
+        if (timeMinutes > maxEndMinutes) continue;
         
+        const timeStr = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
         slots.push(timeStr);
       }
     }
