@@ -362,6 +362,36 @@ export type Database = {
         }
         Relationships: []
       }
+      tab_permissao_tela: {
+        Row: {
+          cod_permissao: string
+          des_nome_tela: string
+          des_role: Database["public"]["Enums"]["app_role"]
+          des_rota: string
+          dta_atualizacao: string | null
+          dta_cadastro: string | null
+          ind_pode_acessar: boolean
+        }
+        Insert: {
+          cod_permissao?: string
+          des_nome_tela: string
+          des_role: Database["public"]["Enums"]["app_role"]
+          des_rota: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_pode_acessar?: boolean
+        }
+        Update: {
+          cod_permissao?: string
+          des_nome_tela?: string
+          des_role?: Database["public"]["Enums"]["app_role"]
+          des_rota?: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_pode_acessar?: boolean
+        }
+        Relationships: []
+      }
       tab_reserva_sala: {
         Row: {
           cod_reserva: string
