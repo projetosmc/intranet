@@ -937,86 +937,139 @@ export default function RoomReservationPage() {
     ).sort((a, b) => a.hra_inicio.localeCompare(b.hra_inicio));
   }, [selectedRoom, reservationDate, reservations, editingReservation]);
 
-  // Generate available time slots for start time (5-minute intervals, respecting 5-min buffer after reservations)
+  // Generate available time slots for start time
+  // Uses 30-min intervals normally, but 5-min intervals in tight gaps (< 1 hour between meetings)
   const availableStartTimes = useMemo(() => {
     const slots: string[] = [];
     const startHour = 7; // 7:00
     const endHour = 20; // 20:00
     
-    for (let hour = startHour; hour < endHour; hour++) {
-      for (let min = 0; min < 60; min += 5) {
-        const timeStr = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
-        const timeMinutes = hour * 60 + min;
+    // Build list of available gaps (periods not occupied by reservations)
+    type Gap = { start: number; end: number; isTight: boolean };
+    const gaps: Gap[] = [];
+    
+    let currentStart = startHour * 60; // Start of day in minutes
+    
+    for (const r of occupiedTimesForForm) {
+      const [rStartH, rStartM] = r.hra_inicio.slice(0, 5).split(':').map(Number);
+      const [rEndH, rEndM] = r.hra_fim.slice(0, 5).split(':').map(Number);
+      const rStartMinutes = rStartH * 60 + rStartM;
+      const rEndMinutes = rEndH * 60 + rEndM;
+      
+      // Gap before this reservation
+      if (rStartMinutes > currentStart) {
+        const gapDuration = rStartMinutes - currentStart;
+        gaps.push({
+          start: currentStart,
+          end: rStartMinutes,
+          isTight: gapDuration < 60 // Less than 1 hour = tight gap
+        });
+      }
+      
+      currentStart = rEndMinutes;
+    }
+    
+    // Gap after last reservation until end of day
+    const endOfDay = endHour * 60;
+    if (currentStart < endOfDay) {
+      gaps.push({
+        start: currentStart,
+        end: endOfDay,
+        isTight: false // End of day is never tight
+      });
+    }
+    
+    // If no reservations, one big gap
+    if (occupiedTimesForForm.length === 0) {
+      gaps.push({
+        start: startHour * 60,
+        end: endOfDay,
+        isTight: false
+      });
+    }
+    
+    // Generate slots based on gaps
+    for (const gap of gaps) {
+      const interval = gap.isTight ? 5 : 30;
+      const bufferStart = gap.start === startHour * 60 ? gap.start : gap.start + 5; // 5 min after previous meeting ends
+      const bufferEnd = gap.end; // Will need to end 5 min before next meeting
+      
+      for (let minutes = bufferStart; minutes < bufferEnd - 5; minutes += interval) {
+        // Align to interval
+        if (!gap.isTight && minutes % 30 !== 0) continue;
         
-        // For today, skip times in the past (+ 5 min buffer)
+        const hour = Math.floor(minutes / 60);
+        const min = minutes % 60;
+        const timeStr = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+        
+        // For today, skip times in the past
         if (reservationDate && isToday(reservationDate)) {
           const now = new Date();
           const nowMinutes = now.getHours() * 60 + now.getMinutes() + 5;
-          if (timeMinutes <= nowMinutes) continue;
+          if (minutes <= nowMinutes) continue;
         }
         
-        // Check if this time falls within any existing reservation (including 5-min buffer before)
-        let isOccupied = false;
-        for (const r of occupiedTimesForForm) {
-          const [rStartH, rStartM] = r.hra_inicio.slice(0, 5).split(':').map(Number);
-          const [rEndH, rEndM] = r.hra_fim.slice(0, 5).split(':').map(Number);
-          const rStartMinutes = rStartH * 60 + rStartM;
-          const rEndMinutes = rEndH * 60 + rEndM;
-          
-          // Time is occupied if it's within reservation or less than 5 min after it ends
-          // Also block times that are less than 5 min before a reservation starts
-          if (timeMinutes >= rStartMinutes - 5 && timeMinutes < rEndMinutes + 5) {
-            isOccupied = true;
-            break;
-          }
-        }
-        
-        if (!isOccupied) {
-          slots.push(timeStr);
-        }
+        slots.push(timeStr);
       }
     }
     
-    return slots;
+    // Sort and dedupe
+    return [...new Set(slots)].sort();
   }, [reservationDate, occupiedTimesForForm]);
 
-  // Generate available time slots for end time (5-minute intervals, must end 5 min before next reservation)
+  // Generate available time slots for end time
+  // Uses 30-min intervals normally, but 5-min if there's a meeting within 1 hour
   const availableEndTimes = useMemo(() => {
     const slots: string[] = [];
-    const startHour = 7;
     const endHour = 21; // Allow ending at 21:00
     
     const [startH, startM] = startTime.split(':').map(Number);
     const startMinutes = startH * 60 + startM;
     
-    // Find the next reservation after start time to limit end time options (with 5-min buffer)
-    let maxEndMinutes = 21 * 60; // Default: 21:00
+    // Find the next reservation after start time
+    let nextReservationStart = endHour * 60; // Default: end of day
     for (const r of occupiedTimesForForm) {
       const [rStartH, rStartM] = r.hra_inicio.slice(0, 5).split(':').map(Number);
       const rStartMinutes = rStartH * 60 + rStartM;
       if (rStartMinutes > startMinutes) {
-        // End time must be at least 5 min before next reservation
-        maxEndMinutes = rStartMinutes - 5;
+        nextReservationStart = rStartMinutes;
         break;
       }
     }
     
-    for (let hour = startHour; hour <= endHour; hour++) {
-      for (let min = 0; min < 60; min += 5) {
-        const timeMinutes = hour * 60 + min;
-        
-        // Must be after start time (at least 5 min)
-        if (timeMinutes <= startMinutes + 5) continue;
-        
-        // Must be at or before the max end time
-        if (timeMinutes > maxEndMinutes) continue;
-        
-        const timeStr = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
-        slots.push(timeStr);
+    // Calculate if this is a tight gap (< 1 hour until next meeting)
+    const gapDuration = nextReservationStart - startMinutes;
+    const isTight = gapDuration < 60;
+    const interval = isTight ? 5 : 30;
+    
+    // Max end time: 5 min before next reservation (if exists before end of day)
+    const maxEndMinutes = nextReservationStart < endHour * 60 
+      ? nextReservationStart - 5 
+      : endHour * 60;
+    
+    // Generate slots
+    for (let minutes = startMinutes + interval; minutes <= maxEndMinutes; minutes += interval) {
+      // For non-tight gaps, align to 30-min intervals
+      if (!isTight && minutes % 30 !== 0) continue;
+      
+      const hour = Math.floor(minutes / 60);
+      const min = minutes % 60;
+      const timeStr = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+      
+      slots.push(timeStr);
+    }
+    
+    // If tight gap, also add the max end time if not already included
+    if (isTight && maxEndMinutes > startMinutes) {
+      const maxHour = Math.floor(maxEndMinutes / 60);
+      const maxMin = maxEndMinutes % 60;
+      const maxTimeStr = `${String(maxHour).padStart(2, '0')}:${String(maxMin).padStart(2, '0')}`;
+      if (!slots.includes(maxTimeStr) && maxEndMinutes > startMinutes) {
+        slots.push(maxTimeStr);
       }
     }
     
-    return slots;
+    return [...new Set(slots)].sort();
   }, [startTime, occupiedTimesForForm]);
 
   const duration = calculateDuration(startTime, endTime);
