@@ -690,6 +690,18 @@ export default function RoomReservationPage() {
     });
   }, [reservations, selectedDate]);
 
+  // Get occupied times for selected room and date in the form
+  const occupiedTimesForForm = useMemo(() => {
+    if (!selectedRoom || !reservationDate) return [];
+    const dateStr = format(reservationDate, 'yyyy-MM-dd');
+    return reservations.filter(r => 
+      r.seq_sala === selectedRoom && 
+      r.dta_reserva === dateStr && 
+      !r.ind_cancelado &&
+      (editingReservation ? r.cod_reserva !== editingReservation.cod_reserva : true)
+    ).sort((a, b) => a.hra_inicio.localeCompare(b.hra_inicio));
+  }, [selectedRoom, reservationDate, reservations, editingReservation]);
+
   const duration = calculateDuration(startTime, endTime);
 
   return (
@@ -761,6 +773,76 @@ export default function RoomReservationPage() {
                     </PopoverContent>
                   </Popover>
                 </div>
+
+                {/* Visual timeline of occupied times */}
+                {selectedRoom && reservationDate && occupiedTimesForForm.length > 0 && (
+                  <div className="bg-muted/30 border border-border rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Horários ocupados nesta sala em {format(reservationDate, "dd/MM", { locale: ptBR })}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {occupiedTimesForForm.map((r) => (
+                        <Badge 
+                          key={r.cod_reserva} 
+                          variant="secondary" 
+                          className="bg-destructive/10 text-destructive border-destructive/20"
+                        >
+                          {r.hra_inicio.slice(0, 5)} - {r.hra_fim.slice(0, 5)}
+                        </Badge>
+                      ))}
+                    </div>
+                    {/* Visual timeline bar */}
+                    <div className="mt-3 relative h-6 bg-muted rounded-full overflow-hidden">
+                      {/* Hour markers */}
+                      <div className="absolute inset-0 flex justify-between px-1">
+                        {[7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19].map((hour) => (
+                          <div key={hour} className="flex flex-col items-center">
+                            <div className="w-px h-2 bg-muted-foreground/30" />
+                            <span className="text-[8px] text-muted-foreground/50">{hour}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Occupied blocks */}
+                      {occupiedTimesForForm.map((r) => {
+                        const [startH, startM] = r.hra_inicio.split(':').map(Number);
+                        const [endH, endM] = r.hra_fim.split(':').map(Number);
+                        const dayStart = 7; // 7am
+                        const dayEnd = 20; // 8pm
+                        const totalMinutes = (dayEnd - dayStart) * 60;
+                        const startMinutes = (startH - dayStart) * 60 + startM;
+                        const endMinutes = (endH - dayStart) * 60 + endM;
+                        const left = Math.max(0, (startMinutes / totalMinutes) * 100);
+                        const width = Math.min(100 - left, ((endMinutes - startMinutes) / totalMinutes) * 100);
+                        
+                        return (
+                          <div
+                            key={r.cod_reserva}
+                            className="absolute top-0 h-4 bg-destructive/60 rounded"
+                            style={{
+                              left: `${left}%`,
+                              width: `${width}%`,
+                            }}
+                            title={`${r.hra_inicio.slice(0, 5)} - ${r.hra_fim.slice(0, 5)}: ${r.des_nome_solicitante}`}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {selectedRoom && reservationDate && occupiedTimesForForm.length === 0 && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-primary" />
+                      <span className="text-xs text-primary">
+                        Todos os horários disponíveis nesta sala em {format(reservationDate, "dd/MM", { locale: ptBR })}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
