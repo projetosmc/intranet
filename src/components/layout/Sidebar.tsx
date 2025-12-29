@@ -367,10 +367,8 @@ export function Sidebar() {
         )}
       >
         {active && (
-          <motion.div
-            layoutId="sidebar-indicator"
+          <div
             className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full"
-            transition={{ type: "spring", stiffness: 350, damping: 30 }}
           />
         )}
         <Icon className={cn(
