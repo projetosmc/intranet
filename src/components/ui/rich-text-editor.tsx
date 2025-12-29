@@ -346,7 +346,12 @@ export function RichTextEditor({ content, onChange, placeholder, className, enab
 }
 
 // Component to render HTML content safely
-export function RichTextContent({ html, className }: { html: string; className?: string }) {
+interface RichTextContentProps {
+  html: string;
+  className?: string;
+}
+
+export const RichTextContent = ({ html, className }: RichTextContentProps) => {
   return (
     <div 
       className={cn(
@@ -368,4 +373,4 @@ export function RichTextContent({ html, className }: { html: string; className?:
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
-}
+};
