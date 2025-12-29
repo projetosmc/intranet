@@ -3,10 +3,10 @@ import { motion } from 'framer-motion';
 import { Plus, Pencil, Trash2, Pin, PinOff, Eye, EyeOff, Upload, Image, FileText, BarChart3, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import {
   Dialog,
   DialogContent,
@@ -432,13 +432,12 @@ export default function AdminAnnouncementsPage() {
 
             {formData.templateType !== 'poll' && (
               <div className="space-y-2">
-                <Label htmlFor="content">Conteúdo</Label>
-                <Textarea
-                  id="content"
-                  value={formData.content}
-                  onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                  placeholder="Conteúdo completo do comunicado (suporta markdown)"
-                  rows={6}
+                <Label>Conteúdo</Label>
+                <RichTextEditor
+                  content={formData.content}
+                  onChange={(html) => setFormData(prev => ({ ...prev, content: html }))}
+                  placeholder="Digite o conteúdo completo do comunicado..."
+                  className="min-h-[200px]"
                 />
               </div>
             )}
