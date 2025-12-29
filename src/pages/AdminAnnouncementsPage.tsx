@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { RichTextEditor, RichTextContent } from '@/components/ui/rich-text-editor';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -94,12 +95,14 @@ export default function AdminAnnouncementsPage() {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [isUploading, setIsUploading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleOpenCreate = () => {
     setEditingId(null);
     setFormData(initialFormData);
     setFormErrors({});
+    setActiveTab('edit');
     setIsDialogOpen(true);
   };
 
@@ -116,6 +119,7 @@ export default function AdminAnnouncementsPage() {
       pollType: announcement.pollType || 'single',
       pollOptions: announcement.pollOptions?.map((o) => o.optionText) || ['', ''],
     });
+    setActiveTab('edit');
     setIsDialogOpen(true);
   };
 
@@ -364,206 +368,300 @@ export default function AdminAnnouncementsPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingId ? 'Editar Comunicado' : 'Novo Comunicado'}
             </DialogTitle>
           </DialogHeader>
 
-          {/* Template Selection */}
-          <div className="space-y-3">
-            <Label>Tipo de Comunicado</Label>
-            <div className="grid grid-cols-3 gap-3">
-              {(['simple', 'banner', 'poll'] as TemplateType[]).map((type) => {
-                const Icon = templateIcons[type];
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, templateType: type }))}
-                    className={cn(
-                      "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
-                      formData.templateType === type
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    )}
-                  >
-                    <Icon className={cn(
-                      "h-6 w-6",
-                      formData.templateType === type ? "text-primary" : "text-muted-foreground"
-                    )} />
-                    <span className="text-sm font-medium">{templateLabels[type]}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'edit' | 'preview')}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="edit">Editar</TabsTrigger>
+              <TabsTrigger value="preview">Visualizar</TabsTrigger>
+            </TabsList>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Título</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Título do comunicado"
-                maxLength={200}
-                className={formErrors.title ? 'border-destructive' : ''}
-              />
-              {formErrors.title && (
-                <p className="text-sm text-destructive">{formErrors.title}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="summary">Resumo</Label>
-              <Input
-                id="summary"
-                value={formData.summary}
-                onChange={(e) => setFormData(prev => ({ ...prev, summary: e.target.value }))}
-                placeholder="Breve resumo do comunicado"
-                maxLength={500}
-                className={formErrors.summary ? 'border-destructive' : ''}
-              />
-              {formErrors.summary && (
-                <p className="text-sm text-destructive">{formErrors.summary}</p>
-              )}
-            </div>
-
-            {formData.templateType !== 'poll' && (
-              <div className="space-y-2">
-                <Label>Conteúdo</Label>
-                <RichTextEditor
-                  content={formData.content}
-                  onChange={(html) => setFormData(prev => ({ ...prev, content: html }))}
-                  placeholder="Digite o conteúdo completo do comunicado..."
-                  className="min-h-[200px]"
-                />
+            <TabsContent value="edit" className="mt-4">
+              {/* Template Selection */}
+              <div className="space-y-3">
+                <Label>Tipo de Comunicado</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  {(['simple', 'banner', 'poll'] as TemplateType[]).map((type) => {
+                    const Icon = templateIcons[type];
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setFormData((prev) => ({ ...prev, templateType: type }))}
+                        className={cn(
+                          "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                          formData.templateType === type
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
+                        )}
+                      >
+                        <Icon className={cn(
+                          "h-6 w-6",
+                          formData.templateType === type ? "text-primary" : "text-muted-foreground"
+                        )} />
+                        <span className="text-sm font-medium">{templateLabels[type]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            )}
 
-            {/* Image Upload for Banner */}
-            {formData.templateType === 'banner' && (
-              <div className="space-y-2">
-                <Label>Imagem do Banner</Label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-                {formData.imageUrl ? (
-                  <div className="relative rounded-xl overflow-hidden">
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Título</Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Título do comunicado"
+                    maxLength={200}
+                    className={formErrors.title ? 'border-destructive' : ''}
+                  />
+                  {formErrors.title && (
+                    <p className="text-sm text-destructive">{formErrors.title}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="summary">Resumo</Label>
+                  <Input
+                    id="summary"
+                    value={formData.summary}
+                    onChange={(e) => setFormData(prev => ({ ...prev, summary: e.target.value }))}
+                    placeholder="Breve resumo do comunicado"
+                    maxLength={500}
+                    className={formErrors.summary ? 'border-destructive' : ''}
+                  />
+                  {formErrors.summary && (
+                    <p className="text-sm text-destructive">{formErrors.summary}</p>
+                  )}
+                </div>
+
+                {formData.templateType !== 'poll' && (
+                  <div className="space-y-2">
+                    <Label>Conteúdo</Label>
+                    <RichTextEditor
+                      content={formData.content}
+                      onChange={(html) => setFormData(prev => ({ ...prev, content: html }))}
+                      placeholder="Digite o conteúdo completo do comunicado..."
+                      className="min-h-[200px]"
+                    />
+                  </div>
+                )}
+
+                {/* Image Upload for Banner */}
+                {formData.templateType === 'banner' && (
+                  <div className="space-y-2">
+                    <Label>Imagem do Banner</Label>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                    {formData.imageUrl ? (
+                      <div className="relative rounded-xl overflow-hidden">
+                        <img
+                          src={formData.imageUrl}
+                          alt="Banner preview"
+                          className="w-full h-40 object-cover"
+                        />
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-2 right-2"
+                          onClick={() => setFormData((prev) => ({ ...prev, imageUrl: undefined }))}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        className="w-full h-40 flex-col gap-2"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                      >
+                        {isUploading ? (
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+                        ) : (
+                          <>
+                            <Upload className="h-6 w-6" />
+                            <span>Clique para enviar imagem</span>
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {/* Poll Options */}
+                {formData.templateType === 'poll' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Tipo de Votação</Label>
+                      <Select
+                        value={formData.pollType}
+                        onValueChange={(value: PollType) =>
+                          setFormData((prev) => ({ ...prev, pollType: value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="single">Escolha única</SelectItem>
+                          <SelectItem value="multiple">Múltipla escolha</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Opções da Enquete</Label>
+                      <div className="space-y-2">
+                        {formData.pollOptions.map((option, index) => (
+                          <div key={index} className="flex gap-2">
+                            <Input
+                              value={option}
+                              onChange={(e) => handlePollOptionChange(index, e.target.value)}
+                              placeholder={`Opção ${index + 1}`}
+                            />
+                            {formData.pollOptions.length > 2 && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemovePollOption(index)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddPollOption}
+                        className="mt-2"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Adicionar opção
+                      </Button>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="pinned"
+                      checked={formData.pinned}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, pinned: checked }))}
+                    />
+                    <Label htmlFor="pinned">Fixar no topo</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="active"
+                      checked={formData.active}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, active: checked }))}
+                    />
+                    <Label htmlFor="active">Ativo</Label>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="preview" className="mt-4">
+              <div className="rounded-xl border bg-card p-6 space-y-4">
+                {/* Preview Header */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant="outline" className="gap-1">
+                    {(() => {
+                      const Icon = templateIcons[formData.templateType];
+                      return <Icon className="h-3 w-3" />;
+                    })()}
+                    {templateLabels[formData.templateType]}
+                  </Badge>
+                  {formData.pinned && (
+                    <Badge variant="secondary" className="text-xs">
+                      <Pin className="h-3 w-3 mr-1" />
+                      Fixado
+                    </Badge>
+                  )}
+                  {!formData.active && (
+                    <Badge variant="outline" className="text-xs text-muted-foreground">
+                      <EyeOff className="h-3 w-3 mr-1" />
+                      Inativo
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Banner Image */}
+                {formData.templateType === 'banner' && formData.imageUrl && (
+                  <div className="rounded-xl overflow-hidden">
                     <img
                       src={formData.imageUrl}
-                      alt="Banner preview"
-                      className="w-full h-40 object-cover"
+                      alt="Banner"
+                      className="w-full h-48 object-cover"
                     />
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-2 right-2"
-                      onClick={() => setFormData((prev) => ({ ...prev, imageUrl: undefined }))}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
                   </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    className="w-full h-40 flex-col gap-2"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                  >
-                    {isUploading ? (
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
-                    ) : (
-                      <>
-                        <Upload className="h-6 w-6" />
-                        <span>Clique para enviar imagem</span>
-                      </>
-                    )}
-                  </Button>
+                )}
+
+                {/* Title */}
+                <h2 className="text-2xl font-bold">
+                  {formData.title || 'Título do comunicado'}
+                </h2>
+
+                {/* Summary */}
+                <p className="text-muted-foreground">
+                  {formData.summary || 'Resumo do comunicado'}
+                </p>
+
+                {/* Content */}
+                {formData.templateType !== 'poll' && formData.content && (
+                  <div className="border-t pt-4">
+                    <RichTextContent html={formData.content} />
+                  </div>
+                )}
+
+                {/* Poll Preview */}
+                {formData.templateType === 'poll' && (
+                  <div className="border-t pt-4 space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      {formData.pollType === 'single' ? 'Escolha uma opção:' : 'Escolha uma ou mais opções:'}
+                    </p>
+                    <div className="space-y-2">
+                      {formData.pollOptions.filter(o => o.trim()).map((option, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
+                        >
+                          <div className={cn(
+                            "w-4 h-4 border-2 border-primary",
+                            formData.pollType === 'single' ? 'rounded-full' : 'rounded'
+                          )} />
+                          <span>{option}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {formData.pollOptions.filter(o => o.trim()).length === 0 && formData.templateType === 'poll' && (
+                  <p className="text-sm text-muted-foreground italic">
+                    Adicione opções para a enquete
+                  </p>
                 )}
               </div>
-            )}
+            </TabsContent>
+          </Tabs>
 
-            {/* Poll Options */}
-            {formData.templateType === 'poll' && (
-              <>
-                <div className="space-y-2">
-                  <Label>Tipo de Votação</Label>
-                  <Select
-                    value={formData.pollType}
-                    onValueChange={(value: PollType) =>
-                      setFormData((prev) => ({ ...prev, pollType: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="single">Escolha única</SelectItem>
-                      <SelectItem value="multiple">Múltipla escolha</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Opções da Enquete</Label>
-                  <div className="space-y-2">
-                    {formData.pollOptions.map((option, index) => (
-                      <div key={index} className="flex gap-2">
-                        <Input
-                          value={option}
-                          onChange={(e) => handlePollOptionChange(index, e.target.value)}
-                          placeholder={`Opção ${index + 1}`}
-                        />
-                        {formData.pollOptions.length > 2 && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemovePollOption(index)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAddPollOption}
-                    className="mt-2"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Adicionar opção
-                  </Button>
-                </div>
-              </>
-            )}
-
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="pinned"
-                  checked={formData.pinned}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, pinned: checked }))}
-                />
-                <Label htmlFor="pinned">Fixar no topo</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="active"
-                  checked={formData.active}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, active: checked }))}
-                />
-                <Label htmlFor="active">Ativo</Label>
-              </div>
-            </div>
-          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancelar
