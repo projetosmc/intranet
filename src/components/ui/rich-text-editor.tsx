@@ -47,7 +47,7 @@ export function RichTextEditor({ content, onChange, placeholder, className }: Ri
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none focus:outline-none min-h-[120px] px-3 py-2',
+        class: 'focus:outline-none min-h-[120px] px-3 py-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-2 [&_li]:my-1 [&_p]:my-1',
       },
     },
   });
@@ -222,7 +222,10 @@ export function RichTextEditor({ content, onChange, placeholder, className }: Ri
 export function RichTextContent({ html, className }: { html: string; className?: string }) {
   return (
     <div 
-      className={cn("prose prose-sm max-w-none", className)}
+      className={cn(
+        "max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-2 [&_li]:my-1 [&_p]:my-1 [&_strong]:font-semibold [&_em]:italic",
+        className
+      )}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
