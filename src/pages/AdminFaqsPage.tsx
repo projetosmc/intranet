@@ -331,16 +331,24 @@ export default function AdminFaqsPage() {
                 </div>
 
                 <div>
-                  <Label className="mb-1.5 block">Resposta</Label>
+                  <Label className="mb-1.5 block">
+                    Resposta
+                    <span className="text-xs text-muted-foreground font-normal ml-2">
+                      (suporta Markdown)
+                    </span>
+                  </Label>
                   <Textarea 
                     name="answer" 
                     defaultValue={editingFaq?.des_resposta} 
                     required 
                     maxLength={5000}
-                    placeholder="Digite a resposta..."
-                    rows={4}
-                    className={formErrors.answer ? 'border-destructive' : ''}
+                    placeholder="Digite a resposta... Suporta **negrito**, *itálico*, [links](url), listas e mais."
+                    rows={6}
+                    className={`font-mono text-sm ${formErrors.answer ? 'border-destructive' : ''}`}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Dica: Use **texto** para negrito, *texto* para itálico, [texto](url) para links
+                  </p>
                   {formErrors.answer && (
                     <p className="text-sm text-destructive mt-1">{formErrors.answer}</p>
                   )}

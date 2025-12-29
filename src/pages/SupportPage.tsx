@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { HelpCircle, ExternalLink, MessageCircle, Book, Mail, Phone, FileQuestion } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { LinkifyText } from '@/components/ui/linkify-text';
+import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
 
 interface FAQ {
@@ -162,8 +162,16 @@ export default function SupportPage() {
                   <AccordionTrigger className="text-left hover:no-underline hover:text-primary">
                     {faq.des_pergunta}
                   </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground whitespace-pre-wrap">
-                    <LinkifyText text={faq.des_resposta} />
+                  <AccordionContent className="text-muted-foreground prose prose-sm dark:prose-invert max-w-none prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-headings:text-foreground prose-strong:text-foreground prose-ul:my-2 prose-ol:my-2 prose-li:my-0">
+                    <ReactMarkdown
+                      components={{
+                        a: ({ node, ...props }) => (
+                          <a {...props} target="_blank" rel="noopener noreferrer" />
+                        ),
+                      }}
+                    >
+                      {faq.des_resposta}
+                    </ReactMarkdown>
                   </AccordionContent>
                 </AccordionItem>
               ))}
