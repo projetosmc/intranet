@@ -108,6 +108,7 @@ export function useDbAnnouncements() {
             startDate: item.dta_inicio || undefined,
             endDate: item.dta_fim || undefined,
             viewsCount,
+            allowComments: item.ind_permite_comentarios ?? false,
           };
         })
       );
@@ -178,6 +179,7 @@ export function useDbAnnouncements() {
           seq_usuario_publicacao: currentUser?.id,
           dta_inicio: announcement.startDate || null,
           dta_fim: announcement.endDate || null,
+          ind_permite_comentarios: announcement.allowComments ?? false,
         })
         .select()
         .single();
@@ -233,6 +235,7 @@ export function useDbAnnouncements() {
       if (updates.pollType !== undefined) dbUpdates.des_tipo_enquete = updates.pollType;
       if (updates.startDate !== undefined) dbUpdates.dta_inicio = updates.startDate || null;
       if (updates.endDate !== undefined) dbUpdates.dta_fim = updates.endDate || null;
+      if (updates.allowComments !== undefined) dbUpdates.ind_permite_comentarios = updates.allowComments;
 
       const { error } = await supabase
         .from('tab_comunicado')
