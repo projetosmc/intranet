@@ -30,10 +30,11 @@ interface UserSuggestion {
 
 interface CommentSectionProps {
   announcementId: string;
+  announcementTitle?: string;
 }
 
-export function CommentSection({ announcementId }: CommentSectionProps) {
-  const { comments, isLoading, addComment, updateComment, deleteComment } = useAnnouncementComments(announcementId);
+export function CommentSection({ announcementId, announcementTitle }: CommentSectionProps) {
+  const { comments, isLoading, addComment, updateComment, deleteComment } = useAnnouncementComments({ announcementId, announcementTitle });
   const { user } = useAuth();
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);

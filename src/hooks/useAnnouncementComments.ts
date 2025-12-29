@@ -4,7 +4,12 @@ import { AnnouncementComment, AnnouncementAuthor } from '@/types/announcements';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
-export function useAnnouncementComments(announcementId: string) {
+interface UseAnnouncementCommentsOptions {
+  announcementId: string;
+  announcementTitle?: string;
+}
+
+export function useAnnouncementComments({ announcementId, announcementTitle }: UseAnnouncementCommentsOptions) {
   const [comments, setComments] = useState<AnnouncementComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -108,6 +113,45 @@ export function useAnnouncementComments(announcementId: string) {
 
       if (error) throw error;
 
+      // Extrair menções do conteúdo e criar notificações
+      const mentions = content.match(/@(\w+)/g);
+      if (mentions) {
+        const mentionedNames = mentions.map(m => m.substring(1));
+        
+        // Buscar usuários mencionados
+        const { data: mentionedUsers } = await supabase
+          .from('tab_perfil_usuario')
+          .select('cod_usuario, des_nome_completo')
+          .or(mentionedNames.map(name => `des_nome_completo.ilike.%${name}%`).join(','));
+
+        // Buscar nome do autor do comentário
+        const { data: authorProfile } = await supabase
+          .from('tab_perfil_usuario')
+          .select('des_nome_completo')
+          .eq('cod_usuario', user.id)
+          .single();
+
+        const authorName = authorProfile?.des_nome_completo || 'Alguém';
+
+        // Criar notificações para cada usuário mencionado
+        if (mentionedUsers && mentionedUsers.length > 0) {
+          const notifications = mentionedUsers
+            .filter((u: any) => u.cod_usuario !== user.id) // Não notificar a si mesmo
+            .map((u: any) => ({
+              seq_usuario: u.cod_usuario,
+              seq_usuario_origem: user.id,
+              des_tipo: 'mention',
+              des_titulo: 'Você foi mencionado',
+              des_mensagem: `${authorName} mencionou você em um comentário${announcementTitle ? ` no comunicado "${announcementTitle}"` : ''}.`,
+              des_link: `/comunicados/${announcementId}`,
+            }));
+
+          if (notifications.length > 0) {
+            await supabase.from('tab_notificacao').insert(notifications);
+          }
+        }
+      }
+
       toast({
         title: 'Sucesso',
         description: 'Comentário adicionado.',
@@ -124,7 +168,7 @@ export function useAnnouncementComments(announcementId: string) {
       });
       return false;
     }
-  }, [announcementId, user, toast, fetchComments]);
+  }, [announcementId, announcementTitle, user, toast, fetchComments]);
 
   const updateComment = useCallback(async (commentId: string, content: string) => {
     if (!user) return false;
