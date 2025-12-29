@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { UserProvider } from "@/contexts/UserContext";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { AdminRoute } from "@/components/AdminRoute";
+import { PermissionRoute } from "@/components/PermissionRoute";
 import HomePage from "./pages/HomePage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
 import StatusPage from "./pages/StatusPage";
@@ -45,14 +45,15 @@ const App = () => (
               <Route path="/suporte" element={<SupportPage />} />
               <Route path="/reserva-salas" element={<RoomReservationPage />} />
               <Route path="/perfil" element={<ProfilePage />} />
-              <Route path="/admin/configuracoes" element={<AdminRoute><AdminSettingsPage /></AdminRoute>} />
-              <Route path="/admin/comunicados" element={<AdminRoute><AdminAnnouncementsPage /></AdminRoute>} />
-              <Route path="/admin/usuarios" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
-              <Route path="/admin/auditoria" element={<AdminRoute><AdminAuditLogsPage /></AdminRoute>} />
-              <Route path="/admin/sistemas" element={<AdminRoute><AdminSystemsPage /></AdminRoute>} />
-              <Route path="/admin/faqs" element={<AdminRoute><AdminFaqsPage /></AdminRoute>} />
-              <Route path="/admin/reserva-salas" element={<AdminRoute><AdminRoomConfigPage /></AdminRoute>} />
-              <Route path="/admin/perfis" element={<AdminRoute><AdminProfilesPage /></AdminRoute>} />
+              {/* Rotas administrativas com verificação de permissão */}
+              <Route path="/admin/configuracoes" element={<PermissionRoute><AdminSettingsPage /></PermissionRoute>} />
+              <Route path="/admin/comunicados" element={<PermissionRoute><AdminAnnouncementsPage /></PermissionRoute>} />
+              <Route path="/admin/usuarios" element={<PermissionRoute><AdminUsersPage /></PermissionRoute>} />
+              <Route path="/admin/auditoria" element={<PermissionRoute><AdminAuditLogsPage /></PermissionRoute>} />
+              <Route path="/admin/sistemas" element={<PermissionRoute><AdminSystemsPage /></PermissionRoute>} />
+              <Route path="/admin/faqs" element={<PermissionRoute><AdminFaqsPage /></PermissionRoute>} />
+              <Route path="/admin/reserva-salas" element={<PermissionRoute><AdminRoomConfigPage /></PermissionRoute>} />
+              <Route path="/admin/perfis" element={<PermissionRoute><AdminProfilesPage /></PermissionRoute>} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
