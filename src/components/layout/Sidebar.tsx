@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   Fuel,
   Shield,
@@ -314,24 +314,20 @@ export function Sidebar() {
           >
             <span>{item.name}</span>
             <ChevronDown className={cn(
-              "h-4 w-4 text-sidebar-foreground/50 transition-transform",
+              "h-4 w-4 text-sidebar-foreground/50 transition-transform duration-200",
               expanded && "rotate-180"
             )} />
           </button>
-          <AnimatePresence>
-            {expanded && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-1 overflow-hidden"
-              >
-                {visibleChildren.map((child) => (
-                  <MenuItem key={child.path} item={child} isChild />
-                ))}
-              </motion.div>
+          <div
+            className={cn(
+              "space-y-1 overflow-hidden transition-all duration-200",
+              expanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
             )}
-          </AnimatePresence>
+          >
+            {visibleChildren.map((child) => (
+              <MenuItem key={child.path} item={child} isChild />
+            ))}
+          </div>
         </div>
       );
     }
