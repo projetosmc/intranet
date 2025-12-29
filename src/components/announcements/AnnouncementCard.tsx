@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Announcement } from '@/types/announcements';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -11,11 +13,32 @@ interface AnnouncementCardProps {
 }
 
 export function AnnouncementCard({ announcement, onClick, delay = 0 }: AnnouncementCardProps) {
-  const placeholderImage = 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&q=80&w=1160';
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const placeholderImage = '/placeholder.svg';
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
+
+  // Otimizar URL de imagem do Supabase ou Unsplash
+  const getOptimizedImageUrl = (url: string | null): string => {
+    if (!url) return placeholderImage;
+    
+    // Para Unsplash, adicionar parâmetros de otimização
+    if (url.includes('unsplash.com')) {
+      return `${url}&w=400&q=75&fm=webp`;
+    }
+    
+    // Para Supabase Storage, usar transformações se disponível
+    if (url.includes('supabase.co/storage')) {
+      return url.includes('?') ? `${url}&width=400&quality=75` : `${url}?width=400&quality=75`;
+    }
+    
+    return url;
+  };
+
+  const imageUrl = getOptimizedImageUrl(announcement.imageUrl);
 
   return (
     <motion.article
@@ -26,12 +49,23 @@ export function AnnouncementCard({ announcement, onClick, delay = 0 }: Announcem
       className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-card border border-border"
       onClick={onClick}
     >
-      <div className="h-40 overflow-hidden">
+      <div className="h-40 overflow-hidden relative bg-muted">
+        {!imageLoaded && !imageError && (
+          <Skeleton className="absolute inset-0 w-full h-full" />
+        )}
         <img
-          src={announcement.imageUrl || placeholderImage}
+          src={imageError ? placeholderImage : imageUrl}
           alt={announcement.title}
-          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+          className={`w-full h-full object-cover transition-all duration-300 hover:scale-105 ${
+            imageLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
           loading="lazy"
+          decoding="async"
+          onLoad={() => setImageLoaded(true)}
+          onError={() => {
+            setImageError(true);
+            setImageLoaded(true);
+          }}
         />
       </div>
 
