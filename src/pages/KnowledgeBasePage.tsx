@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Upload, 
@@ -26,6 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useGlobalLoading } from '@/contexts/GlobalLoadingContext';
 import {
   Dialog,
   DialogContent,
@@ -88,7 +89,16 @@ function formatFileSize(bytes: number | null): string {
 
 export default function KnowledgeBasePage() {
   const { items, isLoading, addItem, updateItem, deleteItem, fetchVersions } = useKnowledgeBase();
+  const { startLoading, stopLoading } = useGlobalLoading();
   
+  // Sync local loading with global loading
+  useEffect(() => {
+    if (isLoading) {
+      startLoading('knowledge-base');
+    } else {
+      stopLoading('knowledge-base');
+    }
+  }, [isLoading, startLoading, stopLoading]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');

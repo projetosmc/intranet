@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
-import { useLoadingState } from '@/hooks/useLoadingState';
+import { useGlobalLoading } from '@/contexts/GlobalLoadingContext';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -39,7 +39,7 @@ const statusConfig = {
 
 export default function StatusPage() {
   const [systems, setSystems] = useState<System[]>([]);
-  const { isLoading, isLoadingKey, withLoading } = useLoadingState(true);
+  const { isLoading, isLoadingKey, withLoading } = useGlobalLoading();
 
   const fetchSystems = async () => {
     try {
