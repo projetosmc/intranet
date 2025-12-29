@@ -68,11 +68,10 @@ export function clearPermissionsCache(): void {
 export function useScreenPermission() {
   const { roles, isAdmin, isLoading: rolesLoading } = useUserRole();
   const [permissions, setPermissions] = useState<ScreenPermission[]>([]);
-  const [permissionsLoading, setIsLoading] = useState(false);
-  const [hasFetched, setHasFetched] = useState(false);
+  const [permissionsLoading, setPermissionsLoading] = useState(true);
 
-  const fetchPermissions = useCallback(async () => {
-    // Aguarda roles carregarem antes de buscar permissões
+  useEffect(() => {
+    // Aguarda roles carregarem
     if (rolesLoading) {
       return;
     }
@@ -80,14 +79,14 @@ export function useScreenPermission() {
     // Admin tem acesso a tudo - não precisa buscar permissões
     if (isAdmin) {
       setPermissions([]);
-      setIsLoading(false);
+      setPermissionsLoading(false);
       return;
     }
 
     // Usuário sem roles
     if (roles.length === 0) {
       setPermissions([]);
-      setIsLoading(false);
+      setPermissionsLoading(false);
       return;
     }
 
@@ -95,39 +94,34 @@ export function useScreenPermission() {
     const cached = getCachedPermissions(roles);
     if (cached) {
       setPermissions(cached);
-      setIsLoading(false);
+      setPermissionsLoading(false);
       return;
     }
 
-    try {
-      const { data, error } = await supabase
-        .from('tab_permissao_tela')
-        .select('des_rota, des_nome_tela, ind_pode_acessar')
-        .in('des_role', roles);
+    // Busca permissões do banco
+    const fetchPermissions = async () => {
+      setPermissionsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('tab_permissao_tela')
+          .select('des_rota, des_nome_tela, ind_pode_acessar')
+          .in('des_role', roles);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      const fetchedPermissions = (data || []) as ScreenPermission[];
-      setPermissions(fetchedPermissions);
-      setCachedPermissions(roles, fetchedPermissions);
-    } catch (error) {
-      console.error('Erro ao carregar permissões:', error);
-      setPermissions([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [roles, isAdmin, rolesLoading]);
+        const fetchedPermissions = (data || []) as ScreenPermission[];
+        setPermissions(fetchedPermissions);
+        setCachedPermissions(roles, fetchedPermissions);
+      } catch (error) {
+        console.error('Erro ao carregar permissões:', error);
+        setPermissions([]);
+      } finally {
+        setPermissionsLoading(false);
+      }
+    };
 
-  useEffect(() => {
-    if (!rolesLoading && !hasFetched) {
-      setIsLoading(true);
-      setHasFetched(true);
-      fetchPermissions();
-    } else if (!rolesLoading && hasFetched) {
-      // Re-fetch se roles mudaram
-      fetchPermissions();
-    }
-  }, [rolesLoading, hasFetched, fetchPermissions]);
+    fetchPermissions();
+  }, [rolesLoading, roles, isAdmin]);
 
   /**
    * Verifica se o usuário pode acessar uma rota específica
@@ -167,17 +161,21 @@ export function useScreenPermission() {
     return permission?.des_nome_tela || null;
   }, [permissions]);
 
-  // isLoading é true apenas enquanto roles ou permissions estão sendo carregados
+  // isLoading é true enquanto roles ou permissions estão sendo carregados
+  // Importante: Se rolesLoading está true, permissionsLoading deve ser considerado true também
   const isLoading = rolesLoading || permissionsLoading;
+
+  const invalidateCache = useCallback(() => {
+    clearPermissionsCache();
+    setPermissionsLoading(true);
+    // Force re-run of effect by setting loading state
+  }, []);
 
   return {
     permissions,
     canAccess,
     getScreenName,
     isLoading,
-    invalidateCache: () => {
-      clearPermissionsCache();
-      setHasFetched(false);
-    },
+    invalidateCache,
   };
 }
