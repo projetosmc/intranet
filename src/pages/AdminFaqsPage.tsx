@@ -1,18 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { HelpCircle, Plus, Pencil, Trash2, GripVertical } from 'lucide-react';
+import { HelpCircle, Plus, Pencil, Trash2, GripVertical, Bold, Italic, Link2, List, ListOrdered, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { faqSchema, validateForm } from '@/lib/validations';
+import ReactMarkdown from 'react-markdown';
 import {
   DndContext,
   closestCenter,
@@ -51,6 +53,9 @@ export default function AdminFaqsPage() {
   const [deleteFaqId, setDeleteFaqId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [answerText, setAnswerText] = useState('');
+  const [showPreview, setShowPreview] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -127,6 +132,8 @@ export default function AdminFaqsPage() {
 
       setIsDialogOpen(false);
       setEditingFaq(null);
+      setAnswerText('');
+      setShowPreview(false);
       await fetchFaqs();
     } catch (error) {
       console.error('Error saving FAQ:', error);
@@ -302,6 +309,10 @@ export default function AdminFaqsPage() {
             if (!o) {
               setEditingFaq(null);
               setFormErrors({});
+              setAnswerText('');
+              setShowPreview(false);
+            } else if (editingFaq) {
+              setAnswerText(editingFaq.des_resposta);
             }
           }}>
             <DialogTrigger asChild>
@@ -310,9 +321,12 @@ export default function AdminFaqsPage() {
                 Nova FAQ
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingFaq ? 'Editar' : 'Nova'} FAQ</DialogTitle>
+                <DialogDescription>
+                  Preencha os campos abaixo. A resposta suporta formatação Markdown.
+                </DialogDescription>
               </DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); handleSave(new FormData(e.currentTarget)); }} className="space-y-4">
                 <div>
@@ -331,24 +345,174 @@ export default function AdminFaqsPage() {
                 </div>
 
                 <div>
-                  <Label className="mb-1.5 block">
-                    Resposta
-                    <span className="text-xs text-muted-foreground font-normal ml-2">
-                      (suporta Markdown)
-                    </span>
-                  </Label>
-                  <Textarea 
-                    name="answer" 
-                    defaultValue={editingFaq?.des_resposta} 
-                    required 
-                    maxLength={5000}
-                    placeholder="Digite a resposta... Suporta **negrito**, *itálico*, [links](url), listas e mais."
-                    rows={6}
-                    className={`font-mono text-sm ${formErrors.answer ? 'border-destructive' : ''}`}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Dica: Use **texto** para negrito, *texto* para itálico, [texto](url) para links
-                  </p>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <Label>
+                      Resposta
+                      <span className="text-xs text-muted-foreground font-normal ml-2">
+                        (Markdown)
+                      </span>
+                    </Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowPreview(!showPreview)}
+                      className="h-7 text-xs"
+                    >
+                      {showPreview ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                      {showPreview ? 'Editar' : 'Preview'}
+                    </Button>
+                  </div>
+                  
+                  {/* Markdown Toolbar */}
+                  <div className="flex items-center gap-1 mb-2 p-1 bg-muted/50 rounded-md border border-border">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      title="Negrito"
+                      onClick={() => {
+                        const textarea = textareaRef.current;
+                        if (!textarea) return;
+                        const start = textarea.selectionStart;
+                        const end = textarea.selectionEnd;
+                        const text = answerText;
+                        const selectedText = text.substring(start, end);
+                        const newText = text.substring(0, start) + `**${selectedText || 'texto'}**` + text.substring(end);
+                        setAnswerText(newText);
+                        setTimeout(() => {
+                          textarea.focus();
+                          textarea.setSelectionRange(start + 2, end + 2 + (selectedText ? 0 : 5));
+                        }, 0);
+                      }}
+                    >
+                      <Bold className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      title="Itálico"
+                      onClick={() => {
+                        const textarea = textareaRef.current;
+                        if (!textarea) return;
+                        const start = textarea.selectionStart;
+                        const end = textarea.selectionEnd;
+                        const text = answerText;
+                        const selectedText = text.substring(start, end);
+                        const newText = text.substring(0, start) + `*${selectedText || 'texto'}*` + text.substring(end);
+                        setAnswerText(newText);
+                        setTimeout(() => {
+                          textarea.focus();
+                          textarea.setSelectionRange(start + 1, end + 1 + (selectedText ? 0 : 5));
+                        }, 0);
+                      }}
+                    >
+                      <Italic className="h-4 w-4" />
+                    </Button>
+                    <div className="w-px h-4 bg-border mx-1" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      title="Link"
+                      onClick={() => {
+                        const textarea = textareaRef.current;
+                        if (!textarea) return;
+                        const start = textarea.selectionStart;
+                        const end = textarea.selectionEnd;
+                        const text = answerText;
+                        const selectedText = text.substring(start, end);
+                        const newText = text.substring(0, start) + `[${selectedText || 'texto'}](url)` + text.substring(end);
+                        setAnswerText(newText);
+                        setTimeout(() => {
+                          textarea.focus();
+                          const urlStart = start + selectedText.length + 3;
+                          textarea.setSelectionRange(urlStart, urlStart + 3);
+                        }, 0);
+                      }}
+                    >
+                      <Link2 className="h-4 w-4" />
+                    </Button>
+                    <div className="w-px h-4 bg-border mx-1" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      title="Lista"
+                      onClick={() => {
+                        const textarea = textareaRef.current;
+                        if (!textarea) return;
+                        const start = textarea.selectionStart;
+                        const text = answerText;
+                        const newText = text.substring(0, start) + '\n- Item 1\n- Item 2\n- Item 3\n' + text.substring(start);
+                        setAnswerText(newText);
+                        setTimeout(() => {
+                          textarea.focus();
+                        }, 0);
+                      }}
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      title="Lista numerada"
+                      onClick={() => {
+                        const textarea = textareaRef.current;
+                        if (!textarea) return;
+                        const start = textarea.selectionStart;
+                        const text = answerText;
+                        const newText = text.substring(0, start) + '\n1. Item 1\n2. Item 2\n3. Item 3\n' + text.substring(start);
+                        setAnswerText(newText);
+                        setTimeout(() => {
+                          textarea.focus();
+                        }, 0);
+                      }}
+                    >
+                      <ListOrdered className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {showPreview ? (
+                    <div className="min-h-[150px] p-3 border border-border rounded-md bg-muted/30 prose prose-sm dark:prose-invert max-w-none prose-a:text-primary prose-headings:text-foreground">
+                      {answerText ? (
+                        <ReactMarkdown
+                          components={{
+                            a: ({ node, ...props }) => (
+                              <a {...props} target="_blank" rel="noopener noreferrer" />
+                            ),
+                          }}
+                        >
+                          {answerText}
+                        </ReactMarkdown>
+                      ) : (
+                        <p className="text-muted-foreground italic">Digite algo para ver o preview...</p>
+                      )}
+                    </div>
+                  ) : (
+                    <Textarea 
+                      ref={textareaRef}
+                      name="answer" 
+                      value={answerText}
+                      onChange={(e) => setAnswerText(e.target.value)}
+                      required 
+                      maxLength={5000}
+                      placeholder="Digite a resposta..."
+                      rows={8}
+                      className={`font-mono text-sm ${formErrors.answer ? 'border-destructive' : ''}`}
+                    />
+                  )}
+                  
+                  {/* Hidden input to submit the answer value */}
+                  <input type="hidden" name="answer" value={answerText} />
+                  
                   {formErrors.answer && (
                     <p className="text-sm text-destructive mt-1">{formErrors.answer}</p>
                   )}
