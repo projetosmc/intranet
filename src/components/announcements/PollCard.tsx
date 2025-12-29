@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { BarChart3, CheckCircle2 } from 'lucide-react';
 import { Announcement } from '@/types/announcements';
@@ -9,7 +10,8 @@ interface PollCardProps {
   onVote: (optionId: string) => void;
 }
 
-export function PollCard({ announcement, onVote }: PollCardProps) {
+export const PollCard = forwardRef<HTMLDivElement, PollCardProps>(
+  function PollCard({ announcement, onVote }, ref) {
   const totalVotes = announcement.pollOptions?.reduce(
     (acc, opt) => acc + (opt.voteCount || 0),
     0
@@ -81,4 +83,4 @@ export function PollCard({ announcement, onVote }: PollCardProps) {
       </p>
     </motion.div>
   );
-}
+});
