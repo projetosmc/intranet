@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { Announcement } from '@/types/announcements';
 import { format } from 'date-fns';
@@ -9,7 +10,8 @@ interface AnnouncementCardProps {
   delay?: number;
 }
 
-export function AnnouncementCard({ announcement, onClick, delay = 0 }: AnnouncementCardProps) {
+export const AnnouncementCard = forwardRef<HTMLElement, AnnouncementCardProps>(
+  function AnnouncementCard({ announcement, onClick, delay = 0 }, ref) {
   const placeholderImage = 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&q=80&w=1160';
 
   return (
@@ -47,4 +49,4 @@ export function AnnouncementCard({ announcement, onClick, delay = 0 }: Announcem
       </div>
     </motion.article>
   );
-}
+});
