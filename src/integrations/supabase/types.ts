@@ -326,13 +326,17 @@ export type Database = {
       tab_reserva_sala: {
         Row: {
           cod_reserva: string
+          des_historico_alteracoes: Json | null
+          des_motivo_cancelamento: string | null
           des_nome_solicitante: string
           des_observacao: string | null
           dta_atualizacao: string | null
           dta_cadastro: string | null
+          dta_cancelamento: string | null
           dta_reserva: string
           hra_fim: string
           hra_inicio: string
+          ind_cancelado: boolean | null
           ind_notificado: boolean | null
           num_participantes: number | null
           seq_sala: string
@@ -341,13 +345,17 @@ export type Database = {
         }
         Insert: {
           cod_reserva?: string
+          des_historico_alteracoes?: Json | null
+          des_motivo_cancelamento?: string | null
           des_nome_solicitante: string
           des_observacao?: string | null
           dta_atualizacao?: string | null
           dta_cadastro?: string | null
+          dta_cancelamento?: string | null
           dta_reserva: string
           hra_fim: string
           hra_inicio: string
+          ind_cancelado?: boolean | null
           ind_notificado?: boolean | null
           num_participantes?: number | null
           seq_sala: string
@@ -356,13 +364,17 @@ export type Database = {
         }
         Update: {
           cod_reserva?: string
+          des_historico_alteracoes?: Json | null
+          des_motivo_cancelamento?: string | null
           des_nome_solicitante?: string
           des_observacao?: string | null
           dta_atualizacao?: string | null
           dta_cadastro?: string | null
+          dta_cancelamento?: string | null
           dta_reserva?: string
           hra_fim?: string
           hra_inicio?: string
+          ind_cancelado?: boolean | null
           ind_notificado?: boolean | null
           num_participantes?: number | null
           seq_sala?: string

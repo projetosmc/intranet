@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   DoorOpen, 
@@ -8,11 +8,14 @@ import {
   Calendar as CalendarIcon,
   Clock,
   Users,
-  Trash2,
+  XCircle,
   Maximize2,
   Minimize2,
   List,
-  Grid3X3
+  Grid3X3,
+  Edit,
+  History,
+  Timer
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +46,9 @@ import {
   subWeeks,
   addDays,
   subDays,
+  isBefore,
+  startOfDay,
+  differenceInMinutes,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -57,6 +63,14 @@ interface MeetingType {
   des_nome: string;
 }
 
+interface HistoryEntry {
+  dta_alteracao: string;
+  des_campo: string;
+  des_valor_anterior: string;
+  des_valor_novo: string;
+  des_usuario: string;
+}
+
 interface Reservation {
   cod_reserva: string;
   seq_sala: string;
@@ -68,6 +82,10 @@ interface Reservation {
   seq_tipo_reuniao: string | null;
   num_participantes: number;
   des_observacao: string | null;
+  ind_cancelado: boolean;
+  dta_cancelamento: string | null;
+  des_motivo_cancelamento: string | null;
+  des_historico_alteracoes: HistoryEntry[] | null;
   tab_sala_reuniao?: { des_nome: string };
   tab_tipo_reuniao?: { des_nome: string } | null;
 }
@@ -81,7 +99,12 @@ export default function RoomReservationPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [deleteReservationId, setDeleteReservationId] = useState<string | null>(null);
+  const [cancelReservationId, setCancelReservationId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [historyDialogReservation, setHistoryDialogReservation] = useState<Reservation | null>(null);
+  
+  // Edit mode
+  const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
   
   // Calendar state
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -97,6 +120,12 @@ export default function RoomReservationPage() {
   const [selectedMeetingType, setSelectedMeetingType] = useState<string>('');
   const [participantsCount, setParticipantsCount] = useState('1');
   const [notes, setNotes] = useState('');
+
+  // Derived state - selected room capacity
+  const selectedRoomData = useMemo(() => 
+    rooms.find(r => r.cod_sala === selectedRoom),
+    [rooms, selectedRoom]
+  );
 
   useEffect(() => {
     fetchData();
@@ -121,13 +150,45 @@ export default function RoomReservationPage() {
 
       setRooms(roomsRes.data || []);
       setMeetingTypes(typesRes.data || []);
-      setReservations(reservationsRes.data || []);
+      setReservations((reservationsRes.data || []).map(r => ({
+        ...r,
+        ind_cancelado: r.ind_cancelado ?? false,
+        des_historico_alteracoes: (Array.isArray(r.des_historico_alteracoes) ? r.des_historico_alteracoes : []) as unknown as HistoryEntry[]
+      })));
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({ title: 'Erro ao carregar dados', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Validate if time is in the past for today
+  const isTimeInPast = (date: Date, time: string): boolean => {
+    if (!isToday(date)) return false;
+    const now = new Date();
+    const [hours, minutes] = time.split(':').map(Number);
+    const timeDate = new Date(date);
+    timeDate.setHours(hours, minutes, 0, 0);
+    return isBefore(timeDate, now);
+  };
+
+  // Calculate duration
+  const calculateDuration = (start: string, end: string): string => {
+    const [startH, startM] = start.split(':').map(Number);
+    const [endH, endM] = end.split(':').map(Number);
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+    const diff = endMinutes - startMinutes;
+    
+    if (diff <= 0) return '';
+    
+    const hours = Math.floor(diff / 60);
+    const mins = diff % 60;
+    
+    if (hours === 0) return `${mins}min`;
+    if (mins === 0) return `${hours}h`;
+    return `${hours}h ${mins}min`;
   };
 
   const handleCreateReservation = async () => {
@@ -138,6 +199,29 @@ export default function RoomReservationPage() {
 
     if (startTime >= endTime) {
       toast({ title: 'Hora de início deve ser anterior à hora de fim', variant: 'destructive' });
+      return;
+    }
+
+    // Validate date is not in the past
+    if (isBefore(startOfDay(reservationDate), startOfDay(new Date()))) {
+      toast({ title: 'Não é permitido reservar em datas passadas', variant: 'destructive' });
+      return;
+    }
+
+    // Validate time is not in the past for today
+    if (isTimeInPast(reservationDate, startTime)) {
+      toast({ title: 'Não é permitido reservar em horários passados', variant: 'destructive' });
+      return;
+    }
+
+    // Validate participants count
+    const participants = parseInt(participantsCount) || 1;
+    if (selectedRoomData && participants > selectedRoomData.num_capacidade) {
+      toast({ 
+        title: 'Número de participantes excede a capacidade', 
+        description: `A sala ${selectedRoomData.des_nome} comporta no máximo ${selectedRoomData.num_capacidade} pessoas.`,
+        variant: 'destructive' 
+      });
       return;
     }
 
@@ -153,7 +237,7 @@ export default function RoomReservationPage() {
         hra_inicio: startTime,
         hra_fim: endTime,
         seq_tipo_reuniao: selectedMeetingType || null,
-        num_participantes: parseInt(participantsCount) || 1,
+        num_participantes: participants,
         des_observacao: notes || null,
       };
 
@@ -170,21 +254,192 @@ export default function RoomReservationPage() {
     }
   };
 
-  const handleDeleteReservation = async () => {
-    if (!deleteReservationId) return;
+  const handleUpdateReservation = async () => {
+    if (!editingReservation || !selectedRoom || !reservationDate || !startTime || !endTime) {
+      toast({ title: 'Preencha todos os campos obrigatórios', variant: 'destructive' });
+      return;
+    }
+
+    if (startTime >= endTime) {
+      toast({ title: 'Hora de início deve ser anterior à hora de fim', variant: 'destructive' });
+      return;
+    }
+
+    // Validate date is not in the past
+    if (isBefore(startOfDay(reservationDate), startOfDay(new Date()))) {
+      toast({ title: 'Não é permitido reservar em datas passadas', variant: 'destructive' });
+      return;
+    }
+
+    // Validate time is not in the past for today
+    if (isTimeInPast(reservationDate, startTime)) {
+      toast({ title: 'Não é permitido reservar em horários passados', variant: 'destructive' });
+      return;
+    }
+
+    // Validate participants count
+    const participants = parseInt(participantsCount) || 1;
+    if (selectedRoomData && participants > selectedRoomData.num_capacidade) {
+      toast({ 
+        title: 'Número de participantes excede a capacidade', 
+        description: `A sala ${selectedRoomData.des_nome} comporta no máximo ${selectedRoomData.num_capacidade} pessoas.`,
+        variant: 'destructive' 
+      });
+      return;
+    }
 
     try {
-      const { error } = await supabase.from('tab_reserva_sala').delete().eq('cod_reserva', deleteReservationId);
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error('Usuário não autenticado');
+
+      // Build history entries for changes
+      const changes: HistoryEntry[] = [];
+      const now = new Date().toISOString();
+      const userName = user?.name || userData.user.email || 'Usuário';
+
+      const newRoom = rooms.find(r => r.cod_sala === selectedRoom);
+      const oldRoom = rooms.find(r => r.cod_sala === editingReservation.seq_sala);
+      
+      if (selectedRoom !== editingReservation.seq_sala) {
+        changes.push({
+          dta_alteracao: now,
+          des_campo: 'Sala',
+          des_valor_anterior: oldRoom?.des_nome || '',
+          des_valor_novo: newRoom?.des_nome || '',
+          des_usuario: userName
+        });
+      }
+
+      const newDateStr = format(reservationDate, 'yyyy-MM-dd');
+      if (newDateStr !== editingReservation.dta_reserva) {
+        changes.push({
+          dta_alteracao: now,
+          des_campo: 'Data',
+          des_valor_anterior: format(new Date(editingReservation.dta_reserva + 'T00:00:00'), 'dd/MM/yyyy'),
+          des_valor_novo: format(reservationDate, 'dd/MM/yyyy'),
+          des_usuario: userName
+        });
+      }
+
+      if (startTime !== editingReservation.hra_inicio.slice(0, 5)) {
+        changes.push({
+          dta_alteracao: now,
+          des_campo: 'Hora Início',
+          des_valor_anterior: editingReservation.hra_inicio.slice(0, 5),
+          des_valor_novo: startTime,
+          des_usuario: userName
+        });
+      }
+
+      if (endTime !== editingReservation.hra_fim.slice(0, 5)) {
+        changes.push({
+          dta_alteracao: now,
+          des_campo: 'Hora Fim',
+          des_valor_anterior: editingReservation.hra_fim.slice(0, 5),
+          des_valor_novo: endTime,
+          des_usuario: userName
+        });
+      }
+
+      const newMeetingType = meetingTypes.find(t => t.cod_tipo_reuniao === selectedMeetingType);
+      const oldMeetingType = meetingTypes.find(t => t.cod_tipo_reuniao === editingReservation.seq_tipo_reuniao);
+      if (selectedMeetingType !== (editingReservation.seq_tipo_reuniao || '')) {
+        changes.push({
+          dta_alteracao: now,
+          des_campo: 'Tipo de Reunião',
+          des_valor_anterior: oldMeetingType?.des_nome || 'Não definido',
+          des_valor_novo: newMeetingType?.des_nome || 'Não definido',
+          des_usuario: userName
+        });
+      }
+
+      if (participants !== editingReservation.num_participantes) {
+        changes.push({
+          dta_alteracao: now,
+          des_campo: 'Participantes',
+          des_valor_anterior: String(editingReservation.num_participantes),
+          des_valor_novo: String(participants),
+          des_usuario: userName
+        });
+      }
+
+      if ((notes || '') !== (editingReservation.des_observacao || '')) {
+        changes.push({
+          dta_alteracao: now,
+          des_campo: 'Observações',
+          des_valor_anterior: editingReservation.des_observacao || 'Sem observações',
+          des_valor_novo: notes || 'Sem observações',
+          des_usuario: userName
+        });
+      }
+
+      // Merge with existing history
+      const existingHistory = editingReservation.des_historico_alteracoes || [];
+      const newHistory = [...existingHistory, ...changes];
+
+      const { error } = await supabase
+        .from('tab_reserva_sala')
+        .update({
+          seq_sala: selectedRoom,
+          dta_reserva: newDateStr,
+          hra_inicio: startTime,
+          hra_fim: endTime,
+          seq_tipo_reuniao: selectedMeetingType || null,
+          num_participantes: participants,
+          des_observacao: notes || null,
+          des_historico_alteracoes: newHistory as any
+        })
+        .eq('cod_reserva', editingReservation.cod_reserva);
+
+      if (error) throw error;
+
+      toast({ title: 'Reserva atualizada com sucesso!' });
+      setIsDialogOpen(false);
+      setEditingReservation(null);
+      resetForm();
+      await fetchData();
+    } catch (error) {
+      console.error('Error updating reservation:', error);
+      toast({ title: 'Erro ao atualizar reserva', variant: 'destructive' });
+    }
+  };
+
+  const handleCancelReservation = async () => {
+    if (!cancelReservationId) return;
+
+    try {
+      const { error } = await supabase
+        .from('tab_reserva_sala')
+        .update({
+          ind_cancelado: true,
+          dta_cancelamento: new Date().toISOString(),
+          des_motivo_cancelamento: cancelReason || null
+        })
+        .eq('cod_reserva', cancelReservationId);
+
       if (error) throw error;
 
       toast({ title: 'Reserva cancelada!' });
       await fetchData();
     } catch (error) {
-      console.error('Error deleting reservation:', error);
+      console.error('Error canceling reservation:', error);
       toast({ title: 'Erro ao cancelar reserva', variant: 'destructive' });
     } finally {
-      setDeleteReservationId(null);
+      setCancelReservationId(null);
+      setCancelReason('');
     }
+  };
+
+  const openEditDialog = (reservation: Reservation) => {
+    setEditingReservation(reservation);
+    setSelectedRoom(reservation.seq_sala);
+    setReservationDate(new Date(reservation.dta_reserva + 'T00:00:00'));
+    setStartTime(reservation.hra_inicio.slice(0, 5));
+    setEndTime(reservation.hra_fim.slice(0, 5));
+    setSelectedMeetingType(reservation.seq_tipo_reuniao || '');
+    setParticipantsCount(String(reservation.num_participantes));
+    setNotes(reservation.des_observacao || '');
+    setIsDialogOpen(true);
   };
 
   const resetForm = () => {
@@ -195,6 +450,7 @@ export default function RoomReservationPage() {
     setSelectedMeetingType('');
     setParticipantsCount('1');
     setNotes('');
+    setEditingReservation(null);
   };
 
   const getReservationsForDate = (date: Date) => {
@@ -247,6 +503,7 @@ export default function RoomReservationPage() {
         ))}
         {days.map((dayItem, index) => {
           const dayReservations = getReservationsForDate(dayItem);
+          const activeReservations = dayReservations.filter(r => !r.ind_cancelado);
           const isCurrentMonth = isSameMonth(dayItem, currentDate);
           const isSelected = selectedDate && isSameDay(dayItem, selectedDate);
           const isTodayDate = isToday(dayItem);
@@ -267,9 +524,9 @@ export default function RoomReservationPage() {
               )}
             >
               <span>{format(dayItem, 'd')}</span>
-              {dayReservations.length > 0 && (
+              {activeReservations.length > 0 && (
                 <div className="flex gap-0.5 mt-1">
-                  {dayReservations.slice(0, 3).map((_, i) => (
+                  {activeReservations.slice(0, 3).map((_, i) => (
                     <div
                       key={i}
                       className={cn(
@@ -299,6 +556,7 @@ export default function RoomReservationPage() {
       <div className="grid grid-cols-7 gap-2">
         {days.map((dayItem, index) => {
           const dayReservations = getReservationsForDate(dayItem);
+          const activeReservations = dayReservations.filter(r => !r.ind_cancelado);
           const isSelected = selectedDate && isSameDay(dayItem, selectedDate);
           const isTodayDate = isToday(dayItem);
 
@@ -319,12 +577,12 @@ export default function RoomReservationPage() {
                 {format(dayItem, 'EEE', { locale: ptBR })}
               </span>
               <span className="text-lg font-semibold">{format(dayItem, 'd')}</span>
-              {dayReservations.length > 0 && (
+              {activeReservations.length > 0 && (
                 <span className={cn(
                   "text-xs mt-1",
                   isSelected ? "text-primary-foreground" : "text-primary"
                 )}>
-                  {dayReservations.length} reserva{dayReservations.length > 1 ? 's' : ''}
+                  {activeReservations.length} reserva{activeReservations.length > 1 ? 's' : ''}
                 </span>
               )}
             </motion.button>
@@ -358,8 +616,17 @@ export default function RoomReservationPage() {
     );
   };
 
-  // Selected day reservations
-  const selectedDayReservations = getReservationsForDate(selectedDate);
+  // Selected day reservations (sorted: active first, then canceled)
+  const selectedDayReservations = useMemo(() => {
+    const dayRes = getReservationsForDate(selectedDate);
+    return [...dayRes].sort((a, b) => {
+      if (a.ind_cancelado && !b.ind_cancelado) return 1;
+      if (!a.ind_cancelado && b.ind_cancelado) return -1;
+      return a.hra_inicio.localeCompare(b.hra_inicio);
+    });
+  }, [reservations, selectedDate]);
+
+  const duration = calculateDuration(startTime, endTime);
 
   return (
     <div className="h-[calc(100vh-8rem)]">
@@ -379,7 +646,7 @@ export default function RoomReservationPage() {
             </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>Nova Reserva de Sala</DialogTitle>
+                <DialogTitle>{editingReservation ? 'Editar Reserva' : 'Nova Reserva de Sala'}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
@@ -423,7 +690,7 @@ export default function RoomReservationPage() {
                         mode="single"
                         selected={reservationDate}
                         onSelect={setReservationDate}
-                        disabled={(date) => date < new Date()}
+                        disabled={(date) => isBefore(startOfDay(date), startOfDay(new Date()))}
                         initialFocus
                         className="p-3 pointer-events-auto"
                       />
@@ -442,6 +709,13 @@ export default function RoomReservationPage() {
                   </div>
                 </div>
 
+                {duration && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md p-2">
+                    <Timer className="h-4 w-4" />
+                    <span>Duração: <strong className="text-foreground">{duration}</strong></span>
+                  </div>
+                )}
+
                 <div>
                   <Label className="mb-1.5 block">Tipo de Reunião</Label>
                   <Select value={selectedMeetingType} onValueChange={setSelectedMeetingType}>
@@ -457,13 +731,26 @@ export default function RoomReservationPage() {
                 </div>
 
                 <div>
-                  <Label className="mb-1.5 block">Número de Participantes</Label>
+                  <Label className="mb-1.5 block">
+                    Número de Participantes
+                    {selectedRoomData && (
+                      <span className="text-muted-foreground font-normal ml-2">
+                        (máx: {selectedRoomData.num_capacidade})
+                      </span>
+                    )}
+                  </Label>
                   <Input 
                     type="number" 
                     value={participantsCount} 
                     onChange={(e) => setParticipantsCount(e.target.value)} 
                     min={1}
+                    max={selectedRoomData?.num_capacidade}
                   />
+                  {selectedRoomData && parseInt(participantsCount) > selectedRoomData.num_capacidade && (
+                    <p className="text-destructive text-xs mt-1">
+                      Excede a capacidade máxima da sala ({selectedRoomData.num_capacidade} pessoas)
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -476,8 +763,11 @@ export default function RoomReservationPage() {
                   />
                 </div>
 
-                <Button onClick={handleCreateReservation} className="w-full">
-                  Reservar Sala
+                <Button 
+                  onClick={editingReservation ? handleUpdateReservation : handleCreateReservation} 
+                  className="w-full"
+                >
+                  {editingReservation ? 'Salvar Alterações' : 'Reservar Sala'}
                 </Button>
               </div>
             </DialogContent>
@@ -596,53 +886,105 @@ export default function RoomReservationPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {selectedDayReservations.map((reservation) => (
-                    <motion.div
-                      key={reservation.cod_reserva}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="p-3 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="outline" className="text-xs">
-                              <Clock className="h-3 w-3 mr-1" />
-                              {reservation.hra_inicio.slice(0, 5)} - {reservation.hra_fim.slice(0, 5)}
-                            </Badge>
-                            <span className="font-medium text-sm truncate">
-                              {reservation.tab_sala_reuniao?.des_nome}
-                            </span>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1.5 space-y-0.5">
-                            <p className="truncate">{reservation.des_nome_solicitante}</p>
-                            <div className="flex items-center gap-2">
-                              {reservation.tab_tipo_reuniao && (
-                                <span>{reservation.tab_tipo_reuniao.des_nome}</span>
+                  {selectedDayReservations.map((reservation) => {
+                    const resDuration = calculateDuration(reservation.hra_inicio, reservation.hra_fim);
+                    const hasHistory = reservation.des_historico_alteracoes && reservation.des_historico_alteracoes.length > 0;
+                    
+                    return (
+                      <motion.div
+                        key={reservation.cod_reserva}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={cn(
+                          "p-3 rounded-lg transition-colors",
+                          reservation.ind_cancelado 
+                            ? "bg-destructive/10 border border-destructive/20" 
+                            : "bg-muted/50 hover:bg-muted/70"
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {reservation.ind_cancelado && (
+                                <Badge variant="destructive" className="text-xs">
+                                  Cancelada
+                                </Badge>
                               )}
-                              <span className="flex items-center">
-                                <Users className="h-3 w-3 mr-0.5" />
-                                {reservation.num_participantes}
+                              <Badge variant="outline" className="text-xs">
+                                <Clock className="h-3 w-3 mr-1" />
+                                {reservation.hra_inicio.slice(0, 5)} - {reservation.hra_fim.slice(0, 5)}
+                              </Badge>
+                              {resDuration && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Timer className="h-3 w-3 mr-1" />
+                                  {resDuration}
+                                </Badge>
+                              )}
+                              <span className={cn(
+                                "font-medium text-sm truncate",
+                                reservation.ind_cancelado && "line-through text-muted-foreground"
+                              )}>
+                                {reservation.tab_sala_reuniao?.des_nome}
                               </span>
                             </div>
+                            <div className="text-xs text-muted-foreground mt-1.5 space-y-0.5">
+                              <p className="truncate">{reservation.des_nome_solicitante}</p>
+                              <div className="flex items-center gap-2">
+                                {reservation.tab_tipo_reuniao && (
+                                  <span>{reservation.tab_tipo_reuniao.des_nome}</span>
+                                )}
+                                <span className="flex items-center">
+                                  <Users className="h-3 w-3 mr-0.5" />
+                                  {reservation.num_participantes}
+                                </span>
+                              </div>
+                            </div>
+                            {reservation.des_observacao && (
+                              <p className="text-xs text-muted-foreground mt-1 italic truncate">
+                                {reservation.des_observacao}
+                              </p>
+                            )}
+                            {reservation.ind_cancelado && reservation.des_motivo_cancelamento && (
+                              <p className="text-xs text-destructive mt-1">
+                                Motivo: {reservation.des_motivo_cancelamento}
+                              </p>
+                            )}
+                            {hasHistory && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 mt-1 text-xs text-primary"
+                                onClick={() => setHistoryDialogReservation(reservation)}
+                              >
+                                <History className="h-3 w-3 mr-1" />
+                                Ver alterações ({reservation.des_historico_alteracoes!.length})
+                              </Button>
+                            )}
                           </div>
-                          {reservation.des_observacao && (
-                            <p className="text-xs text-muted-foreground mt-1 italic truncate">
-                              {reservation.des_observacao}
-                            </p>
+                          {!reservation.ind_cancelado && (
+                            <div className="flex gap-1 flex-shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => openEditDialog(reservation)}
+                              >
+                                <Edit className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-destructive hover:text-destructive"
+                                onClick={() => setCancelReservationId(reservation.cod_reserva)}
+                              >
+                                <XCircle className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           )}
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-destructive hover:text-destructive flex-shrink-0"
-                          onClick={() => setDeleteReservationId(reservation.cod_reserva)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -658,23 +1000,67 @@ export default function RoomReservationPage() {
         />
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteReservationId} onOpenChange={(open) => !open && setDeleteReservationId(null)}>
+      {/* Cancel Confirmation Dialog */}
+      <AlertDialog open={!!cancelReservationId} onOpenChange={(open) => { if (!open) { setCancelReservationId(null); setCancelReason(''); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancelar Reserva</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja cancelar esta reserva? Esta ação não pode ser desfeita.
+              A reserva será marcada como cancelada e permanecerá visível no histórico do dia.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="py-2">
+            <Label className="mb-1.5 block text-sm">Motivo do cancelamento (opcional)</Label>
+            <Textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="Informe o motivo do cancelamento..."
+              rows={2}
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Voltar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteReservation} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleCancelReservation} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Cancelar Reserva
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* History Dialog */}
+      <Dialog open={!!historyDialogReservation} onOpenChange={(o) => !o && setHistoryDialogReservation(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Histórico de Alterações
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[400px] overflow-auto">
+            {historyDialogReservation?.des_historico_alteracoes?.map((entry, index) => (
+              <div key={index} className="border border-border rounded-lg p-3 text-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <Badge variant="outline">{entry.des_campo}</Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {format(new Date(entry.dta_alteracao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">De:</span>
+                    <span className="line-through text-destructive">{entry.des_valor_anterior}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Para:</span>
+                    <span className="text-primary font-medium">{entry.des_valor_novo}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Por: {entry.des_usuario}</p>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
