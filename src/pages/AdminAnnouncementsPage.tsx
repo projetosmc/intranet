@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Pencil, Trash2, Pin, PinOff, Eye, EyeOff, Upload, Image, FileText, BarChart3, X, Users, Clock, CalendarClock } from 'lucide-react';
+import { Plus, Pencil, Trash2, Pin, PinOff, Eye, EyeOff, Upload, Image, FileText, BarChart3, X, Users, Clock, CalendarClock, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -64,6 +64,7 @@ type FormData = {
   endTime?: string;
   hasSchedule: boolean;
   hasEndDate: boolean;
+  allowComments: boolean;
 };
 
 type FormErrors = Partial<Record<keyof AnnouncementFormData, string>>;
@@ -84,6 +85,7 @@ const initialFormData: FormData = {
   endTime: '',
   hasSchedule: false,
   hasEndDate: false,
+  allowComments: false,
 };
 
 const templateIcons = {
@@ -140,6 +142,7 @@ export default function AdminAnnouncementsPage() {
       endTime: endDateTime ? endDateTime.toTimeString().slice(0, 5) : '',
       hasSchedule: !!announcement.startDate,
       hasEndDate: !!announcement.endDate,
+      allowComments: announcement.allowComments ?? false,
     });
     setActiveTab('edit');
     setIsDialogOpen(true);
@@ -234,6 +237,7 @@ export default function AdminAnnouncementsPage() {
       pollType: formData.templateType === 'poll' ? formData.pollType : undefined,
       startDate,
       endDate,
+      allowComments: formData.templateType === 'simple' ? formData.allowComments : false,
     };
 
     const pollOptions = formData.templateType === 'poll'
@@ -612,6 +616,21 @@ export default function AdminAnnouncementsPage() {
                       </Button>
                     </div>
                   </>
+                )}
+
+                {/* Permitir comentários - apenas para comunicados simples */}
+                {formData.templateType === 'simple' && (
+                  <div className="flex items-center gap-2 p-4 border border-border rounded-lg">
+                    <Switch
+                      id="allowComments"
+                      checked={formData.allowComments}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, allowComments: checked }))}
+                    />
+                    <Label htmlFor="allowComments" className="flex items-center gap-2">
+                      <MessageCircle className="h-4 w-4" />
+                      Permitir comentários
+                    </Label>
+                  </div>
                 )}
 
                 {/* Agendamento */}

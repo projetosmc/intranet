@@ -125,6 +125,7 @@ export type Database = {
           dta_publicacao: string | null
           ind_ativo: boolean | null
           ind_fixado: boolean | null
+          ind_permite_comentarios: boolean | null
           seq_usuario_publicacao: string | null
         }
         Insert: {
@@ -142,6 +143,7 @@ export type Database = {
           dta_publicacao?: string | null
           ind_ativo?: boolean | null
           ind_fixado?: boolean | null
+          ind_permite_comentarios?: boolean | null
           seq_usuario_publicacao?: string | null
         }
         Update: {
@@ -159,9 +161,58 @@ export type Database = {
           dta_publicacao?: string | null
           ind_ativo?: boolean | null
           ind_fixado?: boolean | null
+          ind_permite_comentarios?: boolean | null
           seq_usuario_publicacao?: string | null
         }
         Relationships: []
+      }
+      tab_comunicado_comentario: {
+        Row: {
+          cod_comentario: string
+          des_conteudo: string
+          dta_atualizacao: string | null
+          dta_cadastro: string | null
+          ind_editado: boolean | null
+          seq_comentario_pai: string | null
+          seq_comunicado: string
+          seq_usuario: string
+        }
+        Insert: {
+          cod_comentario?: string
+          des_conteudo: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_editado?: boolean | null
+          seq_comentario_pai?: string | null
+          seq_comunicado: string
+          seq_usuario: string
+        }
+        Update: {
+          cod_comentario?: string
+          des_conteudo?: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_editado?: boolean | null
+          seq_comentario_pai?: string | null
+          seq_comunicado?: string
+          seq_usuario?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tab_comunicado_comentario_seq_comentario_pai_fkey"
+            columns: ["seq_comentario_pai"]
+            isOneToOne: false
+            referencedRelation: "tab_comunicado_comentario"
+            referencedColumns: ["cod_comentario"]
+          },
+          {
+            foreignKeyName: "tab_comunicado_comentario_seq_comunicado_fkey"
+            columns: ["seq_comunicado"]
+            isOneToOne: false
+            referencedRelation: "tab_comunicado"
+            referencedColumns: ["cod_comunicado"]
+          },
+        ]
       }
       tab_comunicado_visualizacao: {
         Row: {

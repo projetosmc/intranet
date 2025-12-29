@@ -14,6 +14,19 @@ export interface AnnouncementAuthor {
   avatarUrl?: string;
 }
 
+export interface AnnouncementComment {
+  id: string;
+  announcementId: string;
+  userId: string;
+  parentId?: string;
+  content: string;
+  edited: boolean;
+  createdAt: string;
+  updatedAt: string;
+  author: AnnouncementAuthor;
+  replies?: AnnouncementComment[];
+}
+
 export interface Announcement {
   id: string;
   title: string;
@@ -30,4 +43,5 @@ export interface Announcement {
   startDate?: string;
   endDate?: string;
   viewsCount?: number;
+  allowComments?: boolean;
 }

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { AnnouncementCard } from '@/components/announcements/AnnouncementCard';
 import { PollCard } from '@/components/announcements/PollCard';
+import { CommentSection } from '@/components/announcements/CommentSection';
 import { AnnouncementsPageSkeleton } from '@/components/announcements/AnnouncementSkeleton';
 import { RichTextContent } from '@/components/ui/rich-text-editor';
 import { useDbAnnouncements } from '@/hooks/useDbAnnouncements';
@@ -117,6 +118,11 @@ export default function AnnouncementsPage() {
                   <p className="font-medium">{selectedAnnouncement.author.name}</p>
                 </div>
               </div>
+            )}
+
+            {/* Seção de comentários - apenas para comunicados simples */}
+            {selectedAnnouncement.templateType === 'simple' && selectedAnnouncement.allowComments && (
+              <CommentSection announcementId={selectedAnnouncement.id} />
             )}
           </article>
         </motion.div>
