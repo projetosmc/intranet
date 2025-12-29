@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
+import { useLoadingState } from '@/hooks/useLoadingState';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -38,8 +39,7 @@ const statusConfig = {
 
 export default function StatusPage() {
   const [systems, setSystems] = useState<System[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { isLoading, isLoadingKey, withLoading } = useLoadingState(true);
 
   const fetchSystems = async () => {
     try {
@@ -56,21 +56,18 @@ export default function StatusPage() {
       })));
     } catch (error) {
       console.error('Error fetching systems:', error);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchSystems();
+    withLoading(fetchSystems, 'initial');
   }, []);
 
   const handleRefresh = () => {
-    setIsRefreshing(true);
-    fetchSystems();
+    withLoading(fetchSystems, 'refresh');
   };
 
+  const isRefreshing = isLoadingKey('refresh');
   const allOperational = systems.length > 0 && systems.every(s => s.des_status === 'operational');
 
   const formatLastCheck = (dateString: string) => {

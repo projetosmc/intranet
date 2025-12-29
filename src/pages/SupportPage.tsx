@@ -16,6 +16,7 @@ import { useFeaturePermission } from '@/hooks/useFeaturePermission';
 import { toast } from '@/hooks/use-toast';
 import { FaqManagementModal } from '@/components/support/FaqManagementModal';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
+import { useLoadingState } from '@/hooks/useLoadingState';
 
 interface FAQ {
   cod_faq: string;
@@ -53,7 +54,7 @@ export default function SupportPage() {
   const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [supportLinks, setSupportLinks] = useState<SupportConfig[]>([]);
   const [contacts, setContacts] = useState<SupportConfig[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { isLoading, withLoading } = useLoadingState(true);
   const [faqSearchQuery, setFaqSearchQuery] = useState('');
   
   // Edit states
@@ -80,38 +81,35 @@ export default function SupportPage() {
   });
 
   useEffect(() => {
-    fetchData();
+    withLoading(fetchDataAsync);
   }, []);
 
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const [faqResult, configResult] = await Promise.all([
-        supabase
-          .from('tab_faq')
-          .select('cod_faq, des_pergunta, des_resposta, des_imagem_url, des_video_url, des_legenda_imagem, des_legenda_video')
-          .eq('ind_ativo', true)
-          .order('num_ordem'),
-        supabase
-          .from('tab_config_suporte')
-          .select('*')
-          .eq('ind_ativo', true)
-          .order('num_ordem')
-      ]);
+  const fetchDataAsync = async () => {
+    const [faqResult, configResult] = await Promise.all([
+      supabase
+        .from('tab_faq')
+        .select('cod_faq, des_pergunta, des_resposta, des_imagem_url, des_video_url, des_legenda_imagem, des_legenda_video')
+        .eq('ind_ativo', true)
+        .order('num_ordem'),
+      supabase
+        .from('tab_config_suporte')
+        .select('*')
+        .eq('ind_ativo', true)
+        .order('num_ordem')
+    ]);
 
-      if (faqResult.error) throw faqResult.error;
-      if (configResult.error) throw configResult.error;
+    if (faqResult.error) throw faqResult.error;
+    if (configResult.error) throw configResult.error;
 
-      setFaqs((faqResult.data || []) as FAQ[]);
-      
-      const configs = configResult.data || [];
-      setSupportLinks(configs.filter(c => c.des_tipo === 'link'));
-      setContacts(configs.filter(c => c.des_tipo === 'contact'));
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    setFaqs((faqResult.data || []) as FAQ[]);
+    
+    const configs = configResult.data || [];
+    setSupportLinks(configs.filter(c => c.des_tipo === 'link'));
+    setContacts(configs.filter(c => c.des_tipo === 'contact'));
+  };
+
+  const fetchData = () => {
+    withLoading(fetchDataAsync);
   };
 
   const handleEditItem = (item: SupportConfig) => {
