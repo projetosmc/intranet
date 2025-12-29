@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useScreenPermission } from '@/hooks/useScreenPermission';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useRef } from 'react';
+import { PageSkeleton } from '@/components/layout/PageSkeleton';
 
 interface PermissionRouteProps {
   children: React.ReactNode;
@@ -46,11 +47,7 @@ export function PermissionRoute({ children }: PermissionRouteProps) {
   }, [location.pathname]);
 
   if (isLoading) {
-    return (
-      <div className="min-h-[50vh] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   if (!isAuthenticated) {
