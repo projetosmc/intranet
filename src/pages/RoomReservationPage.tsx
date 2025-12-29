@@ -182,25 +182,10 @@ export default function RoomReservationPage() {
     return isBefore(timeDate, now);
   };
 
-  // Calculate next available start time (current time + 10 minutes, rounded to next 30 min slot)
+  // Calculate next available start time (current time + 10 minutes)
   const getNextAvailableTime = (): { start: string; end: string } => {
     const now = new Date();
     now.setMinutes(now.getMinutes() + 10); // Add 10 minutes
-    
-    // Round up to next 30 minute slot
-    const minutes = now.getMinutes();
-    const roundedMinutes = minutes <= 30 ? 30 : 60;
-    if (roundedMinutes === 60) {
-      now.setHours(now.getHours() + 1);
-      now.setMinutes(0);
-    } else {
-      now.setMinutes(30);
-    }
-    
-    // Ensure we don't go past 20:00 (8 PM)
-    if (now.getHours() >= 20) {
-      return { start: '07:00', end: '08:00' }; // Default to next day first slot
-    }
     
     const startHour = String(now.getHours()).padStart(2, '0');
     const startMinute = String(now.getMinutes()).padStart(2, '0');
@@ -216,14 +201,21 @@ export default function RoomReservationPage() {
     return { start: startTime, end: endTime };
   };
 
-  // Auto-set next available time when selecting today's date
-  useEffect(() => {
-    if (reservationDate && isToday(reservationDate) && !editingReservation) {
+  // Handle date selection and auto-set time for today
+  const handleReservationDateSelect = (date: Date | undefined) => {
+    setReservationDate(date);
+    setIsDatePopoverOpen(false);
+    
+    // Auto-set next available time when selecting today's date
+    if (date && isToday(date) && !editingReservation) {
       const { start, end } = getNextAvailableTime();
       setStartTime(start);
       setEndTime(end);
     }
-  }, [reservationDate, editingReservation]);
+  };
+
+  // Popover state for date picker
+  const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
 
   // Calculate duration
   const calculateDuration = (start: string, end: string): string => {
@@ -834,7 +826,7 @@ export default function RoomReservationPage() {
 
                 <div>
                   <Label className="mb-1.5 block">Data da Reserva</Label>
-                  <Popover>
+                  <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !reservationDate && "text-muted-foreground")}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
@@ -845,7 +837,7 @@ export default function RoomReservationPage() {
                       <Calendar
                         mode="single"
                         selected={reservationDate}
-                        onSelect={setReservationDate}
+                        onSelect={handleReservationDateSelect}
                         disabled={(date) => isBefore(startOfDay(date), startOfDay(new Date()))}
                         initialFocus
                         className="p-3 pointer-events-auto"
