@@ -344,6 +344,18 @@ export default function AdminAnnouncementsPage() {
                             Fixado
                           </Badge>
                         )}
+                        {announcement.startDate && new Date(announcement.startDate) > new Date() && (
+                          <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-400">
+                            <CalendarClock className="h-3 w-3 mr-1" />
+                            Agendado
+                          </Badge>
+                        )}
+                        {announcement.endDate && new Date(announcement.endDate) < new Date() && (
+                          <Badge variant="outline" className="text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3 mr-1" />
+                            Expirado
+                          </Badge>
+                        )}
                         <span className="line-clamp-1">{announcement.title}</span>
                       </div>
                     </TableCell>
