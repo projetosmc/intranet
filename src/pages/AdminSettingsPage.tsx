@@ -775,7 +775,7 @@ export default function AdminSettingsPage() {
                           <p className="text-sm font-medium">
                             {selectedParentId === '__none__' 
                               ? namePreview.toUpperCase() 
-                              : namePreview.toLowerCase().replace(/\b\w/g, char => char.toUpperCase())
+                              : namePreview
                             }
                           </p>
                         </div>
