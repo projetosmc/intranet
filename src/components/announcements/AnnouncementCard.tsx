@@ -33,10 +33,10 @@ export const AnnouncementCard = forwardRef<HTMLElement, AnnouncementCardProps>(
         <PixelImage
           src={announcement.imageUrl || placeholderImage}
           alt={announcement.title}
-          customGrid={{ rows: 4, cols: 6 }}
+          customGrid={{ rows: 3, cols: 4 }}
           grayscaleAnimation
-          pixelFadeInDuration={600}
-          maxAnimationDelay={800}
+          pixelFadeInDuration={400}
+          maxAnimationDelay={500}
           className="w-full h-full"
         />
       </div>
