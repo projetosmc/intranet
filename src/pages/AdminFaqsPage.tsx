@@ -12,6 +12,7 @@ import { useUser } from '@/contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { faqSchema, validateForm } from '@/lib/validations';
 import {
   DndContext,
   closestCenter,
@@ -49,6 +50,7 @@ export default function AdminFaqsPage() {
   const [editingFaq, setEditingFaq] = useState<FAQ | null>(null);
   const [deleteFaqId, setDeleteFaqId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -80,11 +82,31 @@ export default function AdminFaqsPage() {
   };
 
   const handleSave = async (formData: FormData) => {
+    const rawData = {
+      question: formData.get('question') as string,
+      answer: formData.get('answer') as string,
+      order: parseInt(formData.get('sort_order') as string) || 0,
+      active: true,
+    };
+
+    // Validar com Zod
+    const validation = validateForm(faqSchema, rawData);
+    
+    if ('errors' in validation) {
+      setFormErrors(validation.errors);
+      const firstError = Object.values(validation.errors)[0];
+      toast({ title: 'Erro de validação', description: firstError, variant: 'destructive' });
+      return;
+    }
+
+    setFormErrors({});
+    const validData = validation.data;
+
     const faq = {
-      des_pergunta: formData.get('question') as string,
-      des_resposta: formData.get('answer') as string,
-      num_ordem: parseInt(formData.get('sort_order') as string) || 0,
-      ind_ativo: true,
+      des_pergunta: validData.question,
+      des_resposta: validData.answer,
+      num_ordem: validData.order,
+      ind_ativo: validData.active,
     };
 
     try {
@@ -277,7 +299,10 @@ export default function AdminFaqsPage() {
           </div>
           <Dialog open={isDialogOpen} onOpenChange={(o) => { 
             setIsDialogOpen(o); 
-            if (!o) setEditingFaq(null);
+            if (!o) {
+              setEditingFaq(null);
+              setFormErrors({});
+            }
           }}>
             <DialogTrigger asChild>
               <Button size="sm">
@@ -296,8 +321,13 @@ export default function AdminFaqsPage() {
                     name="question" 
                     defaultValue={editingFaq?.des_pergunta} 
                     required 
+                    maxLength={500}
                     placeholder="Ex: Como abrir um chamado?"
+                    className={formErrors.question ? 'border-destructive' : ''}
                   />
+                  {formErrors.question && (
+                    <p className="text-sm text-destructive mt-1">{formErrors.question}</p>
+                  )}
                 </div>
 
                 <div>
@@ -306,9 +336,14 @@ export default function AdminFaqsPage() {
                     name="answer" 
                     defaultValue={editingFaq?.des_resposta} 
                     required 
+                    maxLength={5000}
                     placeholder="Digite a resposta..."
                     rows={4}
+                    className={formErrors.answer ? 'border-destructive' : ''}
                   />
+                  {formErrors.answer && (
+                    <p className="text-sm text-destructive mt-1">{formErrors.answer}</p>
+                  )}
                 </div>
 
                 <div>
