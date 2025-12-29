@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from '@/integrations/supabase/client';
 import { useFeaturePermission } from '@/hooks/useFeaturePermission';
 import { toast } from '@/hooks/use-toast';
+import { FaqManagementModal } from '@/components/support/FaqManagementModal';
 
 interface FAQ {
   cod_faq: string;
@@ -47,7 +48,7 @@ const getIconComponent = (iconName: string): LucideIcon => {
 };
 
 export default function SupportPage() {
-  const { canEditSupport } = useFeaturePermission();
+  const { canEditSupportLinks, canEditSupportContacts, canEditSupportFaqs } = useFeaturePermission();
   const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [supportLinks, setSupportLinks] = useState<SupportConfig[]>([]);
   const [contacts, setContacts] = useState<SupportConfig[]>([]);
@@ -59,6 +60,9 @@ export default function SupportPage() {
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
   const [isNewItem, setIsNewItem] = useState(false);
   const [itemType, setItemType] = useState<'link' | 'contact'>('link');
+  
+  // FAQ Management Modal state
+  const [faqModalOpen, setFaqModalOpen] = useState(false);
   
   // Lightbox state
   const [lightboxImage, setLightboxImage] = useState<{ url: string; caption: string | null } | null>(null);
@@ -200,7 +204,7 @@ export default function SupportPage() {
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground">Links Úteis</h2>
-          {canEditSupport && (
+          {canEditSupportLinks && (
             <Button size="sm" variant="outline" onClick={() => handleNewItem('link')}>
               <Plus className="h-4 w-4 mr-1" />
               Novo Link
@@ -218,7 +222,7 @@ export default function SupportPage() {
                 transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
                 className="glass-card p-6 hover-lift group relative"
               >
-                {canEditSupport && (
+                {canEditSupportLinks && (
                   <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button size="icon-sm" variant="ghost" onClick={() => handleEditItem(link)}>
                       <Pencil className="h-3.5 w-3.5" />
@@ -258,7 +262,7 @@ export default function SupportPage() {
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground">Contato Direto</h2>
-          {canEditSupport && (
+          {canEditSupportContacts && (
             <Button size="sm" variant="outline" onClick={() => handleNewItem('contact')}>
               <Plus className="h-4 w-4 mr-1" />
               Novo Contato
@@ -273,7 +277,7 @@ export default function SupportPage() {
               
               return (
                 <div key={contact.cod_config} className="flex items-center gap-4 group relative">
-                  {canEditSupport && (
+                  {canEditSupportContacts && (
                     <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button size="icon-sm" variant="ghost" onClick={() => handleEditItem(contact)}>
                         <Pencil className="h-3.5 w-3.5" />
@@ -308,9 +312,17 @@ export default function SupportPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.3 }}
       >
-        <div className="flex items-center gap-2 mb-4">
-          <FileQuestion className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold text-foreground">Perguntas Frequentes</h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <FileQuestion className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">Perguntas Frequentes</h2>
+          </div>
+          {canEditSupportFaqs && (
+            <Button size="sm" variant="outline" onClick={() => setFaqModalOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" />
+              Gerenciar FAQs
+            </Button>
+          )}
         </div>
         <div className="glass-card p-4">
           {isLoading ? (
@@ -378,7 +390,7 @@ export default function SupportPage() {
         </div>
       </motion.section>
 
-      {/* Edit Dialog */}
+      {/* Edit Link/Contact Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -471,6 +483,13 @@ export default function SupportPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* FAQ Management Modal */}
+      <FaqManagementModal 
+        open={faqModalOpen} 
+        onOpenChange={setFaqModalOpen}
+        onFaqsChange={fetchData}
+      />
 
       {/* Lightbox Modal */}
       <AnimatePresence>

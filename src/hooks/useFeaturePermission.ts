@@ -11,8 +11,13 @@ export function useFeaturePermission() {
   const { isAdmin, isLoading: roleLoading } = useUserRole();
 
   const permissions = useMemo(() => ({
-    // Edição de suporte (links e contatos)
-    canEditSupport: isAdmin || canAccess('/suporte/editar'),
+    // Edição de suporte - permissões separadas
+    canEditSupportLinks: isAdmin || canAccess('/suporte/editar-links'),
+    canEditSupportContacts: isAdmin || canAccess('/suporte/editar-contatos'),
+    canEditSupportFaqs: isAdmin || canAccess('/suporte/editar-faqs'),
+    
+    // Legado: mantém compatibilidade (true se tiver qualquer uma das permissões acima)
+    canEditSupport: isAdmin || canAccess('/suporte/editar-links') || canAccess('/suporte/editar-contatos') || canAccess('/suporte/editar-faqs'),
     
     // Menu Configurações Gerais
     canAccessSettings: isAdmin || canAccess('/admin/configuracoes'),
