@@ -124,7 +124,8 @@ export default function AdminSettingsPage() {
       let pathValue: string;
       if (parentId) {
         if (pathType === 'internal') {
-          pathValue = selectedPath;
+          // Se estiver editando e o selectedPath estiver vazio, usar o caminho existente
+          pathValue = selectedPath || (editingItem?.des_caminho && !editingItem.des_caminho.startsWith('http') ? editingItem.des_caminho : '');
           if (!pathValue) {
             toast({ 
               title: 'Selecione uma página', 
@@ -299,10 +300,42 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const confirmDeactivateParent = async () => {
+  const confirmDeactivateParent = async (deactivateSubmenus = false) => {
     if (!deactivateConfirm) return;
-    await handleToggleActive(deactivateConfirm.id, true, true);
-    setDeactivateConfirm(null);
+    
+    try {
+      // Desativa o menu pai
+      await supabase
+        .from('tab_menu_item')
+        .update({ ind_ativo: false })
+        .eq('cod_menu_item', deactivateConfirm.id);
+      
+      // Se pediu para desativar submenus também
+      if (deactivateSubmenus) {
+        const childrenIds = menuItems
+          .filter(m => m.seq_menu_pai === deactivateConfirm.id && m.ind_ativo)
+          .map(m => m.cod_menu_item);
+        
+        if (childrenIds.length > 0) {
+          await supabase
+            .from('tab_menu_item')
+            .update({ ind_ativo: false })
+            .in('cod_menu_item', childrenIds);
+        }
+        
+        toast({ title: 'Menu e submenus desativados!' });
+      } else {
+        toast({ title: 'Menu desativado!' });
+      }
+      
+      clearMenuCache();
+      await fetchMenuItems();
+    } catch (error) {
+      console.error('Error deactivating:', error);
+      toast({ title: 'Erro ao desativar', variant: 'destructive' });
+    } finally {
+      setDeactivateConfirm(null);
+    }
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -1001,16 +1034,28 @@ export default function AdminSettingsPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Desativar menu com submenus ativos</AlertDialogTitle>
-            <AlertDialogDescription>
-              O menu <strong>"{deactivateConfirm?.name}"</strong> possui <strong>{deactivateConfirm?.activeSubmenus}</strong> submenu{(deactivateConfirm?.activeSubmenus || 0) > 1 ? 's' : ''} ativo{(deactivateConfirm?.activeSubmenus || 0) > 1 ? 's' : ''}. 
-              Ao desativar o menu pai, os submenus continuarão ativos mas não serão exibidos.
-              Deseja continuar?
+            <AlertDialogDescription asChild>
+              <div>
+                <p className="mb-3">
+                  O menu <strong>"{deactivateConfirm?.name}"</strong> possui <strong>{deactivateConfirm?.activeSubmenus}</strong> submenu{(deactivateConfirm?.activeSubmenus || 0) > 1 ? 's' : ''} ativo{(deactivateConfirm?.activeSubmenus || 0) > 1 ? 's' : ''}. 
+                </p>
+                <p>O que deseja fazer?</p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeactivateParent} className="bg-yellow-600 text-white hover:bg-yellow-700">
-              Desativar mesmo assim
+            <AlertDialogAction 
+              onClick={() => confirmDeactivateParent(false)} 
+              className="bg-yellow-600 text-white hover:bg-yellow-700"
+            >
+              Desativar apenas o menu pai
+            </AlertDialogAction>
+            <AlertDialogAction 
+              onClick={() => confirmDeactivateParent(true)} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Desativar menu e submenus
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
