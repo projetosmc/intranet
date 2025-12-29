@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -18,7 +18,7 @@ import { useUser } from '@/contexts/UserContext';
 import { useScreenPermission } from '@/hooks/useScreenPermission';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { MCTechBadge } from './MCTechBadge';
 
 interface DbMenuItem {
   cod_menu_item: string;
@@ -354,30 +354,39 @@ export function Sidebar() {
 
     if (hasChildren && visibleChildren && visibleChildren.length > 0) {
       return (
-        <div>
-          <button
+        <div className="space-y-1">
+          <motion.button
+            whileHover={{ x: 2 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => toggleMenu(item.name)}
             className={cn(
-              "w-full ripple-container group flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all duration-200 relative overflow-hidden",
-              "text-sidebar-foreground/70 hover:bg-gray-100 dark:hover:bg-gray-100 hover:text-gray-700 dark:hover:text-gray-700"
+              "w-full group flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-xs font-semibold uppercase tracking-wider transition-all duration-200 relative overflow-hidden",
+              "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
             )}
           >
             <span>{item.name}</span>
-            <ChevronDown className={cn(
-              "h-4 w-4 text-sidebar-foreground/50 transition-transform duration-200",
-              expanded && "rotate-180"
-            )} />
-          </button>
-          <div
-            className={cn(
-              "space-y-1 overflow-hidden transition-all duration-200",
-              expanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
-            )}
+            <motion.div
+              animate={{ rotate: expanded ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronDown className="h-4 w-4 text-sidebar-foreground/50" />
+            </motion.div>
+          </motion.button>
+          <motion.div
+            initial={false}
+            animate={{
+              height: expanded ? "auto" : 0,
+              opacity: expanded ? 1 : 0
+            }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="overflow-hidden pl-2"
           >
-            {visibleChildren.map((child) => (
-              <MenuItem key={child.path} item={child} isChild />
-            ))}
-          </div>
+            <div className="space-y-1 border-l-2 border-sidebar-border/50 pl-2">
+              {visibleChildren.map((child) => (
+                <MenuItem key={child.path} item={child} isChild />
+              ))}
+            </div>
+          </motion.div>
         </div>
       );
     }
@@ -404,25 +413,31 @@ export function Sidebar() {
       <NavLink
         to={item.path}
         {...linkProps}
-        className={cn(
-          "ripple-container group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 relative overflow-hidden",
+        className={({ isActive: routeActive }) => cn(
+          "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 relative overflow-hidden",
           isChild && "py-1.5 text-sm",
-          active 
-            ? "bg-gray-100 dark:bg-gray-100 text-primary dark:text-primary font-semibold" 
-            : "text-sidebar-foreground hover:bg-gray-100 dark:hover:bg-gray-100 hover:text-gray-700 dark:hover:text-gray-700"
+          active || routeActive
+            ? "bg-primary/10 text-primary font-semibold" 
+            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
         )}
       >
-        {active && (
-          <div
-            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full"
-          />
+        {({ isActive: routeActive }) => (
+          <>
+            {(active || routeActive) && (
+              <motion.div
+                layoutId="activeIndicator"
+                className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            )}
+            <Icon className={cn(
+              "h-5 w-5 shrink-0 transition-all duration-200",
+              isChild && "h-4 w-4",
+              active ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-primary group-hover:scale-110"
+            )} />
+            <span className="transition-transform duration-200 group-hover:translate-x-0.5">{item.name}</span>
+          </>
         )}
-        <Icon className={cn(
-          "h-5 w-5 shrink-0 transition-colors",
-          isChild && "h-4 w-4",
-          active ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-primary"
-        )} />
-        <span>{item.name}</span>
       </NavLink>
     );
   };
@@ -560,10 +575,11 @@ export function Sidebar() {
         )}
       </nav>
 
-      {/* Footer with version */}
-      <div className="p-3 border-t border-sidebar-border">
-        <div className="flex items-center justify-end">
-          <span className="text-xs text-sidebar-foreground/50">v1.0.0</span>
+      {/* Footer with MCTechBadge */}
+      <div className="p-4 border-t border-sidebar-border">
+        <div className="flex items-center justify-between">
+          <MCTechBadge />
+          <span className="text-xs text-sidebar-foreground/40">v1.0.0</span>
         </div>
       </div>
     </aside>

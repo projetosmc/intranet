@@ -60,18 +60,6 @@ export function Topbar() {
       <div className="flex items-center justify-end h-full px-6">
         {/* Right Side Actions */}
         <div className="flex items-center gap-2">
-          {/* 3D Toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setToggle3D(!toggle3D)}
-            className={cn(
-              "text-muted-foreground hover:text-foreground hover:bg-accent",
-              toggle3D && "text-primary"
-            )}
-          >
-            <span className="text-xs font-bold">3D</span>
-          </Button>
 
           {/* Theme Toggle - Animated */}
           <AnimatedThemeToggler />
@@ -209,10 +197,6 @@ export function Topbar() {
               <DropdownMenuItem onClick={() => navigate('/perfil')}>
                 <User className="mr-2 h-4 w-4" />
                 <span>Perfil</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setToggle3D(!toggle3D)}>
-                <span className="mr-2 text-xs font-bold w-4">3D</span>
-                <span>{toggle3D ? 'Desativar efeitos 3D' : 'Ativar efeitos 3D'}</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
