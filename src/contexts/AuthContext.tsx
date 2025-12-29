@@ -43,13 +43,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Auth state
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(true);
   
   // Roles state
   const [roles, setRoles] = useState<AppRole[]>([]);
   
   // Permissions state
   const [permissions, setPermissions] = useState<ScreenPermission[]>([]);
+  
+  // Loading is true only during initial auth + data load
+  const isLoading = isInitializing;
 
   const isAdmin = roles.includes('admin');
   const isModerator = roles.includes('moderator') || isAdmin;
@@ -160,7 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (error) {
           console.error('Error getting session:', error);
-          setIsLoading(false);
+          setIsInitializing(false);
           isInitialized = true;
           return;
         }
@@ -175,12 +178,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setPermissions([]);
         }
         
-        setIsLoading(false);
+        setIsInitializing(false);
         isInitialized = true;
       } catch (error) {
         console.error('Error initializing auth:', error);
         if (isMounted) {
-          setIsLoading(false);
+          setIsInitializing(false);
           isInitialized = true;
         }
       }
@@ -204,10 +207,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem(PERMISSIONS_CACHE_KEY);
           setRoles([]);
           setPermissions([]);
-          // Only set isLoading to false if already initialized
-          if (isInitialized) {
-            setIsLoading(false);
-          }
         } else if (event === 'SIGNED_IN' && newSession?.user && isInitialized) {
           // Only reload data on SIGNED_IN if already initialized
           // Use setTimeout to prevent deadlock
@@ -278,10 +277,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(PERMISSIONS_CACHE_KEY);
     
     if (user) {
-      setIsLoading(true);
-      loadUserData(user.id).finally(() => {
-        setIsLoading(false);
-      });
+      loadUserData(user.id);
     }
   }, [user, loadUserData]);
 
