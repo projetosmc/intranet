@@ -188,7 +188,7 @@ export function useKnowledgeBaseArticles() {
             name: at.tab_kb_tag?.des_nome,
             order: at.tab_kb_tag?.num_ordem,
           })).filter((t: any) => t.id),
-          isFavorite: favorites.includes(a.cod_artigo),
+          isFavorite: false, // Will be updated by useEffect when favorites change
         }));
 
         setArticles(mapped);
@@ -201,7 +201,17 @@ export function useKnowledgeBaseArticles() {
         variant: 'destructive',
       });
     }
-  }, [withLoading, toast, favorites]);
+  }, [withLoading, toast]);
+
+  // Update article favorites when favorites list changes
+  useEffect(() => {
+    if (favorites.length > 0 || articles.length > 0) {
+      setArticles(prev => prev.map(article => ({
+        ...article,
+        isFavorite: favorites.includes(article.id),
+      })));
+    }
+  }, [favorites]);
 
   const getArticleById = useCallback(async (id: string): Promise<KBArticle | null> => {
     try {
