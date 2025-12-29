@@ -111,9 +111,7 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const toTitleCase = (str: string) => {
-    return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
-  };
+  // Removed toTitleCase - names are now saved exactly as typed
 
   const handleSave = async (formData: FormData) => {
     setIsSaving(true);
@@ -166,7 +164,7 @@ export default function AdminSettingsPage() {
       }
       
       const rawName = (formData.get('name') as string)?.trim();
-      const formattedName = parentId ? toTitleCase(rawName) : rawName.toUpperCase();
+      const formattedName = parentId ? rawName : rawName.toUpperCase();
       
       const iconValue = (formData.get('icon') as string)?.trim() || 'Circle';
       const orderValue = parseInt(formData.get('sort_order') as string) || 0;
