@@ -1352,6 +1352,9 @@ export default function RoomReservationPage() {
                     </p>
                     <ul className="list-disc list-inside space-y-2 text-sm">
                       <li>
+                        <strong>Pontualidade:</strong> Respeite rigorosamente os horários de início e término da sua reserva. Iniciar e encerrar no horário estabelecido demonstra respeito aos colegas que utilizarão a sala em seguida.
+                      </li>
+                      <li>
                         <strong>Integridade da sala:</strong> Você é responsável pela integridade da sala de reunião, incluindo todos os equipamentos, móveis e materiais disponíveis.
                       </li>
                       <li>
