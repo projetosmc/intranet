@@ -134,6 +134,36 @@ export type Database = {
         }
         Relationships: []
       }
+      faqs: {
+        Row: {
+          active: boolean | null
+          answer: string
+          created_at: string | null
+          id: string
+          question: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          answer: string
+          created_at?: string | null
+          id?: string
+          question: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          answer?: string
+          created_at?: string | null
+          id?: string
+          question?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       menu_items: {
         Row: {
           active: boolean | null
@@ -289,6 +319,39 @@ export type Database = {
           job_title?: string | null
           phone?: string | null
           unit?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      systems: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          id: string
+          last_check: string | null
+          name: string
+          sort_order: number | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          last_check?: string | null
+          name: string
+          sort_order?: number | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          last_check?: string | null
+          name?: string
+          sort_order?: number | null
+          status?: string
           updated_at?: string | null
         }
         Relationships: []

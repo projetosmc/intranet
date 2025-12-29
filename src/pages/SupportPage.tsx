@@ -1,7 +1,14 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { HelpCircle, ExternalLink, MessageCircle, Book, Mail, Phone, FileQuestion } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { supabase } from '@/integrations/supabase/client';
+
+interface FAQ {
+  id: string;
+  question: string;
+  answer: string;
+}
 
 const supportLinks = [
   {
@@ -24,30 +31,31 @@ const supportLinks = [
   },
 ];
 
-const faqs = [
-  {
-    question: 'Como solicitar acesso a uma nova ferramenta?',
-    answer: 'Para solicitar acesso a uma ferramenta, abra um chamado no GLPI especificando qual ferramenta você precisa acessar e o motivo. Seu gestor receberá uma notificação para aprovação.',
-  },
-  {
-    question: 'Esqueci minha senha, o que fazer?',
-    answer: 'Acesse a página de login e clique em "Esqueci minha senha". Um link de redefinição será enviado para seu e-mail corporativo. Caso não receba, entre em contato com o suporte TI.',
-  },
-  {
-    question: 'Como reportar um bug em alguma ferramenta?',
-    answer: 'Abra um chamado no GLPI na categoria "Incidente - Sistemas" descrevendo o problema encontrado, incluindo prints de tela se possível e os passos para reproduzir o erro.',
-  },
-  {
-    question: 'Posso acessar as ferramentas fora da empresa?',
-    answer: 'Sim, a maioria das ferramentas está disponível via VPN. Configure a VPN corporativa em seu dispositivo seguindo as instruções na Base de Conhecimento.',
-  },
-  {
-    question: 'Como faço para sugerir uma melhoria?',
-    answer: 'Envie suas sugestões através do formulário de feedback disponível em cada ferramenta ou abra um chamado no GLPI na categoria "Melhoria".',
-  },
-];
-
 export default function SupportPage() {
+  const [faqs, setFaqs] = useState<FAQ[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFaqs = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('faqs')
+          .select('id, question, answer')
+          .eq('active', true)
+          .order('sort_order');
+
+        if (error) throw error;
+        setFaqs(data || []);
+      } catch (error) {
+        console.error('Error fetching FAQs:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFaqs();
+  }, []);
+
   return (
     <div className="space-y-8">
       <motion.div
@@ -145,18 +153,24 @@ export default function SupportPage() {
           <h2 className="text-lg font-semibold text-foreground">Perguntas Frequentes</h2>
         </div>
         <div className="glass-card p-4">
-          <Accordion type="single" collapsible className="w-full">
-            {faqs.map((faq, index) => (
-              <AccordionItem key={index} value={`item-${index}`}>
-                <AccordionTrigger className="text-left hover:no-underline hover:text-primary">
-                  {faq.question}
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  {faq.answer}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+          {isLoading ? (
+            <p className="text-center text-muted-foreground py-4">Carregando...</p>
+          ) : faqs.length === 0 ? (
+            <p className="text-center text-muted-foreground py-4">Nenhuma FAQ cadastrada</p>
+          ) : (
+            <Accordion type="single" collapsible className="w-full">
+              {faqs.map((faq) => (
+                <AccordionItem key={faq.id} value={faq.id}>
+                  <AccordionTrigger className="text-left hover:no-underline hover:text-primary">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground">
+                    {faq.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          )}
         </div>
       </motion.section>
     </div>

@@ -405,6 +405,11 @@ export default function AdminSettingsPage() {
         <div className="flex items-center gap-2 flex-1">
           {getIconComponent(item.icon)}
           <span className="font-medium">{item.name}</span>
+          {!isChild && (
+            <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">
+              {menuItems.filter(m => m.parent_id === item.id).length} submenus
+            </span>
+          )}
           <span className="text-sm text-muted-foreground">{item.path}</span>
           {item.open_in_new_tab && (
             <ExternalLink className="h-3 w-3 text-muted-foreground" />
