@@ -287,6 +287,66 @@ export default function RoomReservationPage() {
     }
   };
 
+  // Calculate smart end time based on start time and existing reservations
+  const calculateSmartEndTime = (start: string): string => {
+    if (!selectedRoom || !reservationDate) {
+      // Default: 1 hour after start
+      const [startH, startM] = start.split(':').map(Number);
+      const endDate = new Date();
+      endDate.setHours(startH + 1, startM, 0, 0);
+      return `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+    }
+    
+    const dateStr = format(reservationDate, 'yyyy-MM-dd');
+    const roomReservations = reservations
+      .filter(r => 
+        r.seq_sala === selectedRoom && 
+        r.dta_reserva === dateStr && 
+        !r.ind_cancelado &&
+        (editingReservation ? r.cod_reserva !== editingReservation.cod_reserva : true)
+      )
+      .sort((a, b) => a.hra_inicio.localeCompare(b.hra_inicio));
+    
+    // Default end time: 1 hour after start
+    const [startH, startM] = start.split(':').map(Number);
+    const defaultEnd = new Date(reservationDate);
+    defaultEnd.setHours(startH + 1, startM, 0, 0);
+    let endTimeStr = `${String(defaultEnd.getHours()).padStart(2, '0')}:${String(defaultEnd.getMinutes()).padStart(2, '0')}`;
+    
+    // Find the next reservation after start time
+    const nextReservation = roomReservations.find(r => r.hra_inicio.slice(0, 5) > start);
+    
+    if (nextReservation) {
+      const nextStart = nextReservation.hra_inicio.slice(0, 5);
+      // If next meeting starts before default end time
+      if (nextStart < endTimeStr) {
+        // Set end time to 5 min before next meeting
+        const [nextH, nextM] = nextStart.split(':').map(Number);
+        const beforeNext = new Date(reservationDate);
+        beforeNext.setHours(nextH, nextM - 5, 0, 0);
+        endTimeStr = `${String(beforeNext.getHours()).padStart(2, '0')}:${String(beforeNext.getMinutes()).padStart(2, '0')}`;
+      }
+    }
+    
+    // Ensure end time is after start time
+    if (endTimeStr <= start) {
+      return `${String(defaultEnd.getHours()).padStart(2, '0')}:${String(defaultEnd.getMinutes()).padStart(2, '0')}`;
+    }
+    
+    return endTimeStr;
+  };
+
+  // Handle start time change - auto-update end time
+  const handleStartTimeChange = (newStartTime: string) => {
+    setStartTime(newStartTime);
+    
+    // Only auto-update end time if not editing an existing reservation
+    if (!editingReservation) {
+      const smartEndTime = calculateSmartEndTime(newStartTime);
+      setEndTime(smartEndTime);
+    }
+  };
+
   // Popover state for date picker
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
 
@@ -1031,7 +1091,7 @@ export default function RoomReservationPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="mb-1.5 block">Hora Início</Label>
-                    <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                    <Input type="time" value={startTime} onChange={(e) => handleStartTimeChange(e.target.value)} />
                   </div>
                   <div>
                     <Label className="mb-1.5 block">Hora Fim</Label>
