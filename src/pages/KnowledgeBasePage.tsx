@@ -246,7 +246,7 @@ export default function KnowledgeBasePage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs />
+      <Breadcrumbs isLoading={isLoading} />
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}

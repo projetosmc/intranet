@@ -195,7 +195,7 @@ export default function SupportPage() {
 
   return (
     <div className="space-y-8">
-      <Breadcrumbs />
+      <Breadcrumbs isLoading={isLoading} />
       
       <motion.div
         initial={{ opacity: 0, y: 20 }}

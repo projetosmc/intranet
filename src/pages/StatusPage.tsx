@@ -83,7 +83,7 @@ export default function StatusPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs />
+      <Breadcrumbs isLoading={isLoading} />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
