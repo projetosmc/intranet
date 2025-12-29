@@ -14,6 +14,7 @@ import { useUser } from '@/contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { meetingRoomSchema, meetingTypeSchema, validateForm, type MeetingRoomFormData, type MeetingTypeFormData } from '@/lib/validations';
 import {
   DndContext,
   closestCenter,
@@ -108,11 +109,35 @@ export default function AdminRoomConfigPage() {
 
   // Room handlers
   const handleSaveRoom = async (formData: FormData) => {
+    const name = (formData.get('name') as string)?.trim();
+    const capacity = parseInt(formData.get('capacity') as string) || 10;
+    const order = parseInt(formData.get('sort_order') as string) || 0;
+
+    // Validar com Zod
+    const validation = validateForm(meetingRoomSchema, {
+      name,
+      capacity,
+      allowedRoles: selectedRoles,
+      order,
+      active: true,
+    });
+
+    if (!validation.success) {
+      const validationResult = validation as { success: false; errors: Record<string, string> };
+      const firstError = Object.values(validationResult.errors)[0];
+      toast({
+        title: 'Erro de validação',
+        description: String(firstError),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const room = {
-      des_nome: formData.get('name') as string,
-      num_capacidade: parseInt(formData.get('capacity') as string) || 10,
+      des_nome: name,
+      num_capacidade: capacity,
       des_roles_permitidos: selectedRoles,
-      num_ordem: parseInt(formData.get('sort_order') as string) || 0,
+      num_ordem: order,
       ind_ativo: true,
     };
 
@@ -165,9 +190,30 @@ export default function AdminRoomConfigPage() {
 
   // Meeting type handlers
   const handleSaveType = async (formData: FormData) => {
+    const name = (formData.get('name') as string)?.trim();
+    const order = parseInt(formData.get('sort_order') as string) || 0;
+
+    // Validar com Zod
+    const validation = validateForm(meetingTypeSchema, {
+      name,
+      order,
+      active: true,
+    });
+
+    if (!validation.success) {
+      const validationResult = validation as { success: false; errors: Record<string, string> };
+      const firstError = Object.values(validationResult.errors)[0];
+      toast({
+        title: 'Erro de validação',
+        description: String(firstError),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const type = {
-      des_nome: formData.get('name') as string,
-      num_ordem: parseInt(formData.get('sort_order') as string) || 0,
+      des_nome: name,
+      num_ordem: order,
       ind_ativo: true,
     };
 
