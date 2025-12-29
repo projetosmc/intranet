@@ -182,23 +182,32 @@ export default function RoomReservationPage() {
     return isBefore(timeDate, now);
   };
 
-  // Calculate next available start time (current time + 10 minutes)
+  // Calculate next available start time (current time + 10 minutes, rounded to next 30 min)
   const getNextAvailableTime = (): { start: string; end: string } => {
     const now = new Date();
     now.setMinutes(now.getMinutes() + 10); // Add 10 minutes
     
+    // Round up to next 30 minute slot
+    const minutes = now.getMinutes();
+    if (minutes > 0 && minutes <= 30) {
+      now.setMinutes(30);
+    } else if (minutes > 30) {
+      now.setHours(now.getHours() + 1);
+      now.setMinutes(0);
+    }
+    
     const startHour = String(now.getHours()).padStart(2, '0');
     const startMinute = String(now.getMinutes()).padStart(2, '0');
-    const startTime = `${startHour}:${startMinute}`;
+    const startTimeStr = `${startHour}:${startMinute}`;
     
     // End time is 1 hour after start
     const endDate = new Date(now);
     endDate.setHours(endDate.getHours() + 1);
     const endHour = String(endDate.getHours()).padStart(2, '0');
     const endMinute = String(endDate.getMinutes()).padStart(2, '0');
-    const endTime = `${endHour}:${endMinute}`;
+    const endTimeStr = `${endHour}:${endMinute}`;
     
-    return { start: startTime, end: endTime };
+    return { start: startTimeStr, end: endTimeStr };
   };
 
   // Handle date selection and auto-set time for today
