@@ -14,7 +14,7 @@ import AnnouncementsPage from "./pages/AnnouncementsPage";
 import StatusPage from "./pages/StatusPage";
 import SupportPage from "./pages/SupportPage";
 import RoomReservationPage from "./pages/RoomReservationPage";
-import KnowledgeBasePage from "./pages/KnowledgeBasePage";
+
 import KnowledgeBaseListPage from "./pages/KnowledgeBaseListPage";
 import KnowledgeBaseDetailPage from "./pages/KnowledgeBaseDetailPage";
 import KnowledgeBaseEditorPage from "./pages/KnowledgeBaseEditorPage";
@@ -48,7 +48,7 @@ const App = () => (
                   <Route path="/status" element={<StatusPage />} />
                   <Route path="/suporte" element={<SupportPage />} />
                   <Route path="/reserva-salas" element={<RoomReservationPage />} />
-                  <Route path="/base-conhecimento" element={<KnowledgeBasePage />} />
+                  <Route path="/base-conhecimento" element={<Navigate to="/base-conhecimento-ti" replace />} />
                   <Route path="/base-conhecimento-ti" element={<KnowledgeBaseListPage />} />
                   <Route path="/base-conhecimento-ti/:id" element={<KnowledgeBaseDetailPage />} />
                   <Route path="/base-conhecimento-ti/novo" element={<PermissionRoute><KnowledgeBaseEditorPage /></PermissionRoute>} />
