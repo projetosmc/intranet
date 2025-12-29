@@ -808,28 +808,40 @@ export default function AdminSettingsPage() {
                         <SelectTrigger>
                           <SelectValue placeholder="Nenhum (item principal)" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="max-h-[300px] overflow-y-auto bg-popover">
                           <SelectItem value="__none__">Nenhum (menu principal)</SelectItem>
-                          {/* Mostrar todos os menus que podem ser pais (exclui o próprio item em edição) */}
-                          {menuItems
-                            .filter(item => item.cod_menu_item !== editingItem?.cod_menu_item)
-                            .map(item => {
-                              // Calcular profundidade do item para indentação visual
-                              let depth = 0;
-                              let currentParent = item.seq_menu_pai;
-                              while (currentParent) {
-                                depth++;
-                                const parent = menuItems.find(m => m.cod_menu_item === currentParent);
-                                currentParent = parent?.seq_menu_pai || null;
-                              }
-                              const indent = '  '.repeat(depth);
+                          {/* Mostrar todos os menus ordenados hierarquicamente */}
+                          {(() => {
+                            // Função para construir lista ordenada hierarquicamente
+                            const buildHierarchicalList = () => {
+                              const result: { item: MenuItem; depth: number }[] = [];
+                              
+                              const addItemsRecursively = (parentId: string | null, depth: number) => {
+                                const children = menuItems
+                                  .filter(m => m.seq_menu_pai === parentId && m.cod_menu_item !== editingItem?.cod_menu_item)
+                                  .sort((a, b) => a.num_ordem - b.num_ordem);
+                                
+                                children.forEach(child => {
+                                  result.push({ item: child, depth });
+                                  addItemsRecursively(child.cod_menu_item, depth + 1);
+                                });
+                              };
+                              
+                              addItemsRecursively(null, 0);
+                              return result;
+                            };
+                            
+                            return buildHierarchicalList().map(({ item, depth }) => {
+                              const indent = '\u00A0\u00A0\u00A0\u00A0'.repeat(depth);
                               const prefix = depth > 0 ? '└ ' : '';
                               return (
                                 <SelectItem key={item.cod_menu_item} value={item.cod_menu_item}>
-                                  {indent}{prefix}{item.des_nome}
+                                  <span className="font-mono">{indent}{prefix}</span>
+                                  <span>{item.des_nome}</span>
                                 </SelectItem>
                               );
-                            })}
+                            });
+                          })()}
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground mt-1">
