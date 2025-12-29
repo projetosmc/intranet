@@ -191,6 +191,42 @@ export default function RoomReservationPage() {
     return `${hours}h ${mins}min`;
   };
 
+  // Check for time conflicts with existing reservations
+  const checkTimeConflict = (
+    roomId: string, 
+    date: Date, 
+    start: string, 
+    end: string, 
+    excludeReservationId?: string
+  ): Reservation | null => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const roomReservations = reservations.filter(r => 
+      r.seq_sala === roomId && 
+      r.dta_reserva === dateStr && 
+      !r.ind_cancelado &&
+      (excludeReservationId ? r.cod_reserva !== excludeReservationId : true)
+    );
+
+    for (const reservation of roomReservations) {
+      const existingStart = reservation.hra_inicio.slice(0, 5);
+      const existingEnd = reservation.hra_fim.slice(0, 5);
+      
+      // Check if times overlap
+      // New reservation starts during existing reservation
+      const startsInside = start >= existingStart && start < existingEnd;
+      // New reservation ends during existing reservation
+      const endsInside = end > existingStart && end <= existingEnd;
+      // New reservation completely contains existing reservation
+      const containsExisting = start <= existingStart && end >= existingEnd;
+      
+      if (startsInside || endsInside || containsExisting) {
+        return reservation;
+      }
+    }
+    
+    return null;
+  };
+
   const handleCreateReservation = async () => {
     if (!selectedRoom || !reservationDate || !startTime || !endTime) {
       toast({ title: 'Preencha todos os campos obrigatórios', variant: 'destructive' });
@@ -220,6 +256,17 @@ export default function RoomReservationPage() {
       toast({ 
         title: 'Número de participantes excede a capacidade', 
         description: `A sala ${selectedRoomData.des_nome} comporta no máximo ${selectedRoomData.num_capacidade} pessoas.`,
+        variant: 'destructive' 
+      });
+      return;
+    }
+
+    // Check for time conflicts
+    const conflictingReservation = checkTimeConflict(selectedRoom, reservationDate, startTime, endTime);
+    if (conflictingReservation) {
+      toast({ 
+        title: 'Conflito de horário', 
+        description: `Já existe uma reserva nesta sala das ${conflictingReservation.hra_inicio.slice(0, 5)} às ${conflictingReservation.hra_fim.slice(0, 5)}.`,
         variant: 'destructive' 
       });
       return;
@@ -283,6 +330,23 @@ export default function RoomReservationPage() {
       toast({ 
         title: 'Número de participantes excede a capacidade', 
         description: `A sala ${selectedRoomData.des_nome} comporta no máximo ${selectedRoomData.num_capacidade} pessoas.`,
+        variant: 'destructive' 
+      });
+      return;
+    }
+
+    // Check for time conflicts (excluding the current reservation being edited)
+    const conflictingReservation = checkTimeConflict(
+      selectedRoom, 
+      reservationDate, 
+      startTime, 
+      endTime, 
+      editingReservation.cod_reserva
+    );
+    if (conflictingReservation) {
+      toast({ 
+        title: 'Conflito de horário', 
+        description: `Já existe uma reserva nesta sala das ${conflictingReservation.hra_inicio.slice(0, 5)} às ${conflictingReservation.hra_fim.slice(0, 5)}.`,
         variant: 'destructive' 
       });
       return;
