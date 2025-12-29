@@ -345,10 +345,28 @@ export function useDbAnnouncements() {
     }
   }, [user, toast, fetchAnnouncements]);
 
+  // Filtrar comunicados ativos considerando agendamento
+  const filterScheduledAnnouncements = useCallback((items: Announcement[]) => {
+    const now = new Date();
+    return items.filter((a) => {
+      if (!a.active) return false;
+      
+      // Se tem data de início e ainda não chegou, não exibir
+      if (a.startDate && new Date(a.startDate) > now) return false;
+      
+      // Se tem data de fim e já passou, não exibir
+      if (a.endDate && new Date(a.endDate) < now) return false;
+      
+      return true;
+    });
+  }, []);
+
   return {
     announcements,
-    activeAnnouncements: announcements.filter((a) => a.active),
-    bannerAnnouncements: announcements.filter((a) => a.active && a.templateType === 'banner' && a.imageUrl),
+    activeAnnouncements: filterScheduledAnnouncements(announcements),
+    bannerAnnouncements: filterScheduledAnnouncements(announcements).filter(
+      (a) => a.templateType === 'banner' && a.imageUrl
+    ),
     isLoading,
     addAnnouncement,
     updateAnnouncement,
