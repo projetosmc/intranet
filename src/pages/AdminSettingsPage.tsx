@@ -508,15 +508,16 @@ export default function AdminSettingsPage() {
   const parentItems = menuItems.filter(item => !item.seq_menu_pai);
   const getChildItems = (parentId: string) => menuItems.filter(item => item.seq_menu_pai === parentId);
 
-  // Rotas disponíveis no sistema que ainda não estão em nenhum menu
+  // Todas as rotas disponíveis no sistema
   const availablePaths = useMemo(() => {
-    const allRoutes = [
+    return [
       { path: '/', label: 'Meu Dia (Home)' },
       { path: '/comunicados', label: 'Comunicados' },
       { path: '/status', label: 'Status Sistemas' },
       { path: '/suporte', label: 'Suporte' },
       { path: '/reserva-salas', label: 'Reserva de Salas' },
       { path: '/perfil', label: 'Perfil' },
+      { path: '/base-conhecimento', label: 'Base de Conhecimento' },
       { path: '/admin/configuracoes', label: 'Admin - Configurações' },
       { path: '/admin/comunicados', label: 'Admin - Comunicados' },
       { path: '/admin/usuarios', label: 'Admin - Usuários' },
@@ -525,11 +526,9 @@ export default function AdminSettingsPage() {
       { path: '/admin/faqs', label: 'Admin - FAQs' },
       { path: '/admin/reserva-salas', label: 'Admin - Config. Reservas' },
       { path: '/admin/perfis', label: 'Admin - Perfis' },
+      { path: '/admin/base-conhecimento', label: 'Admin - Base de Conhecimento' },
     ];
-    
-    const usedPaths = menuItems.map(m => m.des_caminho);
-    return allRoutes.filter(r => !usedPaths.includes(r.path) || editingItem?.des_caminho === r.path);
-  }, [menuItems, editingItem]);
+  }, []);
 
   const toggleExpand = (menuId: string) => {
     setExpandedMenus(prev => {
@@ -907,27 +906,21 @@ export default function AdminSettingsPage() {
                               onValueChange={setSelectedPath}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="Selecione uma página disponível" />
+                                <SelectValue placeholder="Selecione uma página" />
                               </SelectTrigger>
                               <SelectContent>
-                                {availablePaths.length === 0 ? (
-                                  <div className="px-3 py-2 text-sm text-muted-foreground">
-                                    Todas as páginas já estão em uso
-                                  </div>
-                                ) : (
-                                  availablePaths.map(route => (
-                                    <SelectItem key={route.path} value={route.path}>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-muted-foreground text-xs">{route.path}</span>
-                                        <span>{route.label}</span>
-                                      </div>
-                                    </SelectItem>
-                                  ))
-                                )}
+                                {availablePaths.map(route => (
+                                  <SelectItem key={route.path} value={route.path}>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground text-xs">{route.path}</span>
+                                      <span>{route.label}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                             <p className="text-xs text-muted-foreground mt-1">
-                              Apenas páginas não utilizadas em outros menus são exibidas
+                              Selecione a página que será aberta ao clicar neste item
                             </p>
                           </div>
                         ) : (
@@ -944,6 +937,16 @@ export default function AdminSettingsPage() {
                             </p>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* Submenu container - sem caminho obrigatório */}
+                    {selectedParentId === '__none__' && (
+                      <div className="p-3 bg-muted/50 rounded-md border border-muted">
+                        <p className="text-sm text-muted-foreground">
+                          <strong>Menu Principal:</strong> Este item será um agrupador de submenus. 
+                          O caminho será gerado automaticamente baseado no nome.
+                        </p>
                       </div>
                     )}
 
