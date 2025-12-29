@@ -4,6 +4,40 @@ import { Announcement, PollOption, TemplateType, PollType } from '@/types/announ
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
+/**
+ * Hook para gerenciamento de comunicados/anúncios
+ * 
+ * Tabela principal: tab_comunicado
+ * Colunas:
+ * - cod_comunicado (PK): UUID do comunicado
+ * - des_titulo: Título do comunicado
+ * - des_resumo: Resumo breve
+ * - des_conteudo: Conteúdo completo (markdown)
+ * - des_tipo_template: Tipo de template ('simple' | 'banner' | 'poll')
+ * - des_imagem_url: URL da imagem (para banners)
+ * - des_tipo_enquete: Tipo de enquete ('single' | 'multiple')
+ * - ind_ativo: Indica se está ativo
+ * - ind_fixado: Indica se está fixado no topo
+ * - dta_publicacao: Data de publicação
+ * - dta_cadastro: Data de criação
+ * - dta_atualizacao: Data de atualização
+ * 
+ * Tabela relacionada: tab_enquete_opcao (opções de enquete)
+ * - cod_opcao (PK): UUID da opção
+ * - seq_comunicado: FK para tab_comunicado
+ * - des_texto_opcao: Texto da opção
+ * - dta_cadastro: Data de criação
+ * 
+ * Tabela relacionada: tab_enquete_voto (votos de enquete)
+ * - cod_voto (PK): UUID do voto
+ * - seq_opcao: FK para tab_enquete_opcao
+ * - seq_usuario: ID do usuário que votou
+ * - dta_cadastro: Data do voto
+ * 
+ * Storage: bucket 'announcements' para imagens de banner
+ * 
+ * RLS: Admins podem gerenciar, usuários autenticados podem ver ativos
+ */
 export function useDbAnnouncements() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);

@@ -1,14 +1,36 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+/**
+ * Interface para dados de aniversário
+ * Origem: tabela tab_perfil_usuario
+ */
 interface Birthday {
+  /** cod_usuario - ID do usuário */
   id: string;
+  /** des_nome_completo - Nome completo do usuário */
   fullName: string;
+  /** dta_aniversario - Data de aniversário */
   birthdayDate: Date;
+  /** des_unidade - Unidade/setor do usuário */
   unit?: string;
+  /** des_avatar_url - URL do avatar */
   avatarUrl?: string;
 }
 
+/**
+ * Hook para busca de aniversariantes
+ * 
+ * Tabela: tab_perfil_usuario
+ * Colunas utilizadas:
+ * - cod_usuario (PK): UUID do usuário (ref auth.users)
+ * - des_nome_completo: Nome completo
+ * - dta_aniversario: Data de aniversário (DATE)
+ * - des_unidade: Unidade/setor
+ * - des_avatar_url: URL do avatar
+ * 
+ * RLS: Usuários podem visualizar todos os perfis
+ */
 export function useBirthdays() {
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
   const [isLoading, setIsLoading] = useState(true);

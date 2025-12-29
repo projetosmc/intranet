@@ -1,11 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+/**
+ * Tipo de roles disponíveis no sistema
+ * Enum no banco: app_role ('admin' | 'moderator' | 'user')
+ */
 type AppRole = 'admin' | 'moderator' | 'user';
 
 const CACHE_KEY = 'mc-hub-user-roles';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
+/**
+ * Interface para cache local de roles
+ */
 interface CachedRoles {
   userId: string;
   roles: AppRole[];
@@ -51,6 +58,22 @@ function clearCachedRoles(): void {
   }
 }
 
+/**
+ * Hook para gerenciamento de roles de usuário
+ * 
+ * Tabela: tab_usuario_role
+ * Colunas:
+ * - cod_usuario_role (PK): UUID do registro
+ * - seq_usuario: FK para o usuário (auth.users)
+ * - des_role: Role do usuário (app_role enum)
+ * - dta_cadastro: Data de criação
+ * 
+ * Função auxiliar: has_role(_user_id, _role) - Verifica se usuário tem role
+ * 
+ * RLS: Admins podem gerenciar, usuários podem ver próprios roles
+ * 
+ * Obs: Utiliza cache local para performance (5 min de duração)
+ */
 export function useUserRole() {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
