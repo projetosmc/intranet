@@ -396,6 +396,7 @@ export function Sidebar() {
     const expanded = isMenuExpanded(item.name);
     const isChild = depth > 0;
     const isSubChild = depth > 1;
+    const isDeepChild = depth > 2;
 
     // Filter children based on admin status AND screen permissions recursively
     const visibleChildren = item.children?.filter(child => {
@@ -407,31 +408,42 @@ export function Sidebar() {
     // Menu com filhos - renderiza como dropdown expansível
     if (hasChildren && visibleChildren && visibleChildren.length > 0) {
       return (
-        <div className={cn(isSubChild && "ml-3")}>
+        <div className={cn(
+          depth === 1 && "ml-2",
+          depth >= 2 && "ml-1"
+        )}>
           <button
             onClick={() => toggleMenu(item.name)}
             className={cn(
-              "w-full ripple-container group flex items-center justify-between gap-3 rounded-lg px-3 py-2 transition-all duration-200 relative overflow-hidden",
-              depth === 0 
-                ? "text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70" 
-                : "text-sm font-medium text-sidebar-foreground/80",
-              "hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
+              "w-full ripple-container group flex items-center justify-between gap-2 rounded-lg px-3 py-2 transition-all duration-200 relative overflow-hidden",
+              depth === 0 && "text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70",
+              depth === 1 && "text-sm font-medium text-sidebar-foreground/90 pl-4",
+              depth >= 2 && "text-xs font-medium text-sidebar-foreground/80 pl-3",
+              "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
             )}
           >
             <div className="flex items-center gap-2">
-              {depth > 0 && <Icon className="h-4 w-4 text-sidebar-foreground/50" />}
-              <span>{item.name}</span>
+              {depth > 0 && (
+                <Icon className={cn(
+                  "shrink-0 transition-colors",
+                  depth === 1 ? "h-4 w-4" : "h-3.5 w-3.5",
+                  "text-sidebar-foreground/50 group-hover:text-primary"
+                )} />
+              )}
+              <span className="truncate">{item.name}</span>
             </div>
             <ChevronDown className={cn(
-              "h-4 w-4 text-sidebar-foreground/50 transition-transform duration-200",
-              expanded && "rotate-180"
+              "h-3.5 w-3.5 shrink-0 text-sidebar-foreground/40 transition-transform duration-200",
+              expanded && "rotate-180 text-primary"
             )} />
           </button>
           <div
             className={cn(
-              "overflow-hidden transition-all duration-200",
-              depth === 0 ? "space-y-1" : "space-y-0.5 ml-2 border-l border-sidebar-border/50 pl-2",
-              expanded ? "max-h-[800px] opacity-100 mt-1" : "max-h-0 opacity-0"
+              "overflow-hidden transition-all duration-300 ease-in-out",
+              depth === 0 && "space-y-0.5 mt-1",
+              depth === 1 && "space-y-0.5 ml-4 mt-1 border-l-2 border-sidebar-border/30 pl-2",
+              depth >= 2 && "space-y-0.5 ml-3 mt-0.5 border-l border-sidebar-border/20 pl-2",
+              expanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
             )}
           >
             {visibleChildren.map((child) => (
@@ -466,25 +478,43 @@ export function Sidebar() {
         to={item.path}
         {...linkProps}
         className={cn(
-          "ripple-container group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 relative overflow-hidden",
-          isChild && "py-1.5",
-          isSubChild && "ml-3 text-xs",
+          "ripple-container group flex items-center gap-2 rounded-lg transition-all duration-200 relative overflow-hidden",
+          // Padding e tamanho baseado na profundidade
+          depth === 0 && "px-3 py-2 text-sm font-medium",
+          depth === 1 && "px-3 py-1.5 ml-2 text-sm font-medium",
+          depth === 2 && "px-2.5 py-1.5 ml-1 text-xs font-medium",
+          depth >= 3 && "px-2 py-1 ml-1 text-xs",
+          // Estados ativo/inativo
           active 
-            ? "bg-gray-100 dark:bg-gray-800 text-primary font-semibold" 
-            : "text-sidebar-foreground hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
+            ? "bg-primary/10 text-primary font-semibold" 
+            : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
         )}
       >
+        {/* Indicador de item ativo */}
         {active && (
-          <div
-            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full"
+          <motion.div
+            layoutId="activeIndicator"
+            className={cn(
+              "absolute left-0 top-1/2 -translate-y-1/2 bg-primary rounded-r-full",
+              depth <= 1 ? "w-1 h-5" : "w-0.5 h-4"
+            )}
           />
         )}
+        
+        {/* Ícone */}
         <Icon className={cn(
-          "h-5 w-5 shrink-0 transition-colors",
-          isChild && "h-4 w-4",
+          "shrink-0 transition-colors",
+          depth <= 1 ? "h-4 w-4" : "h-3.5 w-3.5",
           active ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-primary"
         )} />
-        <span>{item.name}</span>
+        
+        {/* Texto */}
+        <span className="truncate">{item.name}</span>
+        
+        {/* Indicador de link externo */}
+        {item.openInNewTab && (
+          <LucideIcons.ExternalLink className="h-3 w-3 ml-auto text-sidebar-foreground/30" />
+        )}
       </NavLink>
     );
   };
