@@ -45,4 +45,6 @@ export interface Announcement {
   viewsCount?: number;
   commentsCount?: number;
   allowComments?: boolean;
+  isUrgent?: boolean;
+  isPopup?: boolean;
 }

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Pencil, Trash2, Pin, PinOff, Eye, EyeOff, Upload, Image, FileText, BarChart3, X, Users, Clock, CalendarClock, MessageCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Pin, PinOff, Eye, EyeOff, Upload, Image, FileText, BarChart3, X, Users, Clock, CalendarClock, MessageCircle, AlertTriangle, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -65,6 +65,8 @@ type FormData = {
   hasSchedule: boolean;
   hasEndDate: boolean;
   allowComments: boolean;
+  isUrgent: boolean;
+  isPopup: boolean;
 };
 
 type FormErrors = Partial<Record<keyof AnnouncementFormData, string>>;
@@ -86,6 +88,8 @@ const initialFormData: FormData = {
   hasSchedule: false,
   hasEndDate: false,
   allowComments: false,
+  isUrgent: false,
+  isPopup: false,
 };
 
 const templateIcons = {
@@ -143,6 +147,8 @@ export default function AdminAnnouncementsPage() {
       hasSchedule: !!announcement.startDate,
       hasEndDate: !!announcement.endDate,
       allowComments: announcement.allowComments ?? false,
+      isUrgent: announcement.isUrgent ?? false,
+      isPopup: announcement.isPopup ?? false,
     });
     setActiveTab('edit');
     setIsDialogOpen(true);
@@ -238,6 +244,8 @@ export default function AdminAnnouncementsPage() {
       startDate,
       endDate,
       allowComments: formData.templateType === 'simple' ? formData.allowComments : false,
+      isUrgent: formData.isUrgent,
+      isPopup: formData.isPopup,
     };
 
     const pollOptions = formData.templateType === 'poll'
@@ -342,7 +350,19 @@ export default function AdminAnnouncementsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {announcement.isUrgent && (
+                          <Badge className="text-xs bg-red-500 hover:bg-red-600 text-white">
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            Urgente
+                          </Badge>
+                        )}
+                        {announcement.isPopup && (
+                          <Badge variant="outline" className="text-xs text-purple-600 border-purple-300 bg-purple-50 dark:bg-purple-950 dark:border-purple-800 dark:text-purple-400">
+                            <Bell className="h-3 w-3 mr-1" />
+                            Popup
+                          </Badge>
+                        )}
                         {announcement.pinned && (
                           <Badge variant="secondary" className="text-xs">
                             <Pin className="h-3 w-3 mr-1" />
@@ -643,6 +663,41 @@ export default function AdminAnnouncementsPage() {
                     </Label>
                   </div>
                 )}
+
+                {/* Comunicado Urgente / Popup */}
+                <div className="space-y-3 p-4 border border-border rounded-lg bg-amber-500/5">
+                  <h4 className="text-sm font-medium flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="h-4 w-4" />
+                    Comunicado Urgente
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Comunicados urgentes aparecem com destaque especial e podem abrir como popup para todos os usuários.
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="isUrgent"
+                        checked={formData.isUrgent}
+                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isUrgent: checked }))}
+                      />
+                      <Label htmlFor="isUrgent" className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        Marcar como urgente
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="isPopup"
+                        checked={formData.isPopup}
+                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isPopup: checked }))}
+                      />
+                      <Label htmlFor="isPopup" className="flex items-center gap-2">
+                        <Bell className="h-4 w-4" />
+                        Exibir como popup ao abrir o sistema
+                      </Label>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Agendamento */}
                 <div className="space-y-4 p-4 border border-border rounded-lg">

@@ -119,6 +119,8 @@ export function useDbAnnouncements() {
             viewsCount,
             commentsCount,
             allowComments: item.ind_permite_comentarios ?? false,
+            isUrgent: item.ind_urgente ?? false,
+            isPopup: item.ind_popup ?? false,
           };
         })
       );
@@ -190,6 +192,8 @@ export function useDbAnnouncements() {
           dta_inicio: announcement.startDate || null,
           dta_fim: announcement.endDate || null,
           ind_permite_comentarios: announcement.allowComments ?? false,
+          ind_urgente: announcement.isUrgent ?? false,
+          ind_popup: announcement.isPopup ?? false,
         })
         .select()
         .single();
@@ -246,6 +250,8 @@ export function useDbAnnouncements() {
       if (updates.startDate !== undefined) dbUpdates.dta_inicio = updates.startDate || null;
       if (updates.endDate !== undefined) dbUpdates.dta_fim = updates.endDate || null;
       if (updates.allowComments !== undefined) dbUpdates.ind_permite_comentarios = updates.allowComments;
+      if (updates.isUrgent !== undefined) dbUpdates.ind_urgente = updates.isUrgent;
+      if (updates.isPopup !== undefined) dbUpdates.ind_popup = updates.isPopup;
 
       const { error } = await supabase
         .from('tab_comunicado')
