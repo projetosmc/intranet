@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HelpCircle, ExternalLink, Mail, Phone, FileQuestion, Pencil, Plus, Trash2, Save, X, ZoomIn } from 'lucide-react';
+import { HelpCircle, ExternalLink, Mail, Phone, FileQuestion, Pencil, Plus, Trash2, Save, X, ZoomIn, Sparkles, Search } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useFeaturePermission } from '@/hooks/useFeaturePermission';
 import { toast } from '@/hooks/use-toast';
 import { FaqManagementModal } from '@/components/support/FaqManagementModal';
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 
 interface FAQ {
   cod_faq: string;
@@ -183,6 +184,8 @@ export default function SupportPage() {
 
   return (
     <div className="space-y-8">
+      <Breadcrumbs />
+      
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -197,121 +200,30 @@ export default function SupportPage() {
         </p>
       </motion.div>
 
+      {/* FAQ Section - PRIMEIRO com destaque */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Links Úteis</h2>
-          {canEditSupportLinks && (
-            <Button size="sm" variant="outline" onClick={() => handleNewItem('link')}>
-              <Plus className="h-4 w-4 mr-1" />
-              Novo Link
-            </Button>
-          )}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {supportLinks.map((link, index) => {
-            const Icon = getIconComponent(link.des_icone);
-            return (
-              <motion.div
-                key={link.cod_config}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
-                className="glass-card p-6 hover-lift group relative"
-              >
-                {canEditSupportLinks && (
-                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button size="icon-sm" variant="ghost" onClick={() => handleEditItem(link)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="icon-sm" variant="ghost" onClick={() => setDeleteItemId(link.cod_config)}>
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
-                  </div>
-                )}
-                <a
-                  href={link.des_valor}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
-                      <Icon className="h-6 w-6" />
-                    </div>
-                    <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                  <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
-                    {link.des_nome}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">{link.des_descricao}</p>
-                </a>
-              </motion.div>
-            );
-          })}
-        </div>
-      </motion.section>
-
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.2 }}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Contato Direto</h2>
-          {canEditSupportContacts && (
-            <Button size="sm" variant="outline" onClick={() => handleNewItem('contact')}>
-              <Plus className="h-4 w-4 mr-1" />
-              Novo Contato
-            </Button>
-          )}
-        </div>
-        <div className="glass-card p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {contacts.map((contact) => {
-              const Icon = getIconComponent(contact.des_icone);
-              const isEmail = contact.des_nome.toLowerCase().includes('mail');
-              
-              return (
-                <div key={contact.cod_config} className="flex items-center gap-4 group relative">
-                  {canEditSupportContacts && (
-                    <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button size="icon-sm" variant="ghost" onClick={() => handleEditItem(contact)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="icon-sm" variant="ghost" onClick={() => setDeleteItemId(contact.cod_config)}>
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">{contact.des_nome}</p>
-                    {isEmail ? (
-                      <a href={`mailto:${contact.des_valor}`} className="font-medium text-foreground hover:text-primary transition-colors">
-                        {contact.des_valor}
-                      </a>
-                    ) : (
-                      <p className="font-medium text-foreground">{contact.des_valor}</p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+        {/* Destaque visual para FAQs */}
+        <div className="relative mb-6 p-4 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/20">
+              <Sparkles className="h-6 w-6 text-primary" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                Procure aqui primeiro!
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Muitas dúvidas podem ser resolvidas consultando as perguntas frequentes abaixo
+              </p>
+            </div>
+            <Search className="h-8 w-8 text-primary/30" />
           </div>
         </div>
-      </motion.section>
 
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.3 }}
-      >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <FileQuestion className="h-5 w-5 text-primary" />
@@ -324,7 +236,7 @@ export default function SupportPage() {
             </Button>
           )}
         </div>
-        <div className="glass-card p-4">
+        <div className="glass-card p-4 border-2 border-primary/10">
           {isLoading ? (
             <p className="text-center text-muted-foreground py-4">Carregando...</p>
           ) : faqs.length === 0 ? (
@@ -387,6 +299,118 @@ export default function SupportPage() {
               ))}
             </Accordion>
           )}
+        </div>
+      </motion.section>
+
+      {/* Links Úteis - SEGUNDO */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.2 }}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-foreground">Links Úteis</h2>
+          {canEditSupportLinks && (
+            <Button size="sm" variant="outline" onClick={() => handleNewItem('link')}>
+              <Plus className="h-4 w-4 mr-1" />
+              Novo Link
+            </Button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {supportLinks.map((link, index) => {
+            const Icon = getIconComponent(link.des_icone);
+            return (
+              <motion.div
+                key={link.cod_config}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.2 + index * 0.05 }}
+                className="glass-card p-6 hover-lift group relative"
+              >
+                {canEditSupportLinks && (
+                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button size="icon-sm" variant="ghost" onClick={() => handleEditItem(link)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="icon-sm" variant="ghost" onClick={() => setDeleteItemId(link.cod_config)}>
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  </div>
+                )}
+                <a
+                  href={link.des_valor}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
+                    {link.des_nome}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">{link.des_descricao}</p>
+                </a>
+              </motion.div>
+            );
+          })}
+        </div>
+      </motion.section>
+
+      {/* Contato Direto - TERCEIRO */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.3 }}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-foreground">Contato Direto</h2>
+          {canEditSupportContacts && (
+            <Button size="sm" variant="outline" onClick={() => handleNewItem('contact')}>
+              <Plus className="h-4 w-4 mr-1" />
+              Novo Contato
+            </Button>
+          )}
+        </div>
+        <div className="glass-card p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {contacts.map((contact) => {
+              const Icon = getIconComponent(contact.des_icone);
+              const isEmail = contact.des_nome.toLowerCase().includes('mail');
+              
+              return (
+                <div key={contact.cod_config} className="flex items-center gap-4 group relative">
+                  {canEditSupportContacts && (
+                    <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button size="icon-sm" variant="ghost" onClick={() => handleEditItem(contact)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon-sm" variant="ghost" onClick={() => setDeleteItemId(contact.cod_config)}>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">{contact.des_nome}</p>
+                    {isEmail ? (
+                      <a href={`mailto:${contact.des_valor}`} className="font-medium text-foreground hover:text-primary transition-colors">
+                        {contact.des_valor}
+                      </a>
+                    ) : (
+                      <p className="font-medium text-foreground">{contact.des_valor}</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </motion.section>
 
