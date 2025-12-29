@@ -79,6 +79,31 @@ export default function AdminSettingsPage() {
   const [editingTags, setEditingTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
 
+  // Sugestões de tags populares baseadas nas tags existentes
+  const popularTags = useMemo(() => {
+    const tagCount: Record<string, number> = {};
+    menuItems.forEach(item => {
+      (item.des_tags || []).forEach(tag => {
+        tagCount[tag] = (tagCount[tag] || 0) + 1;
+      });
+    });
+    
+    return Object.entries(tagCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([tag]) => tag);
+  }, [menuItems]);
+
+  // Sugestões filtradas baseadas no que o usuário está digitando
+  const filteredSuggestions = useMemo(() => {
+    if (!newTag.trim()) return popularTags.filter(tag => !editingTags.includes(tag));
+    
+    const search = newTag.toLowerCase().trim();
+    return popularTags
+      .filter(tag => tag.includes(search) && !editingTags.includes(tag))
+      .slice(0, 5);
+  }, [newTag, popularTags, editingTags]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -987,6 +1012,33 @@ export default function AdminSettingsPage() {
                           <Plus className="h-4 w-4" />
                         </Button>
                       </div>
+                      
+                      {/* Sugestões de tags populares */}
+                      {filteredSuggestions.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-muted-foreground">
+                            {newTag.trim() ? 'Sugestões:' : 'Tags populares:'}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {filteredSuggestions.map((tag) => (
+                              <button
+                                key={tag}
+                                type="button"
+                                onClick={() => {
+                                  if (!editingTags.includes(tag)) {
+                                    setEditingTags(prev => [...prev, tag]);
+                                    setNewTag('');
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground text-xs rounded-full transition-colors"
+                              >
+                                <Plus className="h-2.5 w-2.5" />
+                                {tag}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
