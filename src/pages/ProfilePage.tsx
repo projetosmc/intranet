@@ -20,7 +20,7 @@ const profileSchema = z.object({
     .max(100, 'Nome deve ter no máximo 100 caracteres'),
   phone: z.string()
     .trim()
-    .regex(/^$|^\(?[1-9]{2}\)?\s?9?[0-9]{4}[-\s]?[0-9]{4}$/, 'Telefone inválido. Use o formato (11) 99999-9999')
+    .regex(/^$|^\([1-9]{2}\) [0-9]{5}-[0-9]{4}$/, 'Telefone inválido')
     .optional()
     .or(z.literal('')),
   unit: z.string()
@@ -82,6 +82,24 @@ export default function ProfilePage() {
     }
   }, [user]);
 
+  // Função para formatar telefone
+  const formatPhone = (value: string): string => {
+    // Remove tudo que não for número
+    const numbers = value.replace(/\D/g, '');
+    
+    // Limita a 11 dígitos
+    const limited = numbers.slice(0, 11);
+    
+    // Aplica a máscara
+    if (limited.length <= 2) {
+      return limited.length > 0 ? `(${limited}` : '';
+    } else if (limited.length <= 7) {
+      return `(${limited.slice(0, 2)}) ${limited.slice(2)}`;
+    } else {
+      return `(${limited.slice(0, 2)}) ${limited.slice(2, 7)}-${limited.slice(7)}`;
+    }
+  };
+
   // Validação em tempo real
   const validateField = (field: string, value: string) => {
     const data = { fullName, phone, unit, department, jobTitle, [field]: value };
@@ -106,6 +124,14 @@ export default function ProfilePage() {
     setter(value);
     if (touched.has(field)) {
       validateField(field, value);
+    }
+  };
+
+  const handlePhoneChange = (value: string) => {
+    const formatted = formatPhone(value);
+    setPhone(formatted);
+    if (touched.has('phone')) {
+      validateField('phone', formatted);
     }
   };
 
@@ -425,9 +451,10 @@ export default function ProfilePage() {
             <Input
               id="phone"
               value={phone}
-              onChange={(e) => handleFieldChange('phone', e.target.value, setPhone)}
+              onChange={(e) => handlePhoneChange(e.target.value)}
               onBlur={() => handleFieldBlur('phone', phone)}
-              placeholder="Ex: (11) 99999-9999"
+              placeholder="(11) 99999-9999"
+              maxLength={15}
               className={errors.phone ? 'border-destructive focus-visible:ring-destructive' : ''}
             />
             {errors.phone && (
