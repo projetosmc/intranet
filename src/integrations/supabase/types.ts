@@ -418,6 +418,405 @@ export type Database = {
         }
         Relationships: []
       }
+      tab_kb_anexo: {
+        Row: {
+          cod_anexo: string
+          cod_artigo: string
+          des_nome: string
+          des_tipo: string | null
+          des_url: string
+          dta_cadastro: string | null
+          num_tamanho_bytes: number | null
+          seq_usuario: string | null
+        }
+        Insert: {
+          cod_anexo?: string
+          cod_artigo: string
+          des_nome: string
+          des_tipo?: string | null
+          des_url: string
+          dta_cadastro?: string | null
+          num_tamanho_bytes?: number | null
+          seq_usuario?: string | null
+        }
+        Update: {
+          cod_anexo?: string
+          cod_artigo?: string
+          des_nome?: string
+          des_tipo?: string | null
+          des_url?: string
+          dta_cadastro?: string | null
+          num_tamanho_bytes?: number | null
+          seq_usuario?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tab_kb_anexo_cod_artigo_fkey"
+            columns: ["cod_artigo"]
+            isOneToOne: false
+            referencedRelation: "tab_kb_artigo"
+            referencedColumns: ["cod_artigo"]
+          },
+        ]
+      }
+      tab_kb_artigo: {
+        Row: {
+          arr_pre_requisitos: string[] | null
+          arr_sinonimos: string[] | null
+          cod_artigo: string
+          cod_categoria: string | null
+          cod_owner: string | null
+          cod_revisor: string | null
+          des_conteudo_md: string
+          des_link_ferramenta: string | null
+          des_publico: string | null
+          des_resumo: string
+          des_sistema: string | null
+          des_tempo_estimado: string | null
+          des_tipo: string
+          des_titulo: string
+          dta_atualizacao: string | null
+          dta_criacao: string | null
+          dta_publicacao: string | null
+          ind_ativo: boolean | null
+          ind_critico: boolean | null
+          ind_status: string | null
+          num_helpful_down: number | null
+          num_helpful_up: number | null
+          num_versao: number | null
+          num_views: number | null
+        }
+        Insert: {
+          arr_pre_requisitos?: string[] | null
+          arr_sinonimos?: string[] | null
+          cod_artigo?: string
+          cod_categoria?: string | null
+          cod_owner?: string | null
+          cod_revisor?: string | null
+          des_conteudo_md: string
+          des_link_ferramenta?: string | null
+          des_publico?: string | null
+          des_resumo: string
+          des_sistema?: string | null
+          des_tempo_estimado?: string | null
+          des_tipo: string
+          des_titulo: string
+          dta_atualizacao?: string | null
+          dta_criacao?: string | null
+          dta_publicacao?: string | null
+          ind_ativo?: boolean | null
+          ind_critico?: boolean | null
+          ind_status?: string | null
+          num_helpful_down?: number | null
+          num_helpful_up?: number | null
+          num_versao?: number | null
+          num_views?: number | null
+        }
+        Update: {
+          arr_pre_requisitos?: string[] | null
+          arr_sinonimos?: string[] | null
+          cod_artigo?: string
+          cod_categoria?: string | null
+          cod_owner?: string | null
+          cod_revisor?: string | null
+          des_conteudo_md?: string
+          des_link_ferramenta?: string | null
+          des_publico?: string | null
+          des_resumo?: string
+          des_sistema?: string | null
+          des_tempo_estimado?: string | null
+          des_tipo?: string
+          des_titulo?: string
+          dta_atualizacao?: string | null
+          dta_criacao?: string | null
+          dta_publicacao?: string | null
+          ind_ativo?: boolean | null
+          ind_critico?: boolean | null
+          ind_status?: string | null
+          num_helpful_down?: number | null
+          num_helpful_up?: number | null
+          num_versao?: number | null
+          num_views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tab_kb_artigo_cod_categoria_fkey"
+            columns: ["cod_categoria"]
+            isOneToOne: false
+            referencedRelation: "tab_kb_categoria"
+            referencedColumns: ["cod_categoria"]
+          },
+        ]
+      }
+      tab_kb_artigo_relacionado: {
+        Row: {
+          cod_artigo: string
+          cod_artigo_relacionado: string
+          cod_relacao: string
+          dta_cadastro: string | null
+        }
+        Insert: {
+          cod_artigo: string
+          cod_artigo_relacionado: string
+          cod_relacao?: string
+          dta_cadastro?: string | null
+        }
+        Update: {
+          cod_artigo?: string
+          cod_artigo_relacionado?: string
+          cod_relacao?: string
+          dta_cadastro?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tab_kb_artigo_relacionado_cod_artigo_fkey"
+            columns: ["cod_artigo"]
+            isOneToOne: false
+            referencedRelation: "tab_kb_artigo"
+            referencedColumns: ["cod_artigo"]
+          },
+          {
+            foreignKeyName: "tab_kb_artigo_relacionado_cod_artigo_relacionado_fkey"
+            columns: ["cod_artigo_relacionado"]
+            isOneToOne: false
+            referencedRelation: "tab_kb_artigo"
+            referencedColumns: ["cod_artigo"]
+          },
+        ]
+      }
+      tab_kb_artigo_tag: {
+        Row: {
+          cod_artigo: string
+          cod_artigo_tag: string
+          cod_tag: string
+          dta_cadastro: string | null
+        }
+        Insert: {
+          cod_artigo: string
+          cod_artigo_tag?: string
+          cod_tag: string
+          dta_cadastro?: string | null
+        }
+        Update: {
+          cod_artigo?: string
+          cod_artigo_tag?: string
+          cod_tag?: string
+          dta_cadastro?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tab_kb_artigo_tag_cod_artigo_fkey"
+            columns: ["cod_artigo"]
+            isOneToOne: false
+            referencedRelation: "tab_kb_artigo"
+            referencedColumns: ["cod_artigo"]
+          },
+          {
+            foreignKeyName: "tab_kb_artigo_tag_cod_tag_fkey"
+            columns: ["cod_tag"]
+            isOneToOne: false
+            referencedRelation: "tab_kb_tag"
+            referencedColumns: ["cod_tag"]
+          },
+        ]
+      }
+      tab_kb_artigo_versao: {
+        Row: {
+          cod_artigo: string
+          cod_versao: string
+          des_conteudo_md: string
+          des_mudancas: string | null
+          des_nome_usuario: string
+          des_resumo: string
+          des_titulo: string
+          dta_cadastro: string | null
+          num_versao: number
+          seq_usuario: string
+        }
+        Insert: {
+          cod_artigo: string
+          cod_versao?: string
+          des_conteudo_md: string
+          des_mudancas?: string | null
+          des_nome_usuario: string
+          des_resumo: string
+          des_titulo: string
+          dta_cadastro?: string | null
+          num_versao: number
+          seq_usuario: string
+        }
+        Update: {
+          cod_artigo?: string
+          cod_versao?: string
+          des_conteudo_md?: string
+          des_mudancas?: string | null
+          des_nome_usuario?: string
+          des_resumo?: string
+          des_titulo?: string
+          dta_cadastro?: string | null
+          num_versao?: number
+          seq_usuario?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tab_kb_artigo_versao_cod_artigo_fkey"
+            columns: ["cod_artigo"]
+            isOneToOne: false
+            referencedRelation: "tab_kb_artigo"
+            referencedColumns: ["cod_artigo"]
+          },
+        ]
+      }
+      tab_kb_categoria: {
+        Row: {
+          cod_categoria: string
+          des_descricao: string | null
+          des_nome: string
+          dta_atualizacao: string | null
+          dta_cadastro: string | null
+          ind_ativo: boolean | null
+          num_ordem: number | null
+        }
+        Insert: {
+          cod_categoria?: string
+          des_descricao?: string | null
+          des_nome: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_ativo?: boolean | null
+          num_ordem?: number | null
+        }
+        Update: {
+          cod_categoria?: string
+          des_descricao?: string | null
+          des_nome?: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_ativo?: boolean | null
+          num_ordem?: number | null
+        }
+        Relationships: []
+      }
+      tab_kb_favorito: {
+        Row: {
+          cod_artigo: string
+          cod_favorito: string
+          dta_cadastro: string | null
+          seq_usuario: string
+        }
+        Insert: {
+          cod_artigo: string
+          cod_favorito?: string
+          dta_cadastro?: string | null
+          seq_usuario: string
+        }
+        Update: {
+          cod_artigo?: string
+          cod_favorito?: string
+          dta_cadastro?: string | null
+          seq_usuario?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tab_kb_favorito_cod_artigo_fkey"
+            columns: ["cod_artigo"]
+            isOneToOne: false
+            referencedRelation: "tab_kb_artigo"
+            referencedColumns: ["cod_artigo"]
+          },
+        ]
+      }
+      tab_kb_feedback: {
+        Row: {
+          cod_artigo: string
+          cod_feedback: string
+          des_comentario: string | null
+          dta_cadastro: string | null
+          ind_helpful: boolean
+          seq_usuario: string
+        }
+        Insert: {
+          cod_artigo: string
+          cod_feedback?: string
+          des_comentario?: string | null
+          dta_cadastro?: string | null
+          ind_helpful: boolean
+          seq_usuario: string
+        }
+        Update: {
+          cod_artigo?: string
+          cod_feedback?: string
+          des_comentario?: string | null
+          dta_cadastro?: string | null
+          ind_helpful?: boolean
+          seq_usuario?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tab_kb_feedback_cod_artigo_fkey"
+            columns: ["cod_artigo"]
+            isOneToOne: false
+            referencedRelation: "tab_kb_artigo"
+            referencedColumns: ["cod_artigo"]
+          },
+        ]
+      }
+      tab_kb_tag: {
+        Row: {
+          cod_tag: string
+          des_nome: string
+          dta_atualizacao: string | null
+          dta_cadastro: string | null
+          ind_ativo: boolean | null
+          num_ordem: number | null
+        }
+        Insert: {
+          cod_tag?: string
+          des_nome: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_ativo?: boolean | null
+          num_ordem?: number | null
+        }
+        Update: {
+          cod_tag?: string
+          des_nome?: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          ind_ativo?: boolean | null
+          num_ordem?: number | null
+        }
+        Relationships: []
+      }
+      tab_kb_visualizacao: {
+        Row: {
+          cod_artigo: string
+          cod_visualizacao: string
+          dta_cadastro: string | null
+          seq_usuario: string
+        }
+        Insert: {
+          cod_artigo: string
+          cod_visualizacao?: string
+          dta_cadastro?: string | null
+          seq_usuario: string
+        }
+        Update: {
+          cod_artigo?: string
+          cod_visualizacao?: string
+          dta_cadastro?: string | null
+          seq_usuario?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tab_kb_visualizacao_cod_artigo_fkey"
+            columns: ["cod_artigo"]
+            isOneToOne: false
+            referencedRelation: "tab_kb_artigo"
+            referencedColumns: ["cod_artigo"]
+          },
+        ]
+      }
       tab_log_auditoria: {
         Row: {
           cod_log: string
