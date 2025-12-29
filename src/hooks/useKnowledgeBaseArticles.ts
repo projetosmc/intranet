@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useLoadingState } from '@/hooks/useLoadingState';
 
 export interface KBCategory {
   id: string;
@@ -82,7 +81,7 @@ export function useKnowledgeBaseArticles() {
   const [categories, setCategories] = useState<KBCategory[]>([]);
   const [tags, setTags] = useState<KBTag[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
-  const { isLoading, withLoading } = useLoadingState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   const fetchCategories = useCallback(async () => {
@@ -142,57 +141,56 @@ export function useKnowledgeBaseArticles() {
   }, []);
 
   const fetchArticles = useCallback(async () => {
+    setIsLoading(true);
     try {
-      await withLoading(async () => {
-        const { data, error } = await supabase
-          .from('tab_kb_artigo')
-          .select(`
-            *,
-            tab_kb_categoria(des_nome),
-            tab_kb_artigo_tag(
-              tab_kb_tag(cod_tag, des_nome, num_ordem)
-            )
-          `)
-          .eq('ind_ativo', true)
-          .order('dta_atualizacao', { ascending: false });
+      const { data, error } = await supabase
+        .from('tab_kb_artigo')
+        .select(`
+          *,
+          tab_kb_categoria(des_nome),
+          tab_kb_artigo_tag(
+            tab_kb_tag(cod_tag, des_nome, num_ordem)
+          )
+        `)
+        .eq('ind_ativo', true)
+        .order('dta_atualizacao', { ascending: false });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        const mapped: KBArticle[] = (data || []).map((a: any) => ({
-          id: a.cod_artigo,
-          title: a.des_titulo,
-          summary: a.des_resumo,
-          type: a.des_tipo,
-          categoryId: a.cod_categoria,
-          categoryName: a.tab_kb_categoria?.des_nome,
-          system: a.des_sistema,
-          audience: a.des_publico,
-          contentMd: a.des_conteudo_md,
-          synonyms: a.arr_sinonimos || [],
-          prerequisites: a.arr_pre_requisitos || [],
-          estimatedTime: a.des_tempo_estimado,
-          toolLink: a.des_link_ferramenta,
-          status: a.ind_status,
-          ownerId: a.cod_owner,
-          reviewerId: a.cod_revisor,
-          version: a.num_versao,
-          isCritical: a.ind_critico,
-          helpfulUp: a.num_helpful_up,
-          helpfulDown: a.num_helpful_down,
-          views: a.num_views,
-          createdAt: a.dta_criacao,
-          updatedAt: a.dta_atualizacao,
-          publishedAt: a.dta_publicacao,
-          tags: (a.tab_kb_artigo_tag || []).map((at: any) => ({
-            id: at.tab_kb_tag?.cod_tag,
-            name: at.tab_kb_tag?.des_nome,
-            order: at.tab_kb_tag?.num_ordem,
-          })).filter((t: any) => t.id),
-          isFavorite: false, // Will be updated by useEffect when favorites change
-        }));
+      const mapped: KBArticle[] = (data || []).map((a: any) => ({
+        id: a.cod_artigo,
+        title: a.des_titulo,
+        summary: a.des_resumo,
+        type: a.des_tipo,
+        categoryId: a.cod_categoria,
+        categoryName: a.tab_kb_categoria?.des_nome,
+        system: a.des_sistema,
+        audience: a.des_publico,
+        contentMd: a.des_conteudo_md,
+        synonyms: a.arr_sinonimos || [],
+        prerequisites: a.arr_pre_requisitos || [],
+        estimatedTime: a.des_tempo_estimado,
+        toolLink: a.des_link_ferramenta,
+        status: a.ind_status,
+        ownerId: a.cod_owner,
+        reviewerId: a.cod_revisor,
+        version: a.num_versao,
+        isCritical: a.ind_critico,
+        helpfulUp: a.num_helpful_up,
+        helpfulDown: a.num_helpful_down,
+        views: a.num_views,
+        createdAt: a.dta_criacao,
+        updatedAt: a.dta_atualizacao,
+        publishedAt: a.dta_publicacao,
+        tags: (a.tab_kb_artigo_tag || []).map((at: any) => ({
+          id: at.tab_kb_tag?.cod_tag,
+          name: at.tab_kb_tag?.des_nome,
+          order: at.tab_kb_tag?.num_ordem,
+        })).filter((t: any) => t.id),
+        isFavorite: false,
+      }));
 
-        setArticles(mapped);
-      }, 'articles');
+      setArticles(mapped);
     } catch (error) {
       console.error('Error fetching articles:', error);
       toast({
@@ -200,8 +198,10 @@ export function useKnowledgeBaseArticles() {
         description: 'Erro ao carregar artigos',
         variant: 'destructive',
       });
+    } finally {
+      setIsLoading(false);
     }
-  }, [withLoading, toast]);
+  }, [toast]);
 
   // Update article favorites when favorites list changes
   useEffect(() => {
