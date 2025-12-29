@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { HelpCircle, Plus, Pencil, Trash2, GripVertical, Bold, Italic, Link2, List, ListOrdered, Eye, EyeOff } from 'lucide-react';
+import { HelpCircle, Plus, Pencil, Trash2, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -14,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { faqSchema, validateForm } from '@/lib/validations';
-import ReactMarkdown from 'react-markdown';
+import { RichTextEditor, RichTextContent } from '@/components/ui/rich-text-editor';
 import {
   DndContext,
   closestCenter,
@@ -53,9 +52,7 @@ export default function AdminFaqsPage() {
   const [deleteFaqId, setDeleteFaqId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [answerText, setAnswerText] = useState('');
-  const [showPreview, setShowPreview] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [answerHtml, setAnswerHtml] = useState('');
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -86,10 +83,13 @@ export default function AdminFaqsPage() {
     }
   };
 
-  const handleSave = async (formData: FormData) => {
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    
     const rawData = {
       question: formData.get('question') as string,
-      answer: formData.get('answer') as string,
+      answer: answerHtml,
       order: parseInt(formData.get('sort_order') as string) || 0,
       active: true,
     };
@@ -132,8 +132,7 @@ export default function AdminFaqsPage() {
 
       setIsDialogOpen(false);
       setEditingFaq(null);
-      setAnswerText('');
-      setShowPreview(false);
+      setAnswerHtml('');
       await fetchFaqs();
     } catch (error) {
       console.error('Error saving FAQ:', error);
@@ -209,6 +208,12 @@ export default function AdminFaqsPage() {
     }
   };
 
+  // Helper to strip HTML tags for preview text
+  const stripHtml = (html: string) => {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return doc.body.textContent || '';
+  };
+
   const SortableFaq = ({ faq }: { faq: FAQ }) => {
     const {
       attributes,
@@ -248,7 +253,9 @@ export default function AdminFaqsPage() {
         </motion.div>
         <div className="flex-1 min-w-0">
           <p className="font-medium truncate">{faq.des_pergunta}</p>
-          <p className="text-sm text-muted-foreground line-clamp-2">{faq.des_resposta}</p>
+          <div className="text-sm text-muted-foreground line-clamp-2">
+            <RichTextContent html={faq.des_resposta} className="[&_a]:text-primary [&_a]:underline" />
+          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Switch
@@ -260,7 +267,7 @@ export default function AdminFaqsPage() {
             size="icon-sm" 
             onClick={() => { 
               setEditingFaq(faq); 
-              setAnswerText(faq.des_resposta);
+              setAnswerHtml(faq.des_resposta);
               setIsDialogOpen(true); 
             }}
           >
@@ -310,10 +317,9 @@ export default function AdminFaqsPage() {
             if (!o) {
               setEditingFaq(null);
               setFormErrors({});
-              setAnswerText('');
-              setShowPreview(false);
+              setAnswerHtml('');
             } else if (editingFaq) {
-              setAnswerText(editingFaq.des_resposta);
+              setAnswerHtml(editingFaq.des_resposta);
             }
           }}>
             <DialogTrigger asChild>
@@ -326,10 +332,10 @@ export default function AdminFaqsPage() {
               <DialogHeader>
                 <DialogTitle>{editingFaq ? 'Editar' : 'Nova'} FAQ</DialogTitle>
                 <DialogDescription>
-                  Preencha os campos abaixo. A resposta suporta formatação Markdown.
+                  Preencha os campos abaixo. Use a barra de ferramentas para formatar a resposta.
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={(e) => { e.preventDefault(); handleSave(new FormData(e.currentTarget)); }} className="space-y-4">
+              <form onSubmit={handleSave} className="space-y-4">
                 <div>
                   <Label className="mb-1.5 block">Pergunta</Label>
                   <Input 
@@ -346,284 +352,123 @@ export default function AdminFaqsPage() {
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <Label>
-                      Resposta
-                      <span className="text-xs text-muted-foreground font-normal ml-2">
-                        (Markdown)
-                      </span>
-                    </Label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowPreview(!showPreview)}
-                      className="h-7 text-xs"
-                    >
-                      {showPreview ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-                      {showPreview ? 'Editar' : 'Preview'}
-                    </Button>
-                  </div>
-                  
-                  {/* Markdown Toolbar */}
-                  <div className="flex items-center gap-1 mb-2 p-1 bg-muted/50 rounded-md border border-border">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      title="Negrito (selecione texto primeiro)"
-                      onClick={() => {
-                        const textarea = textareaRef.current;
-                        if (!textarea) return;
-                        const start = textarea.selectionStart;
-                        const end = textarea.selectionEnd;
-                        const text = answerText;
-                        const selectedText = text.substring(start, end);
-                        
-                        if (selectedText) {
-                          // Aplica negrito ao texto selecionado
-                          const newText = text.substring(0, start) + `**${selectedText}**` + text.substring(end);
-                          setAnswerText(newText);
-                          setTimeout(() => {
-                            textarea.focus();
-                            textarea.setSelectionRange(start, end + 4);
-                          }, 0);
-                        } else {
-                          // Sem seleção - inserir template
-                          const newText = text.substring(0, start) + `**texto**` + text.substring(end);
-                          setAnswerText(newText);
-                          setTimeout(() => {
-                            textarea.focus();
-                            textarea.setSelectionRange(start + 2, start + 7);
-                          }, 0);
-                        }
-                      }}
-                    >
-                      <Bold className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      title="Itálico (selecione texto primeiro)"
-                      onClick={() => {
-                        const textarea = textareaRef.current;
-                        if (!textarea) return;
-                        const start = textarea.selectionStart;
-                        const end = textarea.selectionEnd;
-                        const text = answerText;
-                        const selectedText = text.substring(start, end);
-                        
-                        if (selectedText) {
-                          // Aplica itálico ao texto selecionado
-                          const newText = text.substring(0, start) + `*${selectedText}*` + text.substring(end);
-                          setAnswerText(newText);
-                          setTimeout(() => {
-                            textarea.focus();
-                            textarea.setSelectionRange(start, end + 2);
-                          }, 0);
-                        } else {
-                          // Sem seleção - inserir template
-                          const newText = text.substring(0, start) + `*texto*` + text.substring(end);
-                          setAnswerText(newText);
-                          setTimeout(() => {
-                            textarea.focus();
-                            textarea.setSelectionRange(start + 1, start + 6);
-                          }, 0);
-                        }
-                      }}
-                    >
-                      <Italic className="h-4 w-4" />
-                    </Button>
-                    <div className="w-px h-4 bg-border mx-1" />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      title="Link"
-                      onClick={() => {
-                        const textarea = textareaRef.current;
-                        if (!textarea) return;
-                        const start = textarea.selectionStart;
-                        const end = textarea.selectionEnd;
-                        const text = answerText;
-                        const selectedText = text.substring(start, end);
-                        
-                        if (selectedText) {
-                          // Texto selecionado - pedir URL
-                          const url = prompt('Digite a URL do link:', 'https://');
-                          if (url && url !== 'https://') {
-                            const newText = text.substring(0, start) + `[${selectedText}](${url})` + text.substring(end);
-                            setAnswerText(newText);
-                            setTimeout(() => {
-                              textarea.focus();
-                            }, 0);
-                          }
-                        } else {
-                          // Sem seleção - inserir template
-                          const newText = text.substring(0, start) + `[texto](url)` + text.substring(end);
-                          setAnswerText(newText);
-                          setTimeout(() => {
-                            textarea.focus();
-                            textarea.setSelectionRange(start + 1, start + 6);
-                          }, 0);
-                        }
-                      }}
-                    >
-                      <Link2 className="h-4 w-4" />
-                    </Button>
-                    <div className="w-px h-4 bg-border mx-1" />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      title="Lista"
-                      onClick={() => {
-                        const textarea = textareaRef.current;
-                        if (!textarea) return;
-                        const start = textarea.selectionStart;
-                        const text = answerText;
-                        const newText = text.substring(0, start) + '\n- Item 1\n- Item 2\n- Item 3\n' + text.substring(start);
-                        setAnswerText(newText);
-                        setTimeout(() => {
-                          textarea.focus();
-                        }, 0);
-                      }}
-                    >
-                      <List className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      title="Lista numerada"
-                      onClick={() => {
-                        const textarea = textareaRef.current;
-                        if (!textarea) return;
-                        const start = textarea.selectionStart;
-                        const text = answerText;
-                        const newText = text.substring(0, start) + '\n1. Item 1\n2. Item 2\n3. Item 3\n' + text.substring(start);
-                        setAnswerText(newText);
-                        setTimeout(() => {
-                          textarea.focus();
-                        }, 0);
-                      }}
-                    >
-                      <ListOrdered className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  {showPreview ? (
-                    <div className="min-h-[150px] p-3 border border-border rounded-md bg-muted/30 prose prose-sm dark:prose-invert max-w-none prose-a:text-primary prose-headings:text-foreground">
-                      {answerText ? (
-                        <ReactMarkdown
-                          components={{
-                            a: ({ node, ...props }) => (
-                              <a {...props} target="_blank" rel="noopener noreferrer" />
-                            ),
-                          }}
-                        >
-                          {answerText}
-                        </ReactMarkdown>
-                      ) : (
-                        <p className="text-muted-foreground italic">Digite algo para ver o preview...</p>
-                      )}
-                    </div>
-                  ) : (
-                    <Textarea 
-                      ref={textareaRef}
-                      name="answer" 
-                      value={answerText}
-                      onChange={(e) => setAnswerText(e.target.value)}
-                      required 
-                      maxLength={5000}
-                      placeholder="Digite a resposta..."
-                      rows={8}
-                      className={`font-mono text-sm ${formErrors.answer ? 'border-destructive' : ''}`}
-                    />
-                  )}
-                  
-                  {/* Hidden input to submit the answer value */}
-                  <input type="hidden" name="answer" value={answerText} />
-                  
+                  <Label className="mb-1.5 block">Resposta</Label>
+                  <RichTextEditor
+                    content={answerHtml}
+                    onChange={setAnswerHtml}
+                    placeholder="Digite a resposta aqui..."
+                  />
                   {formErrors.answer && (
                     <p className="text-sm text-destructive mt-1">{formErrors.answer}</p>
                   )}
                 </div>
 
-                <div>
-                  <Label className="mb-1.5 block">Ordem</Label>
-                  <Input 
-                    name="sort_order" 
-                    type="number" 
-                    defaultValue={editingFaq?.num_ordem || 0} 
-                    placeholder="0" 
-                  />
-                </div>
+                <Input 
+                  type="hidden" 
+                  name="sort_order" 
+                  value={editingFaq?.num_ordem || faqs.length} 
+                />
 
-                <Button type="submit" className="w-full">Salvar</Button>
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit">
+                    {editingFaq ? 'Salvar' : 'Criar'} FAQ
+                  </Button>
+                </div>
               </form>
             </DialogContent>
           </Dialog>
         </div>
 
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          {isLoading ? (
-            <div className="p-8 text-center text-muted-foreground">Carregando...</div>
-          ) : faqs.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
-              <HelpCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>Nenhuma FAQ cadastrada</p>
-              <p className="text-sm">Clique em "Nova FAQ" para adicionar</p>
+        <Tabs defaultValue="all" className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="all">Todos ({faqs.length})</TabsTrigger>
+            <TabsTrigger value="active">Ativos ({faqs.filter(f => f.ind_ativo).length})</TabsTrigger>
+            <TabsTrigger value="inactive">Inativos ({faqs.filter(f => !f.ind_ativo).length})</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="all">
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              {isLoading ? (
+                <div className="p-8 text-center text-muted-foreground">Carregando...</div>
+              ) : faqs.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <HelpCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Nenhuma FAQ cadastrada ainda.</p>
+                </div>
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext items={faqs.map(f => f.cod_faq)} strategy={verticalListSortingStrategy}>
+                    <div className="divide-y divide-border">
+                      {faqs.map((faq) => (
+                        <SortableFaq key={faq.cod_faq} faq={faq} />
+                      ))}
+                    </div>
+                  </SortableContext>
+                  <DragOverlay>
+                    {activeId && faqs.find(f => f.cod_faq === activeId) && (
+                      <DragOverlayItem faq={faqs.find(f => f.cod_faq === activeId)!} />
+                    )}
+                  </DragOverlay>
+                </DndContext>
+              )}
             </div>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={faqs.map(f => f.cod_faq)}
-                strategy={verticalListSortingStrategy}
-              >
+          </TabsContent>
+
+          <TabsContent value="active">
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              {faqs.filter(f => f.ind_ativo).length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">Nenhuma FAQ ativa.</div>
+              ) : (
                 <div className="divide-y divide-border">
-                  {faqs.map((faq) => (
+                  {faqs.filter(f => f.ind_ativo).map((faq) => (
                     <SortableFaq key={faq.cod_faq} faq={faq} />
                   ))}
                 </div>
-              </SortableContext>
-              <DragOverlay>
-                {activeId ? (
-                  <DragOverlayItem faq={faqs.find(f => f.cod_faq === activeId)!} />
-                ) : null}
-              </DragOverlay>
-            </DndContext>
-          )}
-        </div>
-      </motion.div>
+              )}
+            </div>
+          </TabsContent>
 
-      <AlertDialog open={!!deleteFaqId} onOpenChange={(open) => !open && setDeleteFaqId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir esta FAQ? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <TabsContent value="inactive">
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              {faqs.filter(f => !f.ind_ativo).length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">Nenhuma FAQ inativa.</div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {faqs.filter(f => !f.ind_ativo).map((faq) => (
+                    <SortableFaq key={faq.cod_faq} faq={faq} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!deleteFaqId} onOpenChange={(o) => !o && setDeleteFaqId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir esta FAQ? Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </motion.div>
     </div>
   );
 }
