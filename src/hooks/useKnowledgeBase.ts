@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/contexts/UserContext';
+import { useLoadingState } from '@/hooks/useLoadingState';
 
 export interface KnowledgeItem {
   id: string;
@@ -33,38 +34,41 @@ export interface KnowledgeVersion {
 
 export function useKnowledgeBase() {
   const [items, setItems] = useState<KnowledgeItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { isLoading, isLoadingKey, withLoading } = useLoadingState(true);
   const { toast } = useToast();
   const { user } = useUser();
 
+  const fetchItemsAsync = async () => {
+    const { data, error } = await supabase
+      .from('tab_base_conhecimento')
+      .select('*')
+      .eq('ind_ativo', true)
+      .order('dta_atualizacao', { ascending: false });
+
+    if (error) throw error;
+
+    const mapped: KnowledgeItem[] = (data || []).map((item: any) => ({
+      id: item.cod_item,
+      title: item.des_titulo,
+      description: item.des_descricao,
+      type: item.des_tipo,
+      fileUrl: item.des_arquivo_url,
+      fileName: item.des_arquivo_nome,
+      fileSize: item.num_tamanho_bytes,
+      version: item.num_versao,
+      createdBy: item.seq_usuario_criacao,
+      updatedBy: item.seq_usuario_atualizacao,
+      updatedByName: item.des_nome_usuario_atualizacao,
+      createdAt: item.dta_cadastro,
+      updatedAt: item.dta_atualizacao,
+    }));
+
+    setItems(mapped);
+  };
+
   const fetchItems = useCallback(async () => {
-    setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('tab_base_conhecimento')
-        .select('*')
-        .eq('ind_ativo', true)
-        .order('dta_atualizacao', { ascending: false });
-
-      if (error) throw error;
-
-      const mapped: KnowledgeItem[] = (data || []).map((item: any) => ({
-        id: item.cod_item,
-        title: item.des_titulo,
-        description: item.des_descricao,
-        type: item.des_tipo,
-        fileUrl: item.des_arquivo_url,
-        fileName: item.des_arquivo_nome,
-        fileSize: item.num_tamanho_bytes,
-        version: item.num_versao,
-        createdBy: item.seq_usuario_criacao,
-        updatedBy: item.seq_usuario_atualizacao,
-        updatedByName: item.des_nome_usuario_atualizacao,
-        createdAt: item.dta_cadastro,
-        updatedAt: item.dta_atualizacao,
-      }));
-
-      setItems(mapped);
+      await withLoading(fetchItemsAsync, 'fetch');
     } catch (error) {
       console.error('Error fetching knowledge base:', error);
       toast({
@@ -72,10 +76,8 @@ export function useKnowledgeBase() {
         description: 'Erro ao carregar base de conhecimento',
         variant: 'destructive',
       });
-    } finally {
-      setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, withLoading]);
 
   const fetchVersions = async (itemId: string): Promise<KnowledgeVersion[]> => {
     try {
