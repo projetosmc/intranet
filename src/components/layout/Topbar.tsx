@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Moon, Sun, User, Check, CheckCheck, Trash2 } from 'lucide-react';
+import { Bell, User, LogOut, Check, CheckCheck, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { UserAvatar } from '@/components/ui/user-avatar';
+import { AnimatedThemeToggler } from './AnimatedThemeToggler';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +28,6 @@ import { ptBR } from 'date-fns/locale';
 export function Topbar() {
   const { user, toggle3D, setToggle3D, signOut } = useUser();
   const navigate = useNavigate();
-  const [isDark, setIsDark] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { 
     notifications, 
@@ -37,11 +37,6 @@ export function Topbar() {
     markAllAsRead, 
     deleteNotification 
   } = useNotificationsSystem();
-
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle('dark');
-  };
 
   const handleNotificationClick = (notification: any) => {
     markAsRead(notification.id);
@@ -60,10 +55,10 @@ export function Topbar() {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="sticky top-0 z-30 h-16 border-b border-border bg-background/80 backdrop-blur-xl"
+      className="sticky top-0 z-20 h-[65px] border-b border-border bg-background"
     >
       <div className="flex items-center justify-end h-full px-6">
-        {/* Right Actions */}
+        {/* Right Side Actions */}
         <div className="flex items-center gap-2">
           {/* 3D Toggle */}
           <Button
@@ -71,36 +66,33 @@ export function Topbar() {
             size="icon"
             onClick={() => setToggle3D(!toggle3D)}
             className={cn(
-              "text-muted-foreground hover:text-foreground",
+              "text-muted-foreground hover:text-foreground hover:bg-accent",
               toggle3D && "text-primary"
             )}
           >
             <span className="text-xs font-bold">3D</span>
           </Button>
 
-          {/* Theme Toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
+          {/* Theme Toggle - Animated */}
+          <AnimatedThemeToggler />
 
-          {/* Notifications */}
+          {/* Notifications Bell */}
           <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative text-muted-foreground hover:text-foreground"
+                className="relative text-muted-foreground hover:text-foreground hover:bg-accent"
               >
-                <Bell className="h-4 w-4" />
+                <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground flex items-center justify-center">
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs font-bold"
+                  >
                     {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
+                  </motion.span>
                 )}
               </Button>
             </PopoverTrigger>
@@ -119,7 +111,7 @@ export function Topbar() {
                   </Button>
                 )}
               </div>
-              <ScrollArea className="h-[300px]">
+              <ScrollArea className="h-80">
                 {isLoading ? (
                   <div className="p-4 text-center text-muted-foreground text-sm">
                     Carregando...
@@ -145,17 +137,12 @@ export function Topbar() {
                         )}
                         onClick={() => handleNotificationClick(notification)}
                       >
-                        <Avatar className="h-8 w-8 flex-shrink-0">
-                          {notification.originUser?.avatarUrl ? (
-                            <AvatarImage src={notification.originUser.avatarUrl} />
-                          ) : null}
-                          <AvatarFallback className="text-xs">
-                            {notification.originUser 
-                              ? getInitials(notification.originUser.name)
-                              : <Bell className="h-3 w-3" />
-                            }
-                          </AvatarFallback>
-                        </Avatar>
+                        <UserAvatar
+                          size="sm"
+                          src={notification.originUser?.avatarUrl}
+                          name={notification.originUser?.name}
+                          className="flex-shrink-0"
+                        />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <p className="text-sm font-medium line-clamp-1">
@@ -196,16 +183,19 @@ export function Topbar() {
             </PopoverContent>
           </Popover>
 
-          {/* User Menu */}
+          {/* User Dropdown com Avatar, Nome e Email */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src={user?.avatar} alt={user?.name} />
-                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                    {user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                  </AvatarFallback>
-                </Avatar>
+              <Button variant="ghost" className="flex items-center gap-3 h-auto py-1.5 px-2 hover:bg-accent">
+                <UserAvatar
+                  size="md"
+                  src={user?.avatar}
+                  name={user?.name}
+                />
+                <div className="hidden md:flex flex-col items-start">
+                  <span className="text-sm font-medium leading-none">{user?.name}</span>
+                  <span className="text-xs text-muted-foreground leading-none mt-1">{user?.email}</span>
+                </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -225,11 +215,23 @@ export function Topbar() {
                 <span>{toggle3D ? 'Desativar efeitos 3D' : 'Ativar efeitos 3D'}</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={signOut} className="text-destructive">
-                Sair
+              <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Sair</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Botão Sair (separado/visível em desktop) */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={signOut}
+            className="hidden lg:flex items-center gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+          >
+            <LogOut className="h-4 w-4" />
+            Sair
+          </Button>
         </div>
       </div>
     </motion.header>
