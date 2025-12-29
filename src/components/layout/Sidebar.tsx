@@ -433,21 +433,19 @@ export function Sidebar() {
             onClick={() => toggleMenu(item.name)}
             className={cn(
               "w-full ripple-container group flex items-center justify-between gap-2 rounded-lg px-3 py-2 transition-all duration-200 relative overflow-hidden",
-              depth === 0 && "text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70",
-              depth === 1 && "text-sm font-medium text-sidebar-foreground/90 pl-4",
-              depth >= 2 && "text-xs font-medium text-sidebar-foreground/80 pl-3",
+              // Nível 0 e 1: mesmo estilo (maiúsculas, mesma cor, sem ícone)
+              (depth === 0 || depth === 1) && "text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70",
+              // Nível 2+: estilo diferenciado
+              depth >= 2 && "text-sm font-medium text-sidebar-foreground/80 pl-3",
               "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
             )}
           >
             <div className="flex items-center gap-2">
-              {depth > 0 && (
-                <Icon className={cn(
-                  "shrink-0 transition-colors",
-                  depth === 1 ? "h-4 w-4" : "h-3.5 w-3.5",
-                  "text-sidebar-foreground/50 group-hover:text-primary"
-                )} />
+              {/* Ícone apenas para depth >= 2 */}
+              {depth >= 2 && (
+                <Icon className="shrink-0 transition-colors h-4 w-4 text-sidebar-foreground/50 group-hover:text-primary" />
               )}
-              <span className="truncate">{item.name}</span>
+              <span className="truncate">{depth <= 1 ? item.name.toUpperCase() : item.name}</span>
             </div>
             <ChevronDown className={cn(
               "h-3.5 w-3.5 shrink-0 text-sidebar-foreground/40 transition-transform duration-200",
@@ -499,8 +497,9 @@ export function Sidebar() {
           // Padding e tamanho baseado na profundidade
           depth === 0 && "px-3 py-2 text-sm font-medium",
           depth === 1 && "px-3 py-1.5 ml-2 text-sm font-medium",
-          depth === 2 && "px-2.5 py-1.5 ml-1 text-xs font-medium",
-          depth >= 3 && "px-2 py-1 ml-1 text-xs",
+          // Nível 2 e 3: fonte maior para melhor legibilidade
+          depth === 2 && "px-2.5 py-1.5 ml-1 text-sm font-medium",
+          depth >= 3 && "px-2 py-1.5 ml-1 text-sm",
           // Estados ativo/inativo
           active 
             ? "bg-primary/10 text-primary font-semibold" 
@@ -518,10 +517,9 @@ export function Sidebar() {
           />
         )}
         
-        {/* Ícone */}
+        {/* Ícone - exibir em todos os níveis */}
         <Icon className={cn(
-          "shrink-0 transition-colors",
-          depth <= 1 ? "h-4 w-4" : "h-3.5 w-3.5",
+          "shrink-0 transition-colors h-4 w-4",
           active ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-primary"
         )} />
         
