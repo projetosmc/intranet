@@ -260,6 +260,7 @@ export default function AdminFaqsPage() {
             size="icon-sm" 
             onClick={() => { 
               setEditingFaq(faq); 
+              setAnswerText(faq.des_resposta);
               setIsDialogOpen(true); 
             }}
           >
@@ -371,7 +372,7 @@ export default function AdminFaqsPage() {
                       variant="ghost"
                       size="sm"
                       className="h-7 w-7 p-0"
-                      title="Negrito"
+                      title="Negrito (selecione texto primeiro)"
                       onClick={() => {
                         const textarea = textareaRef.current;
                         if (!textarea) return;
@@ -379,12 +380,24 @@ export default function AdminFaqsPage() {
                         const end = textarea.selectionEnd;
                         const text = answerText;
                         const selectedText = text.substring(start, end);
-                        const newText = text.substring(0, start) + `**${selectedText || 'texto'}**` + text.substring(end);
-                        setAnswerText(newText);
-                        setTimeout(() => {
-                          textarea.focus();
-                          textarea.setSelectionRange(start + 2, end + 2 + (selectedText ? 0 : 5));
-                        }, 0);
+                        
+                        if (selectedText) {
+                          // Aplica negrito ao texto selecionado
+                          const newText = text.substring(0, start) + `**${selectedText}**` + text.substring(end);
+                          setAnswerText(newText);
+                          setTimeout(() => {
+                            textarea.focus();
+                            textarea.setSelectionRange(start, end + 4);
+                          }, 0);
+                        } else {
+                          // Sem seleção - inserir template
+                          const newText = text.substring(0, start) + `**texto**` + text.substring(end);
+                          setAnswerText(newText);
+                          setTimeout(() => {
+                            textarea.focus();
+                            textarea.setSelectionRange(start + 2, start + 7);
+                          }, 0);
+                        }
                       }}
                     >
                       <Bold className="h-4 w-4" />
@@ -394,7 +407,7 @@ export default function AdminFaqsPage() {
                       variant="ghost"
                       size="sm"
                       className="h-7 w-7 p-0"
-                      title="Itálico"
+                      title="Itálico (selecione texto primeiro)"
                       onClick={() => {
                         const textarea = textareaRef.current;
                         if (!textarea) return;
@@ -402,12 +415,24 @@ export default function AdminFaqsPage() {
                         const end = textarea.selectionEnd;
                         const text = answerText;
                         const selectedText = text.substring(start, end);
-                        const newText = text.substring(0, start) + `*${selectedText || 'texto'}*` + text.substring(end);
-                        setAnswerText(newText);
-                        setTimeout(() => {
-                          textarea.focus();
-                          textarea.setSelectionRange(start + 1, end + 1 + (selectedText ? 0 : 5));
-                        }, 0);
+                        
+                        if (selectedText) {
+                          // Aplica itálico ao texto selecionado
+                          const newText = text.substring(0, start) + `*${selectedText}*` + text.substring(end);
+                          setAnswerText(newText);
+                          setTimeout(() => {
+                            textarea.focus();
+                            textarea.setSelectionRange(start, end + 2);
+                          }, 0);
+                        } else {
+                          // Sem seleção - inserir template
+                          const newText = text.substring(0, start) + `*texto*` + text.substring(end);
+                          setAnswerText(newText);
+                          setTimeout(() => {
+                            textarea.focus();
+                            textarea.setSelectionRange(start + 1, start + 6);
+                          }, 0);
+                        }
                       }}
                     >
                       <Italic className="h-4 w-4" />
@@ -426,13 +451,26 @@ export default function AdminFaqsPage() {
                         const end = textarea.selectionEnd;
                         const text = answerText;
                         const selectedText = text.substring(start, end);
-                        const newText = text.substring(0, start) + `[${selectedText || 'texto'}](url)` + text.substring(end);
-                        setAnswerText(newText);
-                        setTimeout(() => {
-                          textarea.focus();
-                          const urlStart = start + selectedText.length + 3;
-                          textarea.setSelectionRange(urlStart, urlStart + 3);
-                        }, 0);
+                        
+                        if (selectedText) {
+                          // Texto selecionado - pedir URL
+                          const url = prompt('Digite a URL do link:', 'https://');
+                          if (url && url !== 'https://') {
+                            const newText = text.substring(0, start) + `[${selectedText}](${url})` + text.substring(end);
+                            setAnswerText(newText);
+                            setTimeout(() => {
+                              textarea.focus();
+                            }, 0);
+                          }
+                        } else {
+                          // Sem seleção - inserir template
+                          const newText = text.substring(0, start) + `[texto](url)` + text.substring(end);
+                          setAnswerText(newText);
+                          setTimeout(() => {
+                            textarea.focus();
+                            textarea.setSelectionRange(start + 1, start + 6);
+                          }, 0);
+                        }
                       }}
                     >
                       <Link2 className="h-4 w-4" />
