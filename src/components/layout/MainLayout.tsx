@@ -3,12 +3,16 @@ import { AnimatePresence } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { PageTransition } from './PageTransition';
+import { GlobalLoadingIndicator } from './GlobalLoadingIndicator';
+import { GlobalLoadingProvider, useGlobalLoading } from '@/contexts/GlobalLoadingContext';
 
-export function MainLayout() {
+function MainLayoutContent() {
   const location = useLocation();
+  const { isLoading } = useGlobalLoading();
 
   return (
     <div className="min-h-screen bg-background">
+      <GlobalLoadingIndicator isLoading={isLoading} />
       <Sidebar />
       
       <div
@@ -26,5 +30,13 @@ export function MainLayout() {
         </main>
       </div>
     </div>
+  );
+}
+
+export function MainLayout() {
+  return (
+    <GlobalLoadingProvider>
+      <MainLayoutContent />
+    </GlobalLoadingProvider>
   );
 }
