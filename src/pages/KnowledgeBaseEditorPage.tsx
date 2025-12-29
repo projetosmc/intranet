@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Save,
   Eye,
@@ -9,6 +11,23 @@ import {
   Send,
   Archive,
   FileText,
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
+  Code,
+  Link as LinkIcon,
+  Heading1,
+  Heading2,
+  Heading3,
+  Quote,
+  Minus,
+  Image,
+  Upload,
+  X,
+  Paperclip,
+  FileIcon,
+  Trash2,
 } from 'lucide-react';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Button } from '@/components/ui/button';
@@ -18,6 +37,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -32,10 +52,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 import { useGlobalLoading } from '@/contexts/GlobalLoadingContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import ReactMarkdown from 'react-markdown';
 import {
   useKnowledgeBaseArticles,
   ARTICLE_TYPES,
@@ -45,6 +70,7 @@ import {
   ArticleStatus,
 } from '@/hooks/useKnowledgeBaseArticles';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const AUDIENCE_OPTIONS = [
   { value: 'TODOS', label: 'Todos' },
@@ -55,12 +81,20 @@ const AUDIENCE_OPTIONS = [
   { value: 'OPERACIONAL', label: 'Operacional' },
 ];
 
+interface ToolbarButton {
+  icon: any;
+  label: string;
+  action: () => void;
+  shortcut?: string;
+}
+
 export default function KnowledgeBaseEditorPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isAdmin } = useUserRole();
   const { startLoading, stopLoading } = useGlobalLoading();
   const isEditing = !!id;
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const {
     categories,
@@ -72,7 +106,7 @@ export default function KnowledgeBaseEditorPage() {
 
   const [isLoading, setIsLoading] = useState(isEditing);
   const [isSaving, setIsSaving] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [editorTab, setEditorTab] = useState<'edit' | 'preview'>('edit');
   const [changeDescription, setChangeDescription] = useState('');
   const [showChangeDialog, setShowChangeDialog] = useState(false);
 
@@ -94,7 +128,7 @@ export default function KnowledgeBaseEditorPage() {
 
   useEffect(() => {
     if (!isAdmin) {
-      navigate('/base-conhecimento');
+      navigate('/base-conhecimento-ti');
       return;
     }
 
@@ -132,6 +166,48 @@ export default function KnowledgeBaseEditorPage() {
     stopLoading('kb-editor');
   };
 
+  const insertMarkdown = (before: string, after: string = '', placeholder: string = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = contentMd.substring(start, end);
+    const textToInsert = selectedText || placeholder;
+    
+    const newContent = 
+      contentMd.substring(0, start) + 
+      before + textToInsert + after + 
+      contentMd.substring(end);
+    
+    setContentMd(newContent);
+    
+    // Set cursor position after insertion
+    setTimeout(() => {
+      textarea.focus();
+      const newPosition = start + before.length + textToInsert.length;
+      textarea.setSelectionRange(
+        selectedText ? newPosition + after.length : start + before.length,
+        selectedText ? newPosition + after.length : start + before.length + placeholder.length
+      );
+    }, 0);
+  };
+
+  const toolbarButtons: ToolbarButton[] = [
+    { icon: Bold, label: 'Negrito', action: () => insertMarkdown('**', '**', 'texto'), shortcut: 'Ctrl+B' },
+    { icon: Italic, label: 'Itálico', action: () => insertMarkdown('*', '*', 'texto'), shortcut: 'Ctrl+I' },
+    { icon: Code, label: 'Código inline', action: () => insertMarkdown('`', '`', 'código') },
+    { icon: Heading1, label: 'Título 1', action: () => insertMarkdown('# ', '', 'Título') },
+    { icon: Heading2, label: 'Título 2', action: () => insertMarkdown('## ', '', 'Subtítulo') },
+    { icon: Heading3, label: 'Título 3', action: () => insertMarkdown('### ', '', 'Seção') },
+    { icon: List, label: 'Lista', action: () => insertMarkdown('- ', '', 'item') },
+    { icon: ListOrdered, label: 'Lista numerada', action: () => insertMarkdown('1. ', '', 'item') },
+    { icon: Quote, label: 'Citação', action: () => insertMarkdown('> ', '', 'citação') },
+    { icon: LinkIcon, label: 'Link', action: () => insertMarkdown('[', '](url)', 'texto do link') },
+    { icon: Image, label: 'Imagem', action: () => insertMarkdown('![', '](url)', 'descrição') },
+    { icon: Minus, label: 'Linha horizontal', action: () => insertMarkdown('\n---\n', '', '') },
+  ];
+
   const handleTagToggle = (tagId: string) => {
     setSelectedTags(prev =>
       prev.includes(tagId)
@@ -142,6 +218,7 @@ export default function KnowledgeBaseEditorPage() {
 
   const handleSave = async (newStatus?: ArticleStatus) => {
     if (!title.trim() || !summary.trim() || !contentMd.trim()) {
+      toast.error('Preencha os campos obrigatórios');
       return;
     }
 
@@ -180,7 +257,8 @@ export default function KnowledgeBaseEditorPage() {
     setChangeDescription('');
 
     if (success) {
-      navigate(`/base-conhecimento${typeof success === 'string' ? `/${success}` : ''}`);
+      toast.success(isEditing ? 'Artigo atualizado!' : 'Artigo criado!');
+      navigate(`/base-conhecimento-ti${typeof success === 'string' ? `/${success}` : ''}`);
     }
   };
 
@@ -197,6 +275,21 @@ export default function KnowledgeBaseEditorPage() {
   const handleSubmitForReview = () => {
     setStatus('EM_REVISAO');
     handleSave('EM_REVISAO');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'b') {
+        e.preventDefault();
+        insertMarkdown('**', '**', 'texto');
+      } else if (e.key === 'i') {
+        e.preventDefault();
+        insertMarkdown('*', '*', 'texto');
+      } else if (e.key === 's') {
+        e.preventDefault();
+        handleSave();
+      }
+    }
   };
 
   if (!isAdmin) {
@@ -224,7 +317,7 @@ export default function KnowledgeBaseEditorPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
       <Breadcrumbs />
 
       {/* Header */}
@@ -234,18 +327,19 @@ export default function KnowledgeBaseEditorPage() {
         className="flex items-center justify-between"
       >
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/base-conhecimento')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/base-conhecimento-ti')}>
             <ChevronLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-bold">
-            {isEditing ? 'Editar Artigo' : 'Novo Artigo'}
-          </h1>
+          <div>
+            <h1 className="text-2xl font-bold">
+              {isEditing ? 'Editar Artigo' : 'Novo Artigo'}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {isEditing ? 'Atualize o conteúdo do artigo' : 'Crie um novo artigo para a base de conhecimento'}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setShowPreview(true)} className="gap-2">
-            <Eye className="h-4 w-4" />
-            Visualizar
-          </Button>
           <Button
             onClick={() => handleSave()}
             disabled={isSaving || !title.trim() || !summary.trim() || !contentMd.trim()}
@@ -266,9 +360,9 @@ export default function KnowledgeBaseEditorPage() {
           className="lg:col-span-2 space-y-6"
         >
           {/* Title & Summary */}
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>Informações Básicas</CardTitle>
+          <Card className="bg-card border-border/50">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Informações Básicas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -278,29 +372,72 @@ export default function KnowledgeBaseEditorPage() {
                   placeholder="Ex: Como resetar senha do AD"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
+                  className="text-lg"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="summary">Resumo *</Label>
                 <Textarea
                   id="summary"
-                  placeholder="Breve descrição do artigo..."
+                  placeholder="Breve descrição do artigo que aparecerá na listagem..."
                   value={summary}
                   onChange={(e) => setSummary(e.target.value)}
                   rows={2}
+                  className="resize-none"
                 />
               </div>
             </CardContent>
           </Card>
 
-          {/* Content */}
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>Conteúdo (Markdown) *</CardTitle>
+          {/* Content Editor */}
+          <Card className="bg-card border-border/50">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Conteúdo *</CardTitle>
+                <Tabs value={editorTab} onValueChange={(v) => setEditorTab(v as 'edit' | 'preview')}>
+                  <TabsList className="h-8">
+                    <TabsTrigger value="edit" className="text-xs gap-1.5">
+                      <FileText className="h-3.5 w-3.5" />
+                      Editar
+                    </TabsTrigger>
+                    <TabsTrigger value="preview" className="text-xs gap-1.5">
+                      <Eye className="h-3.5 w-3.5" />
+                      Visualizar
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
             </CardHeader>
             <CardContent>
-              <Textarea
-                placeholder="## Título
+              {editorTab === 'edit' ? (
+                <div className="space-y-2">
+                  {/* Toolbar */}
+                  <div className="flex flex-wrap gap-1 p-2 bg-muted/50 rounded-lg border border-border/50">
+                    {toolbarButtons.map((btn, index) => (
+                      <Tooltip key={index}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={btn.action}
+                          >
+                            <btn.icon className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {btn.label}
+                          {btn.shortcut && <span className="text-muted-foreground ml-2">({btn.shortcut})</span>}
+                        </TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </div>
+                  
+                  {/* Editor */}
+                  <Textarea
+                    ref={textareaRef}
+                    placeholder={`## Título
 
 Escreva o conteúdo do artigo aqui usando Markdown...
 
@@ -310,20 +447,33 @@ Escreva o conteúdo do artigo aqui usando Markdown...
 2. Segundo passo
 3. Terceiro passo
 
-```
+\`\`\`
 código de exemplo
-```"
-                value={contentMd}
-                onChange={(e) => setContentMd(e.target.value)}
-                className="min-h-[400px] font-mono text-sm"
-              />
+\`\`\``}
+                    value={contentMd}
+                    onChange={(e) => setContentMd(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="min-h-[500px] font-mono text-sm resize-none"
+                  />
+                </div>
+              ) : (
+                <div className="min-h-[500px] p-4 bg-muted/30 rounded-lg border border-border/50 prose prose-slate dark:prose-invert max-w-none overflow-auto">
+                  {contentMd ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {contentMd}
+                    </ReactMarkdown>
+                  ) : (
+                    <p className="text-muted-foreground italic">Nenhum conteúdo para visualizar</p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Synonyms & Prerequisites */}
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>Busca e Pré-requisitos</CardTitle>
+          {/* Search & Prerequisites */}
+          <Card className="bg-card border-border/50">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Busca e Pré-requisitos</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -335,17 +485,18 @@ código de exemplo
                   onChange={(e) => setSynonyms(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Termos alternativos que ajudam na busca
+                  Termos alternativos que ajudam os usuários a encontrar este artigo
                 </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="prerequisites">Pré-requisitos</Label>
                 <Textarea
                   id="prerequisites"
-                  placeholder="Um item por linha..."
+                  placeholder="Um item por linha...&#10;Ex: Acesso ao AD&#10;Permissão de administrador"
                   value={prerequisites}
                   onChange={(e) => setPrerequisites(e.target.value)}
                   rows={3}
+                  className="resize-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -380,9 +531,9 @@ código de exemplo
           className="space-y-6"
         >
           {/* Classification */}
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>Classificação</CardTitle>
+          <Card className="bg-card border-border/50">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Classificação</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -394,7 +545,11 @@ código de exemplo
                   <SelectContent>
                     {ARTICLE_TYPES.map(t => (
                       <SelectItem key={t.value} value={t.value}>
-                        {t.label}
+                        <span className="flex items-center gap-2">
+                          <Badge variant="outline" className={cn("text-xs", t.color)}>
+                            {t.label}
+                          </Badge>
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -439,8 +594,9 @@ código de exemplo
                   </SelectContent>
                 </Select>
               </div>
+              <Separator />
               <div className="flex items-center justify-between">
-                <Label htmlFor="critical" className="flex items-center gap-2">
+                <Label htmlFor="critical" className="flex items-center gap-2 cursor-pointer">
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
                   Artigo Crítico
                 </Label>
@@ -454,9 +610,9 @@ código de exemplo
           </Card>
 
           {/* Tags */}
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>Tags</CardTitle>
+          <Card className="bg-card border-border/50">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Tags</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
@@ -470,26 +626,32 @@ código de exemplo
                     {tag.name}
                   </Badge>
                 ))}
+                {tags.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Nenhuma tag disponível</p>
+                )}
               </div>
             </CardContent>
           </Card>
 
           {/* Status & Actions */}
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>Status e Ações</CardTitle>
+          <Card className="bg-card border-border/50">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Status e Ações</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Status Atual</Label>
                 <div>
                   <Badge className={cn(
+                    "text-sm",
                     ARTICLE_STATUS.find(s => s.value === status)?.color
                   )}>
                     {ARTICLE_STATUS.find(s => s.value === status)?.label}
                   </Badge>
                 </div>
               </div>
+
+              <Separator />
 
               <div className="space-y-2">
                 {status === 'RASCUNHO' && (
@@ -530,24 +692,6 @@ código de exemplo
         </motion.div>
       </div>
 
-      {/* Preview Modal */}
-      <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Visualização</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <h1 className="text-2xl font-bold">{title || 'Sem título'}</h1>
-              <p className="text-muted-foreground mt-2">{summary || 'Sem resumo'}</p>
-            </div>
-            <div className="prose prose-slate dark:prose-invert max-w-none">
-              <ReactMarkdown>{contentMd || '*Sem conteúdo*'}</ReactMarkdown>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {/* Change Description Dialog */}
       <Dialog open={showChangeDialog} onOpenChange={setShowChangeDialog}>
         <DialogContent>
@@ -555,11 +699,15 @@ código de exemplo
             <DialogTitle>Descreva as alterações</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Informe o que foi alterado nesta versão para manter o histórico.
+            </p>
             <Textarea
-              placeholder="O que foi alterado nesta versão?"
+              placeholder="Ex: Atualizado procedimento do passo 3, adicionada nova seção de troubleshooting..."
               value={changeDescription}
               onChange={(e) => setChangeDescription(e.target.value)}
               rows={3}
+              className="resize-none"
             />
           </div>
           <DialogFooter>

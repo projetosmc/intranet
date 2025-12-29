@@ -59,6 +59,14 @@ interface CachedFaq {
   des_tags: string[];
 }
 
+interface CachedKBArticle {
+  cod_artigo: string;
+  des_titulo: string;
+  des_resumo: string;
+  arr_sinonimos: string[];
+  des_sistema: string | null;
+}
+
 const MENU_CACHE_KEY = 'mc_hub_menu_cache';
 const MENU_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours - only refreshes on login
 
@@ -87,12 +95,13 @@ export function Sidebar() {
   const [allSubmenus, setAllSubmenus] = useState<DbMenuItem[]>([]);
   const [cachedAnnouncements, setCachedAnnouncements] = useState<Array<{cod_comunicado: string; des_titulo: string; des_resumo: string}>>([]);
   const [cachedFaqs, setCachedFaqs] = useState<CachedFaq[]>([]);
+  const [cachedKBArticles, setCachedKBArticles] = useState<CachedKBArticle[]>([]);
 
-  // Carregar comunicados e FAQs para busca
+  // Carregar comunicados, FAQs e artigos KB para busca
   useEffect(() => {
     const loadSearchData = async () => {
       try {
-        const [announcementsRes, faqsRes] = await Promise.all([
+        const [announcementsRes, faqsRes, kbRes] = await Promise.all([
           supabase
             .from('tab_comunicado')
             .select('cod_comunicado, des_titulo, des_resumo')
@@ -102,11 +111,18 @@ export function Sidebar() {
             .from('tab_faq')
             .select('cod_faq, des_pergunta, des_resposta, des_tags')
             .eq('ind_ativo', true)
-            .limit(50)
+            .limit(50),
+          supabase
+            .from('tab_kb_artigo')
+            .select('cod_artigo, des_titulo, des_resumo, arr_sinonimos, des_sistema')
+            .eq('ind_ativo', true)
+            .eq('ind_status', 'PUBLICADO')
+            .limit(100)
         ]);
         
         setCachedAnnouncements(announcementsRes.data || []);
         setCachedFaqs((faqsRes.data || []) as CachedFaq[]);
+        setCachedKBArticles((kbRes.data || []) as CachedKBArticle[]);
       } catch (error) {
         console.error('Error loading search data:', error);
       }
@@ -288,8 +304,25 @@ export function Sidebar() {
       }
     });
 
+    // Buscar em artigos da Base de Conhecimento
+    cachedKBArticles.forEach(article => {
+      const titleMatch = article.des_titulo.toLowerCase().includes(lowerQuery);
+      const summaryMatch = article.des_resumo?.toLowerCase().includes(lowerQuery);
+      const synonymMatch = article.arr_sinonimos?.some(s => s.toLowerCase().includes(lowerQuery));
+      const systemMatch = article.des_sistema?.toLowerCase().includes(lowerQuery);
+      
+      if (titleMatch || summaryMatch || synonymMatch || systemMatch) {
+        results.push({
+          id: article.cod_artigo,
+          title: article.des_titulo,
+          type: 'faq' as const, // Reuse FAQ icon for KB articles
+          path: `/base-conhecimento-ti/${article.cod_artigo}`,
+          icon: 'faq'
+        });
+      }
+    });
+
     // Buscar em comunicados (já carregados em memória)
-    // Comunicados são acessíveis a todos os usuários autenticados
     cachedAnnouncements.forEach(ann => {
       const titleMatch = ann.des_titulo.toLowerCase().includes(lowerQuery);
       const summaryMatch = ann.des_resumo?.toLowerCase().includes(lowerQuery);
@@ -306,7 +339,6 @@ export function Sidebar() {
     });
 
     // Buscar em FAQs - verifica pergunta, resposta e tags
-    // FAQs são acessíveis via página de suporte
     if (canAccess('/suporte')) {
       cachedFaqs.forEach(faq => {
         const questionMatch = faq.des_pergunta.toLowerCase().includes(lowerQuery);
@@ -325,8 +357,8 @@ export function Sidebar() {
       });
     }
 
-    return results.slice(0, 8);
-  }, [searchQuery, allSubmenus, cachedAnnouncements, cachedFaqs, isAdmin, canAccess, permissionsLoading]);
+    return results.slice(0, 10);
+  }, [searchQuery, allSubmenus, cachedAnnouncements, cachedFaqs, cachedKBArticles, isAdmin, canAccess, permissionsLoading]);
 
   const handleResultClick = useCallback((result: SearchResult) => {
     navigate(result.path);
