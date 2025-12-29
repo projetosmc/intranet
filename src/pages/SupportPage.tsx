@@ -54,6 +54,7 @@ export default function SupportPage() {
   const [supportLinks, setSupportLinks] = useState<SupportConfig[]>([]);
   const [contacts, setContacts] = useState<SupportConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [faqSearchQuery, setFaqSearchQuery] = useState('');
   
   // Edit states
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -67,6 +68,16 @@ export default function SupportPage() {
   
   // Lightbox state
   const [lightboxImage, setLightboxImage] = useState<{ url: string; caption: string | null } | null>(null);
+
+  // Filtrar FAQs baseado na busca
+  const filteredFaqs = faqs.filter(faq => {
+    if (!faqSearchQuery.trim()) return true;
+    const query = faqSearchQuery.toLowerCase();
+    return (
+      faq.des_pergunta.toLowerCase().includes(query) ||
+      faq.des_resposta.toLowerCase().includes(query)
+    );
+  });
 
   useEffect(() => {
     fetchData();
@@ -236,14 +247,29 @@ export default function SupportPage() {
             </Button>
           )}
         </div>
+        
+        {/* Barra de busca para FAQs */}
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Buscar nas perguntas frequentes..."
+            value={faqSearchQuery}
+            onChange={(e) => setFaqSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        
         <div className="glass-card p-4 border-2 border-primary/10">
           {isLoading ? (
             <p className="text-center text-muted-foreground py-4">Carregando...</p>
-          ) : faqs.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">Nenhuma FAQ cadastrada</p>
+          ) : filteredFaqs.length === 0 ? (
+            <p className="text-center text-muted-foreground py-4">
+              {faqSearchQuery ? 'Nenhuma pergunta encontrada para a busca' : 'Nenhuma FAQ cadastrada'}
+            </p>
           ) : (
             <Accordion type="single" collapsible className="w-full">
-              {faqs.map((faq) => (
+              {filteredFaqs.map((faq) => (
                 <AccordionItem key={faq.cod_faq} value={faq.cod_faq}>
                   <AccordionTrigger className="text-left hover:no-underline hover:text-primary">
                     {faq.des_pergunta}

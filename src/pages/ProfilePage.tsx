@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
 import { AvatarCropModal } from '@/components/profile/AvatarCropModal';
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 
 // Schema de validação
 const profileSchema = z.object({
@@ -279,6 +280,7 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      <Breadcrumbs />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

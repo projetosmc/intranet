@@ -19,6 +19,7 @@ import {
   FileUp,
   Filter
 } from 'lucide-react';
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -245,6 +246,7 @@ export default function KnowledgeBasePage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs />
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}

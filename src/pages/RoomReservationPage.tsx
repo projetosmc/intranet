@@ -34,6 +34,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/contexts/UserContext';
 import { toast } from '@/hooks/use-toast';
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { 
   format, 
   addMonths, 
@@ -1076,6 +1077,7 @@ export default function RoomReservationPage() {
 
   return (
     <div className="h-[calc(100vh-8rem)]">
+      <Breadcrumbs className="mb-4" />
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
