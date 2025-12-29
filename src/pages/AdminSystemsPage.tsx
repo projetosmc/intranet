@@ -34,12 +34,12 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 interface System {
-  id: string;
-  name: string;
-  status: 'operational' | 'degraded' | 'down';
-  last_check: string;
-  sort_order: number;
-  active: boolean;
+  cod_sistema: string;
+  des_nome: string;
+  des_status: 'operational' | 'degraded' | 'down';
+  dta_ultima_verificacao: string;
+  num_ordem: number;
+  ind_ativo: boolean;
 }
 
 const statusConfig = {
@@ -88,14 +88,14 @@ export default function AdminSystemsPage() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('systems')
+        .from('tab_sistema')
         .select('*')
-        .order('sort_order');
+        .order('num_ordem');
 
       if (error) throw error;
       setSystems((data || []).map(d => ({
         ...d,
-        status: d.status as 'operational' | 'degraded' | 'down'
+        des_status: d.des_status as 'operational' | 'degraded' | 'down'
       })));
     } catch (error) {
       console.error('Error fetching systems:', error);
@@ -107,24 +107,24 @@ export default function AdminSystemsPage() {
 
   const handleSave = async (formData: FormData) => {
     const system = {
-      name: formData.get('name') as string,
-      status: formData.get('status') as 'operational' | 'degraded' | 'down',
-      sort_order: parseInt(formData.get('sort_order') as string) || 0,
-      active: true,
-      last_check: new Date().toISOString(),
+      des_nome: formData.get('name') as string,
+      des_status: formData.get('status') as 'operational' | 'degraded' | 'down',
+      num_ordem: parseInt(formData.get('sort_order') as string) || 0,
+      ind_ativo: true,
+      dta_ultima_verificacao: new Date().toISOString(),
     };
 
     try {
       if (editingSystem) {
         const { error } = await supabase
-          .from('systems')
+          .from('tab_sistema')
           .update(system)
-          .eq('id', editingSystem.id);
+          .eq('cod_sistema', editingSystem.cod_sistema);
         if (error) throw error;
         toast({ title: 'Sistema atualizado!' });
       } else {
         const { error } = await supabase
-          .from('systems')
+          .from('tab_sistema')
           .insert(system);
         if (error) throw error;
         toast({ title: 'Sistema criado!' });
@@ -143,9 +143,9 @@ export default function AdminSystemsPage() {
     if (!deleteSystemId) return;
     try {
       const { error } = await supabase
-        .from('systems')
+        .from('tab_sistema')
         .delete()
-        .eq('id', deleteSystemId);
+        .eq('cod_sistema', deleteSystemId);
 
       if (error) throw error;
       toast({ title: 'Sistema removido!' });
@@ -161,9 +161,9 @@ export default function AdminSystemsPage() {
   const handleToggleActive = async (id: string, active: boolean) => {
     try {
       const { error } = await supabase
-        .from('systems')
-        .update({ active: !active })
-        .eq('id', id);
+        .from('tab_sistema')
+        .update({ ind_ativo: !active })
+        .eq('cod_sistema', id);
 
       if (error) throw error;
       await fetchSystems();
@@ -183,8 +183,8 @@ export default function AdminSystemsPage() {
 
     if (!over || active.id === over.id) return;
 
-    const oldIndex = systems.findIndex((s) => s.id === active.id);
-    const newIndex = systems.findIndex((s) => s.id === over.id);
+    const oldIndex = systems.findIndex((s) => s.cod_sistema === active.id);
+    const newIndex = systems.findIndex((s) => s.cod_sistema === over.id);
 
     if (oldIndex !== -1 && newIndex !== -1) {
       const newOrder = arrayMove(systems, oldIndex, newIndex);
@@ -192,9 +192,9 @@ export default function AdminSystemsPage() {
       try {
         const updates = newOrder.map((item, index) => 
           supabase
-            .from('systems')
-            .update({ sort_order: index })
-            .eq('id', item.id)
+            .from('tab_sistema')
+            .update({ num_ordem: index })
+            .eq('cod_sistema', item.cod_sistema)
         );
         
         await Promise.all(updates);
@@ -215,14 +215,14 @@ export default function AdminSystemsPage() {
       transform,
       transition,
       isDragging,
-    } = useSortable({ id: system.id });
+    } = useSortable({ id: system.cod_sistema });
 
     const style = {
       transform: CSS.Transform.toString(transform),
       transition: transition || 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1)',
     };
 
-    const config = statusConfig[system.status];
+    const config = statusConfig[system.des_status];
     const Icon = config.icon;
 
     return (
@@ -249,13 +249,13 @@ export default function AdminSystemsPage() {
         </motion.div>
         <div className="flex items-center gap-3 flex-1">
           <Icon className={`h-5 w-5 ${config.color}`} />
-          <span className="font-medium">{system.name}</span>
+          <span className="font-medium">{system.des_nome}</span>
           <Badge variant={config.variant}>{config.label}</Badge>
         </div>
         <div className="flex items-center gap-2">
           <Switch
-            checked={system.active}
-            onCheckedChange={() => handleToggleActive(system.id, system.active)}
+            checked={system.ind_ativo}
+            onCheckedChange={() => handleToggleActive(system.cod_sistema, system.ind_ativo)}
           />
           <Button 
             variant="ghost" 
@@ -270,7 +270,7 @@ export default function AdminSystemsPage() {
           <Button 
             variant="ghost" 
             size="icon-sm" 
-            onClick={() => setDeleteSystemId(system.id)}
+            onClick={() => setDeleteSystemId(system.cod_sistema)}
           >
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
@@ -280,14 +280,14 @@ export default function AdminSystemsPage() {
   };
 
   const DragOverlayItem = ({ system }: { system: System }) => {
-    const config = statusConfig[system.status];
+    const config = statusConfig[system.des_status];
     const Icon = config.icon;
     
     return (
       <div className="flex items-center gap-3 p-4 bg-card rounded-lg shadow-2xl border-2 border-primary">
         <GripVertical className="h-4 w-4 text-primary" />
         <Icon className={`h-5 w-5 ${config.color}`} />
-        <span className="font-semibold">{system.name}</span>
+        <span className="font-semibold">{system.des_nome}</span>
       </div>
     );
   };
@@ -331,7 +331,7 @@ export default function AdminSystemsPage() {
                   <Label className="mb-1.5 block">Nome do Sistema</Label>
                   <Input 
                     name="name" 
-                    defaultValue={editingSystem?.name} 
+                    defaultValue={editingSystem?.des_nome} 
                     required 
                     placeholder="Ex: Portal Cliente"
                   />
@@ -339,7 +339,7 @@ export default function AdminSystemsPage() {
 
                 <div>
                   <Label className="mb-1.5 block">Status</Label>
-                  <Select name="status" defaultValue={editingSystem?.status || 'operational'}>
+                  <Select name="status" defaultValue={editingSystem?.des_status || 'operational'}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -371,7 +371,7 @@ export default function AdminSystemsPage() {
                   <Input 
                     name="sort_order" 
                     type="number" 
-                    defaultValue={editingSystem?.sort_order || 0} 
+                    defaultValue={editingSystem?.num_ordem || 0} 
                     placeholder="0" 
                   />
                 </div>
@@ -399,18 +399,18 @@ export default function AdminSystemsPage() {
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={systems.map(s => s.id)}
+                items={systems.map(s => s.cod_sistema)}
                 strategy={verticalListSortingStrategy}
               >
                 <div className="divide-y divide-border">
                   {systems.map((system) => (
-                    <SortableSystem key={system.id} system={system} />
+                    <SortableSystem key={system.cod_sistema} system={system} />
                   ))}
                 </div>
               </SortableContext>
               <DragOverlay>
                 {activeId ? (
-                  <DragOverlayItem system={systems.find(s => s.id === activeId)!} />
+                  <DragOverlayItem system={systems.find(s => s.cod_sistema === activeId)!} />
                 ) : null}
               </DragOverlay>
             </DndContext>

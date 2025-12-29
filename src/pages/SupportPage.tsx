@@ -5,9 +5,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { supabase } from '@/integrations/supabase/client';
 
 interface FAQ {
-  id: string;
-  question: string;
-  answer: string;
+  cod_faq: string;
+  des_pergunta: string;
+  des_resposta: string;
 }
 
 const supportLinks = [
@@ -39,10 +39,10 @@ export default function SupportPage() {
     const fetchFaqs = async () => {
       try {
         const { data, error } = await supabase
-          .from('faqs')
-          .select('id, question, answer')
-          .eq('active', true)
-          .order('sort_order');
+          .from('tab_faq')
+          .select('cod_faq, des_pergunta, des_resposta')
+          .eq('ind_ativo', true)
+          .order('num_ordem');
 
         if (error) throw error;
         setFaqs(data || []);
@@ -72,7 +72,6 @@ export default function SupportPage() {
         </p>
       </motion.div>
 
-      {/* Quick Actions */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -109,7 +108,6 @@ export default function SupportPage() {
         </div>
       </motion.section>
 
-      {/* Contact Info */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -142,7 +140,6 @@ export default function SupportPage() {
         </div>
       </motion.section>
 
-      {/* FAQ */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -160,12 +157,12 @@ export default function SupportPage() {
           ) : (
             <Accordion type="single" collapsible className="w-full">
               {faqs.map((faq) => (
-                <AccordionItem key={faq.id} value={faq.id}>
+                <AccordionItem key={faq.cod_faq} value={faq.cod_faq}>
                   <AccordionTrigger className="text-left hover:no-underline hover:text-primary">
-                    {faq.question}
+                    {faq.des_pergunta}
                   </AccordionTrigger>
                   <AccordionContent className="text-muted-foreground">
-                    {faq.answer}
+                    {faq.des_resposta}
                   </AccordionContent>
                 </AccordionItem>
               ))}
