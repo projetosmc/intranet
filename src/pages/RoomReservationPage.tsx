@@ -55,7 +55,7 @@ import {
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-type RecurrenceType = 'none' | 'weekly' | 'monthly';
+type RecurrenceType = 'none' | 'weekly' | 'biweekly' | 'monthly';
 
 interface MeetingRoom {
   cod_sala: string;
@@ -321,6 +321,8 @@ export default function RoomReservationPage() {
       for (let i = 1; i < count; i++) {
         if (recurrenceType === 'weekly') {
           datesToReserve.push(addWeeksDate(reservationDate, i));
+        } else if (recurrenceType === 'biweekly') {
+          datesToReserve.push(addWeeksDate(reservationDate, i * 2));
         } else if (recurrenceType === 'monthly') {
           datesToReserve.push(addMonthsDate(reservationDate, i));
         }
@@ -837,9 +839,17 @@ export default function RoomReservationPage() {
                   <Label className="mb-1.5 block">Data da Reserva</Label>
                   <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !reservationDate && "text-muted-foreground")}>
+                      <Button 
+                        variant="outline" 
+                        className={cn("w-full justify-start text-left font-normal", !reservationDate && "text-muted-foreground")}
+                        disabled={!selectedRoom}
+                      >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {reservationDate ? format(reservationDate, "PPP", { locale: ptBR }) : "Selecione uma data"}
+                        {!selectedRoom 
+                          ? "Selecione uma sala primeiro" 
+                          : reservationDate 
+                            ? format(reservationDate, "PPP", { locale: ptBR }) 
+                            : "Selecione uma data"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -980,64 +990,6 @@ export default function RoomReservationPage() {
                   )}
                 </div>
 
-                {/* Recurrence options - only for new reservations */}
-                {!editingReservation && (
-                  <div className="space-y-3 border border-border rounded-lg p-3">
-                    <div className="flex items-center gap-2">
-                      <Repeat className="h-4 w-4 text-muted-foreground" />
-                      <Label className="font-medium">Recorrência</Label>
-                    </div>
-                    <Select value={recurrenceType} onValueChange={(v) => setRecurrenceType(v as RecurrenceType)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a recorrência" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Reserva única</SelectItem>
-                        <SelectItem value="weekly">Repetir semanalmente</SelectItem>
-                        <SelectItem value="monthly">Repetir mensalmente</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    
-                    {recurrenceType !== 'none' && (
-                      <div className="space-y-2">
-                        <Label className="text-sm text-muted-foreground">
-                          Número de ocorrências (incluindo a primeira)
-                        </Label>
-                        <div className="flex items-center gap-2">
-                          <Input 
-                            type="number" 
-                            value={recurrenceCount} 
-                            onChange={(e) => setRecurrenceCount(e.target.value)} 
-                            min={2}
-                            max={12}
-                            className="w-20"
-                          />
-                          <span className="text-sm text-muted-foreground">
-                            {recurrenceType === 'weekly' ? 'semanas' : 'meses'}
-                          </span>
-                        </div>
-                        {reservationDate && parseInt(recurrenceCount) > 1 && (
-                          <div className="text-xs text-muted-foreground bg-muted/50 rounded p-2 mt-2">
-                            <p className="font-medium mb-1">Datas das reservas:</p>
-                            <div className="flex flex-wrap gap-1">
-                              {Array.from({ length: Math.min(parseInt(recurrenceCount) || 2, 12) }, (_, i) => {
-                                const date = recurrenceType === 'weekly' 
-                                  ? addWeeksDate(reservationDate, i)
-                                  : addMonthsDate(reservationDate, i);
-                                return (
-                                  <Badge key={i} variant="outline" className="text-xs">
-                                    {format(date, 'dd/MM/yy')}
-                                  </Badge>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
                 <div>
                   <Label className="mb-1.5 block">Observações</Label>
                   <Textarea 
@@ -1047,6 +999,64 @@ export default function RoomReservationPage() {
                     rows={3}
                   />
                 </div>
+
+                {/* Recurrence options - only for new reservations */}
+                {!editingReservation && (
+                  <div className="pt-2 border-t border-border/50">
+                    <div className="flex items-center gap-3">
+                      <Repeat className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Repetir:</span>
+                      <Select value={recurrenceType} onValueChange={(v) => setRecurrenceType(v as RecurrenceType)}>
+                        <SelectTrigger className="h-8 w-auto text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Não repetir</SelectItem>
+                          <SelectItem value="weekly">Semanalmente</SelectItem>
+                          <SelectItem value="biweekly">Quinzenalmente</SelectItem>
+                          <SelectItem value="monthly">Mensalmente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      
+                      {recurrenceType !== 'none' && (
+                        <>
+                          <span className="text-xs text-muted-foreground">por</span>
+                          <Input 
+                            type="number" 
+                            value={recurrenceCount} 
+                            onChange={(e) => setRecurrenceCount(e.target.value)} 
+                            min={2}
+                            max={12}
+                            className="h-8 w-16 text-xs"
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            {recurrenceType === 'weekly' ? 'semanas' : recurrenceType === 'biweekly' ? 'quinzenas' : 'meses'}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    
+                    {recurrenceType !== 'none' && reservationDate && parseInt(recurrenceCount) > 1 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {Array.from({ length: Math.min(parseInt(recurrenceCount) || 2, 12) }, (_, i) => {
+                          let date: Date;
+                          if (recurrenceType === 'weekly') {
+                            date = addWeeksDate(reservationDate, i);
+                          } else if (recurrenceType === 'biweekly') {
+                            date = addWeeksDate(reservationDate, i * 2);
+                          } else {
+                            date = addMonthsDate(reservationDate, i);
+                          }
+                          return (
+                            <Badge key={i} variant="outline" className="text-[10px] px-1.5 py-0">
+                              {format(date, 'dd/MM')}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <Button 
                   onClick={editingReservation ? handleUpdateReservation : handleCreateReservation} 
