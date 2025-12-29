@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { HelpCircle, ExternalLink, Mail, Phone, FileQuestion, Pencil, Plus, Trash2, Save, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { HelpCircle, ExternalLink, Mail, Phone, FileQuestion, Pencil, Plus, Trash2, Save, X, ZoomIn } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -21,6 +21,8 @@ interface FAQ {
   des_resposta: string;
   des_imagem_url: string | null;
   des_video_url: string | null;
+  des_legenda_imagem: string | null;
+  des_legenda_video: string | null;
 }
 
 interface SupportConfig {
@@ -57,6 +59,9 @@ export default function SupportPage() {
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
   const [isNewItem, setIsNewItem] = useState(false);
   const [itemType, setItemType] = useState<'link' | 'contact'>('link');
+  
+  // Lightbox state
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; caption: string | null } | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -68,7 +73,7 @@ export default function SupportPage() {
       const [faqResult, configResult] = await Promise.all([
         supabase
           .from('tab_faq')
-          .select('cod_faq, des_pergunta, des_resposta, des_imagem_url, des_video_url')
+          .select('cod_faq, des_pergunta, des_resposta, des_imagem_url, des_video_url, des_legenda_imagem, des_legenda_video')
           .eq('ind_ativo', true)
           .order('num_ordem'),
         supabase
@@ -324,18 +329,33 @@ export default function SupportPage() {
                     
                     {/* Imagem da FAQ */}
                     {faq.des_imagem_url && (
-                      <div className="mt-4">
-                        <img 
-                          src={faq.des_imagem_url} 
-                          alt="Ilustração" 
-                          className="max-w-full max-h-80 rounded-lg border object-contain"
-                        />
-                      </div>
+                      <figure className="mt-4">
+                        <div 
+                          className="relative group cursor-pointer"
+                          onClick={() => setLightboxImage({ url: faq.des_imagem_url!, caption: faq.des_legenda_imagem })}
+                        >
+                          <img 
+                            src={faq.des_imagem_url} 
+                            alt={faq.des_legenda_imagem || 'Ilustração'} 
+                            className="max-w-full max-h-80 rounded-lg border object-contain transition-transform group-hover:scale-[1.02]"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-lg">
+                            <div className="bg-white/90 dark:bg-black/70 p-2 rounded-full">
+                              <ZoomIn className="h-5 w-5 text-foreground" />
+                            </div>
+                          </div>
+                        </div>
+                        {faq.des_legenda_imagem && (
+                          <figcaption className="mt-2 text-sm text-muted-foreground text-center italic">
+                            {faq.des_legenda_imagem}
+                          </figcaption>
+                        )}
+                      </figure>
                     )}
                     
                     {/* Vídeo da FAQ */}
                     {faq.des_video_url && (
-                      <div className="mt-4">
+                      <figure className="mt-4">
                         <video 
                           src={faq.des_video_url} 
                           controls
@@ -343,7 +363,12 @@ export default function SupportPage() {
                         >
                           Seu navegador não suporta a reprodução de vídeos.
                         </video>
-                      </div>
+                        {faq.des_legenda_video && (
+                          <figcaption className="mt-2 text-sm text-muted-foreground text-center italic">
+                            {faq.des_legenda_video}
+                          </figcaption>
+                        )}
+                      </figure>
                     )}
                   </AccordionContent>
                 </AccordionItem>
@@ -446,6 +471,45 @@ export default function SupportPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Lightbox Modal */}
+      <AnimatePresence>
+        {lightboxImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+            onClick={() => setLightboxImage(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative max-w-5xl max-h-[90vh] flex flex-col items-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setLightboxImage(null)}
+                className="absolute -top-10 right-0 text-white hover:text-white/80 transition-colors"
+              >
+                <X className="h-8 w-8" />
+              </button>
+              <img
+                src={lightboxImage.url}
+                alt={lightboxImage.caption || 'Imagem ampliada'}
+                className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+              />
+              {lightboxImage.caption && (
+                <p className="mt-4 text-white text-center text-lg italic">
+                  {lightboxImage.caption}
+                </p>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -43,6 +43,8 @@ interface FAQ {
   des_tags: string[];
   des_imagem_url: string | null;
   des_video_url: string | null;
+  des_legenda_imagem: string | null;
+  des_legenda_video: string | null;
 }
 
 export default function AdminFaqsPage() {
@@ -60,6 +62,8 @@ export default function AdminFaqsPage() {
   const [newTag, setNewTag] = useState('');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [imageCaption, setImageCaption] = useState('');
+  const [videoCaption, setVideoCaption] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -237,6 +241,8 @@ export default function AdminFaqsPage() {
       des_tags: editingTags,
       des_imagem_url: imageUrl,
       des_video_url: videoUrl,
+      des_legenda_imagem: imageCaption || null,
+      des_legenda_video: videoCaption || null,
     };
 
     try {
@@ -262,6 +268,8 @@ export default function AdminFaqsPage() {
       setNewTag('');
       setImageUrl(null);
       setVideoUrl(null);
+      setImageCaption('');
+      setVideoCaption('');
       await fetchFaqs();
     } catch (error) {
       console.error('Error saving FAQ:', error);
@@ -424,6 +432,8 @@ export default function AdminFaqsPage() {
               setNewTag('');
               setImageUrl(faq.des_imagem_url);
               setVideoUrl(faq.des_video_url);
+              setImageCaption(faq.des_legenda_imagem || '');
+              setVideoCaption(faq.des_legenda_video || '');
               setIsDialogOpen(true); 
             }}
           >
@@ -478,11 +488,15 @@ export default function AdminFaqsPage() {
               setNewTag('');
               setImageUrl(null);
               setVideoUrl(null);
+              setImageCaption('');
+              setVideoCaption('');
             } else if (editingFaq) {
               setAnswerHtml(editingFaq.des_resposta);
               setEditingTags(editingFaq.des_tags || []);
               setImageUrl(editingFaq.des_imagem_url);
               setVideoUrl(editingFaq.des_video_url);
+              setImageCaption(editingFaq.des_legenda_imagem || '');
+              setVideoCaption(editingFaq.des_legenda_video || '');
             }
           }}>
             <DialogTrigger asChild>
@@ -633,21 +647,29 @@ export default function AdminFaqsPage() {
                       className="hidden"
                     />
                     {imageUrl ? (
-                      <div className="relative group">
-                        <img 
-                          src={imageUrl} 
-                          alt="Preview" 
-                          className="w-full max-h-40 object-cover rounded-lg border"
+                      <div className="space-y-2">
+                        <div className="relative group">
+                          <img 
+                            src={imageUrl} 
+                            alt="Preview" 
+                            className="w-full max-h-40 object-cover rounded-lg border"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => { setImageUrl(null); setImageCaption(''); }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <Input
+                          value={imageCaption}
+                          onChange={(e) => setImageCaption(e.target.value)}
+                          placeholder="Legenda da imagem (opcional)"
+                          maxLength={200}
                         />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => setImageUrl(null)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
                       </div>
                     ) : (
                       <Button
@@ -683,21 +705,29 @@ export default function AdminFaqsPage() {
                       className="hidden"
                     />
                     {videoUrl ? (
-                      <div className="relative group">
-                        <video 
-                          src={videoUrl} 
-                          controls
-                          className="w-full max-h-48 rounded-lg border"
+                      <div className="space-y-2">
+                        <div className="relative group">
+                          <video 
+                            src={videoUrl} 
+                            controls
+                            className="w-full max-h-48 rounded-lg border"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => { setVideoUrl(null); setVideoCaption(''); }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <Input
+                          value={videoCaption}
+                          onChange={(e) => setVideoCaption(e.target.value)}
+                          placeholder="Legenda do vídeo (opcional)"
+                          maxLength={200}
                         />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => setVideoUrl(null)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
                       </div>
                     ) : (
                       <Button

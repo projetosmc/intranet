@@ -193,6 +193,8 @@ export type Database = {
         Row: {
           cod_faq: string
           des_imagem_url: string | null
+          des_legenda_imagem: string | null
+          des_legenda_video: string | null
           des_pergunta: string
           des_resposta: string
           des_tags: string[] | null
@@ -205,6 +207,8 @@ export type Database = {
         Insert: {
           cod_faq?: string
           des_imagem_url?: string | null
+          des_legenda_imagem?: string | null
+          des_legenda_video?: string | null
           des_pergunta: string
           des_resposta: string
           des_tags?: string[] | null
@@ -217,6 +221,8 @@ export type Database = {
         Update: {
           cod_faq?: string
           des_imagem_url?: string | null
+          des_legenda_imagem?: string | null
+          des_legenda_video?: string | null
           des_pergunta?: string
           des_resposta?: string
           des_tags?: string[] | null
