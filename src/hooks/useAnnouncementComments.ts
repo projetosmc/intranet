@@ -113,6 +113,35 @@ export function useAnnouncementComments({ announcementId, announcementTitle }: U
 
       if (error) throw error;
 
+      // Buscar nome do autor do comentário
+      const { data: authorProfile } = await supabase
+        .from('tab_perfil_usuario')
+        .select('des_nome_completo')
+        .eq('cod_usuario', user.id)
+        .single();
+
+      const authorName = authorProfile?.des_nome_completo || 'Alguém';
+
+      // Notificar o autor do comentário pai (se for uma resposta)
+      if (parentId) {
+        const { data: parentComment } = await supabase
+          .from('tab_comunicado_comentario')
+          .select('seq_usuario')
+          .eq('cod_comentario', parentId)
+          .single();
+
+        if (parentComment && parentComment.seq_usuario !== user.id) {
+          await supabase.from('tab_notificacao').insert({
+            seq_usuario: parentComment.seq_usuario,
+            seq_usuario_origem: user.id,
+            des_tipo: 'reply',
+            des_titulo: 'Nova resposta ao seu comentário',
+            des_mensagem: `${authorName} respondeu ao seu comentário${announcementTitle ? ` no comunicado "${announcementTitle}"` : ''}.`,
+            des_link: `/comunicados/${announcementId}`,
+          });
+        }
+      }
+
       // Extrair menções do conteúdo e criar notificações
       const mentions = content.match(/@(\w+)/g);
       if (mentions) {
@@ -123,15 +152,6 @@ export function useAnnouncementComments({ announcementId, announcementTitle }: U
           .from('tab_perfil_usuario')
           .select('cod_usuario, des_nome_completo')
           .or(mentionedNames.map(name => `des_nome_completo.ilike.%${name}%`).join(','));
-
-        // Buscar nome do autor do comentário
-        const { data: authorProfile } = await supabase
-          .from('tab_perfil_usuario')
-          .select('des_nome_completo')
-          .eq('cod_usuario', user.id)
-          .single();
-
-        const authorName = authorProfile?.des_nome_completo || 'Alguém';
 
         // Criar notificações para cada usuário mencionado
         if (mentionedUsers && mentionedUsers.length > 0) {

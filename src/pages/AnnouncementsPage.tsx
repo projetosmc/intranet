@@ -1,10 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Megaphone, ArrowLeft, Pin, Calendar, RefreshCw, Image, FileText, BarChart3 } from 'lucide-react';
+import { Megaphone, ArrowLeft, Pin, Calendar, RefreshCw, Image, FileText, BarChart3, X, ZoomIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import {
+  Dialog,
+  DialogContent,
+  DialogClose,
+} from '@/components/ui/dialog';
 import { AnnouncementCard } from '@/components/announcements/AnnouncementCard';
 import { PollCard } from '@/components/announcements/PollCard';
 import { CommentSection } from '@/components/announcements/CommentSection';
@@ -24,6 +29,7 @@ export default function AnnouncementsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { activeAnnouncements, isLoading, refetch, vote, registerView } = useDbAnnouncements();
+  const [imageModalOpen, setImageModalOpen] = useState(false);
 
   const selectedAnnouncement = id ? activeAnnouncements.find(a => a.id === id) : null;
 
@@ -77,13 +83,35 @@ export default function AnnouncementsPage() {
             </div>
 
             {selectedAnnouncement.imageUrl && (
-              <div className="rounded-xl overflow-hidden mb-6">
-                <img
-                  src={selectedAnnouncement.imageUrl}
-                  alt={selectedAnnouncement.title}
-                  className="w-full h-64 object-cover"
-                />
-              </div>
+              <>
+                <div 
+                  className="rounded-xl overflow-hidden mb-6 cursor-pointer relative group"
+                  onClick={() => setImageModalOpen(true)}
+                >
+                  <img
+                    src={selectedAnnouncement.imageUrl}
+                    alt={selectedAnnouncement.title}
+                    className="w-full h-64 object-cover transition-transform group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                    <ZoomIn className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </div>
+
+                {/* Image Modal */}
+                <Dialog open={imageModalOpen} onOpenChange={setImageModalOpen}>
+                  <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 bg-transparent border-none">
+                    <DialogClose className="absolute right-4 top-4 z-10 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors">
+                      <X className="h-5 w-5" />
+                    </DialogClose>
+                    <img
+                      src={selectedAnnouncement.imageUrl}
+                      alt={selectedAnnouncement.title}
+                      className="w-full h-full object-contain max-h-[85vh] rounded-lg"
+                    />
+                  </DialogContent>
+                </Dialog>
+              </>
             )}
 
             <h1 className="text-2xl font-bold text-foreground mb-4">
