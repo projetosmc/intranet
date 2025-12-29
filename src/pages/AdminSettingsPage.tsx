@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Settings, Plus, Pencil, Trash2, GripVertical, ExternalLink, Menu, FileText } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Settings, Plus, Pencil, Trash2, GripVertical, ExternalLink, Menu, FileText, ChevronDown, ChevronRight, Link, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -70,6 +70,8 @@ export default function AdminSettingsPage() {
   const [selectedIcon, setSelectedIcon] = useState<string>('Circle');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
+  const [pathType, setPathType] = useState<'internal' | 'external'>('internal');
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -374,6 +376,49 @@ export default function AdminSettingsPage() {
   const parentItems = menuItems.filter(item => !item.seq_menu_pai);
   const getChildItems = (parentId: string) => menuItems.filter(item => item.seq_menu_pai === parentId);
 
+  // Rotas disponíveis no sistema que ainda não estão em nenhum menu
+  const availablePaths = useMemo(() => {
+    const allRoutes = [
+      { path: '/', label: 'Meu Dia (Home)' },
+      { path: '/comunicados', label: 'Comunicados' },
+      { path: '/status', label: 'Status Sistemas' },
+      { path: '/suporte', label: 'Suporte' },
+      { path: '/reserva-salas', label: 'Reserva de Salas' },
+      { path: '/perfil', label: 'Perfil' },
+      { path: '/admin/configuracoes', label: 'Admin - Configurações' },
+      { path: '/admin/comunicados', label: 'Admin - Comunicados' },
+      { path: '/admin/usuarios', label: 'Admin - Usuários' },
+      { path: '/admin/auditoria', label: 'Admin - Auditoria' },
+      { path: '/admin/sistemas', label: 'Admin - Sistemas' },
+      { path: '/admin/faqs', label: 'Admin - FAQs' },
+      { path: '/admin/reserva-salas', label: 'Admin - Config. Reservas' },
+      { path: '/admin/perfis', label: 'Admin - Perfis' },
+    ];
+    
+    const usedPaths = menuItems.map(m => m.des_caminho);
+    return allRoutes.filter(r => !usedPaths.includes(r.path) || editingItem?.des_caminho === r.path);
+  }, [menuItems, editingItem]);
+
+  const toggleExpand = (menuId: string) => {
+    setExpandedMenus(prev => {
+      const next = new Set(prev);
+      if (next.has(menuId)) {
+        next.delete(menuId);
+      } else {
+        next.add(menuId);
+      }
+      return next;
+    });
+  };
+
+  const expandAll = () => {
+    setExpandedMenus(new Set(parentItems.map(p => p.cod_menu_item)));
+  };
+
+  const collapseAll = () => {
+    setExpandedMenus(new Set());
+  };
+
   const SortableMenuItem = ({ item, isChild = false }: { item: MenuItem; isChild?: boolean }) => {
     const {
       attributes,
@@ -515,7 +560,16 @@ export default function AdminSettingsPage() {
                   Gerencie os itens de menu e submenus do sidebar.
                 </p>
               </div>
-              <Dialog open={isDialogOpen} onOpenChange={(o) => { 
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={expandAll}>
+                  <ChevronDown className="h-4 w-4 mr-1" />
+                  Expandir
+                </Button>
+                <Button variant="outline" size="sm" onClick={collapseAll}>
+                  <ChevronRight className="h-4 w-4 mr-1" />
+                  Retrair
+                </Button>
+                <Dialog open={isDialogOpen} onOpenChange={(o) => {
                 setIsDialogOpen(o); 
                 if (!o) {
                   setEditingItem(null);
@@ -526,6 +580,7 @@ export default function AdminSettingsPage() {
                   setSelectedParentId(editingItem.seq_menu_pai || '__none__');
                   setNamePreview(editingItem.des_nome);
                   setSelectedIcon(editingItem.des_icone || 'Circle');
+                  setPathType(editingItem.des_caminho?.startsWith('http') ? 'external' : 'internal');
                 }
               }}>
                 <DialogTrigger asChild>
@@ -657,6 +712,7 @@ export default function AdminSettingsPage() {
                   </form>
                 </DialogContent>
               </Dialog>
+              </div>
             </div>
 
             <div className="bg-card border border-border rounded-xl overflow-hidden">

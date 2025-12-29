@@ -19,6 +19,7 @@ import AdminAuditLogsPage from "./pages/AdminAuditLogsPage";
 import AdminSystemsPage from "./pages/AdminSystemsPage";
 import AdminFaqsPage from "./pages/AdminFaqsPage";
 import AdminRoomConfigPage from "./pages/AdminRoomConfigPage";
+import AdminProfilesPage from "./pages/AdminProfilesPage";
 import AuthPage from "./pages/AuthPage";
 import SetupAdminPage from "./pages/SetupAdminPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -51,6 +52,7 @@ const App = () => (
               <Route path="/admin/sistemas" element={<AdminRoute><AdminSystemsPage /></AdminRoute>} />
               <Route path="/admin/faqs" element={<AdminRoute><AdminFaqsPage /></AdminRoute>} />
               <Route path="/admin/reserva-salas" element={<AdminRoute><AdminRoomConfigPage /></AdminRoute>} />
+              <Route path="/admin/perfis" element={<AdminRoute><AdminProfilesPage /></AdminRoute>} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
