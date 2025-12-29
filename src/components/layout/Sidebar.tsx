@@ -538,7 +538,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className="fixed left-0 top-0 z-40 h-screen w-64 flex flex-col"
+      className="fixed left-0 top-0 z-40 h-screen w-72 flex flex-col"
       style={{ background: 'var(--gradient-sidebar)' }}
     >
       {/* Header */}

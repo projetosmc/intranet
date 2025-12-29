@@ -21,7 +21,7 @@ function MainLayoutContent() {
       
       <div
         className="flex flex-col min-h-screen"
-        style={{ marginLeft: 256 }}
+        style={{ marginLeft: 288 }}
       >
         <Topbar />
         
