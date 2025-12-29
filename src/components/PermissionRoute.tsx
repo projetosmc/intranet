@@ -1,6 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { useScreenPermission } from '@/hooks/useScreenPermission';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useRef } from 'react';
 import { PageSkeleton } from '@/components/layout/PageSkeleton';
@@ -16,13 +15,11 @@ interface PermissionRouteProps {
  * tem acesso à rota atual baseado em seus perfis (roles)
  */
 export function PermissionRoute({ children }: PermissionRouteProps) {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const { canAccess, getScreenName, isLoading: permissionLoading } = useScreenPermission();
+  const { isAuthenticated, isLoading, canAccess, getScreenName } = useAuthContext();
   const { toast } = useToast();
   const location = useLocation();
   const hasShownToast = useRef(false);
 
-  const isLoading = authLoading || permissionLoading;
   const hasAccess = canAccess(location.pathname);
 
   useEffect(() => {

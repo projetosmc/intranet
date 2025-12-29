@@ -1,7 +1,6 @@
 import { createContext, useContext, ReactNode } from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useAuth } from '@/hooks/useAuth';
-import { useUserRole } from '@/hooks/useUserRole';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 interface UserContextType {
   user: {
@@ -20,8 +19,7 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const { user: authUser, isAuthenticated, signOut } = useAuth();
-  const { isAdmin } = useUserRole();
+  const { user: authUser, isAuthenticated, signOut, isAdmin } = useAuthContext();
   const [toggle3D, setToggle3D] = useLocalStorage<boolean>('mc-hub-3d', true);
 
   const user = authUser ? {
@@ -52,3 +50,4 @@ export function useUser() {
   }
   return context;
 }
+
