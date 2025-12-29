@@ -68,18 +68,23 @@ export function clearPermissionsCache(): void {
 export function useScreenPermission() {
   const { roles, isAdmin, isLoading: rolesLoading } = useUserRole();
   const [permissions, setPermissions] = useState<ScreenPermission[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [permissionsLoading, setIsLoading] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
 
   const fetchPermissions = useCallback(async () => {
-    if (rolesLoading) return;
+    // Aguarda roles carregarem antes de buscar permissões
+    if (rolesLoading) {
+      return;
+    }
 
-    // Admin tem acesso a tudo
+    // Admin tem acesso a tudo - não precisa buscar permissões
     if (isAdmin) {
       setPermissions([]);
       setIsLoading(false);
       return;
     }
 
+    // Usuário sem roles
     if (roles.length === 0) {
       setPermissions([]);
       setIsLoading(false);
@@ -94,7 +99,6 @@ export function useScreenPermission() {
       return;
     }
 
-    setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('tab_permissao_tela')
@@ -115,8 +119,15 @@ export function useScreenPermission() {
   }, [roles, isAdmin, rolesLoading]);
 
   useEffect(() => {
-    fetchPermissions();
-  }, [fetchPermissions]);
+    if (!rolesLoading && !hasFetched) {
+      setIsLoading(true);
+      setHasFetched(true);
+      fetchPermissions();
+    } else if (!rolesLoading && hasFetched) {
+      // Re-fetch se roles mudaram
+      fetchPermissions();
+    }
+  }, [rolesLoading, hasFetched, fetchPermissions]);
 
   /**
    * Verifica se o usuário pode acessar uma rota específica
@@ -156,14 +167,17 @@ export function useScreenPermission() {
     return permission?.des_nome_tela || null;
   }, [permissions]);
 
+  // isLoading é true apenas enquanto roles ou permissions estão sendo carregados
+  const isLoading = rolesLoading || permissionsLoading;
+
   return {
     permissions,
     canAccess,
     getScreenName,
-    isLoading: rolesLoading || isLoading,
+    isLoading,
     invalidateCache: () => {
       clearPermissionsCache();
-      fetchPermissions();
+      setHasFetched(false);
     },
   };
 }
