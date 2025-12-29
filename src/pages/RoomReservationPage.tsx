@@ -43,34 +43,33 @@ import {
   subWeeks,
   addDays,
   subDays,
-  parseISO
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface MeetingRoom {
-  id: string;
-  name: string;
-  capacity: number;
+  cod_sala: string;
+  des_nome: string;
+  num_capacidade: number;
 }
 
 interface MeetingType {
-  id: string;
-  name: string;
+  cod_tipo_reuniao: string;
+  des_nome: string;
 }
 
 interface Reservation {
-  id: string;
-  room_id: string;
-  user_id: string;
-  requester_name: string;
-  reservation_date: string;
-  start_time: string;
-  end_time: string;
-  meeting_type_id: string | null;
-  participants_count: number;
-  notes: string | null;
-  meeting_rooms?: { name: string };
-  meeting_types?: { name: string } | null;
+  cod_reserva: string;
+  seq_sala: string;
+  seq_usuario: string;
+  des_nome_solicitante: string;
+  dta_reserva: string;
+  hra_inicio: string;
+  hra_fim: string;
+  seq_tipo_reuniao: string | null;
+  num_participantes: number;
+  des_observacao: string | null;
+  tab_sala_reuniao?: { des_nome: string };
+  tab_tipo_reuniao?: { des_nome: string } | null;
 }
 
 type ViewType = 'day' | 'week' | 'month';
@@ -107,13 +106,13 @@ export default function RoomReservationPage() {
     setIsLoading(true);
     try {
       const [roomsRes, typesRes, reservationsRes] = await Promise.all([
-        supabase.from('meeting_rooms').select('id, name, capacity').eq('active', true).order('sort_order'),
-        supabase.from('meeting_types').select('id, name').eq('active', true).order('sort_order'),
-        supabase.from('room_reservations').select(`
+        supabase.from('tab_sala_reuniao').select('cod_sala, des_nome, num_capacidade').eq('ind_ativo', true).order('num_ordem'),
+        supabase.from('tab_tipo_reuniao').select('cod_tipo_reuniao, des_nome').eq('ind_ativo', true).order('num_ordem'),
+        supabase.from('tab_reserva_sala').select(`
           *,
-          meeting_rooms(name),
-          meeting_types(name)
-        `).order('reservation_date')
+          tab_sala_reuniao(des_nome),
+          tab_tipo_reuniao(des_nome)
+        `).order('dta_reserva')
       ]);
 
       if (roomsRes.error) throw roomsRes.error;
@@ -147,18 +146,18 @@ export default function RoomReservationPage() {
       if (!userData.user) throw new Error('Usuário não autenticado');
 
       const reservation = {
-        room_id: selectedRoom,
-        user_id: userData.user.id,
-        requester_name: user?.name || userData.user.email || 'Usuário',
-        reservation_date: format(reservationDate, 'yyyy-MM-dd'),
-        start_time: startTime,
-        end_time: endTime,
-        meeting_type_id: selectedMeetingType || null,
-        participants_count: parseInt(participantsCount) || 1,
-        notes: notes || null,
+        seq_sala: selectedRoom,
+        seq_usuario: userData.user.id,
+        des_nome_solicitante: user?.name || userData.user.email || 'Usuário',
+        dta_reserva: format(reservationDate, 'yyyy-MM-dd'),
+        hra_inicio: startTime,
+        hra_fim: endTime,
+        seq_tipo_reuniao: selectedMeetingType || null,
+        num_participantes: parseInt(participantsCount) || 1,
+        des_observacao: notes || null,
       };
 
-      const { error } = await supabase.from('room_reservations').insert(reservation);
+      const { error } = await supabase.from('tab_reserva_sala').insert(reservation);
       if (error) throw error;
 
       toast({ title: 'Reserva criada com sucesso!' });
@@ -175,7 +174,7 @@ export default function RoomReservationPage() {
     if (!deleteReservationId) return;
 
     try {
-      const { error } = await supabase.from('room_reservations').delete().eq('id', deleteReservationId);
+      const { error } = await supabase.from('tab_reserva_sala').delete().eq('cod_reserva', deleteReservationId);
       if (error) throw error;
 
       toast({ title: 'Reserva cancelada!' });
@@ -200,7 +199,7 @@ export default function RoomReservationPage() {
 
   const getReservationsForDate = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    return reservations.filter(r => r.reservation_date === dateStr);
+    return reservations.filter(r => r.dta_reserva === dateStr);
   };
 
   // Calendar navigation
@@ -337,7 +336,6 @@ export default function RoomReservationPage() {
 
   // Render day view
   const renderDayView = () => {
-    const dayReservations = getReservationsForDate(currentDate);
     const isTodayDate = isToday(currentDate);
 
     return (
@@ -391,12 +389,12 @@ export default function RoomReservationPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {rooms.map(room => (
-                        <SelectItem key={room.id} value={room.id}>
+                        <SelectItem key={room.cod_sala} value={room.cod_sala}>
                           <div className="flex items-center gap-2">
-                            <span>{room.name}</span>
+                            <span>{room.des_nome}</span>
                             <Badge variant="outline" className="text-xs">
                               <Users className="h-3 w-3 mr-1" />
-                              {room.capacity}
+                              {room.num_capacidade}
                             </Badge>
                           </div>
                         </SelectItem>
@@ -451,7 +449,7 @@ export default function RoomReservationPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {meetingTypes.map(type => (
-                        <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                        <SelectItem key={type.cod_tipo_reuniao} value={type.cod_tipo_reuniao}>{type.des_nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -485,143 +483,138 @@ export default function RoomReservationPage() {
           </Dialog>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Calendar */}
-          <div className="lg:col-span-2">
-            <motion.div
-              layout
-              className={cn(
-                "bg-card border border-border rounded-xl overflow-hidden transition-all duration-300",
-                isFullscreen && "fixed inset-4 z-50 shadow-2xl"
-              )}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" onClick={handlePrevious} className="h-8 w-8">
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <h2 className="text-lg font-semibold min-w-[200px] text-center">
-                    {view === 'day'
-                      ? format(currentDate, "d 'de' MMMM 'de' yyyy", { locale: ptBR })
-                      : format(currentDate, "MMMM 'de' yyyy", { locale: ptBR })}
-                  </h2>
-                  <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={handleToday} className="text-xs">
-                    Hoje
-                  </Button>
-
-                  <div className="flex items-center bg-muted rounded-lg p-1">
-                    <Button variant={view === 'day' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('day')} className="h-7 px-2">
-                      <List className="h-4 w-4" />
-                    </Button>
-                    <Button variant={view === 'week' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('week')} className="h-7 px-2">
-                      <Grid3X3 className="h-4 w-4" />
-                    </Button>
-                    <Button variant={view === 'month' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('month')} className="h-7 px-2">
-                      <CalendarIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  <Button variant="ghost" size="icon" onClick={() => setIsFullscreen(!isFullscreen)} className="h-8 w-8">
-                    {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                  </Button>
-                </div>
+        {/* Calendar Section */}
+        <div className={cn(
+          "bg-card border border-border rounded-xl overflow-hidden transition-all duration-300",
+          isFullscreen && "fixed inset-4 z-50"
+        )}>
+          {/* Calendar Header */}
+          <div className="flex items-center justify-between p-4 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" onClick={handlePrevious}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" onClick={handleNext}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleToday}>
+                Hoje
+              </Button>
+              <h2 className="text-lg font-semibold ml-2">
+                {format(currentDate, view === 'day' ? "d 'de' MMMM yyyy" : "MMMM yyyy", { locale: ptBR })}
+              </h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex border border-border rounded-lg overflow-hidden">
+                <Button
+                  variant={view === 'day' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setView('day')}
+                  className="rounded-none"
+                >
+                  Dia
+                </Button>
+                <Button
+                  variant={view === 'week' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setView('week')}
+                  className="rounded-none border-x border-border"
+                >
+                  Semana
+                </Button>
+                <Button
+                  variant={view === 'month' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setView('month')}
+                  className="rounded-none"
+                >
+                  Mês
+                </Button>
               </div>
-
-              {/* Calendar Body */}
-              <div className={cn("p-4", isFullscreen && "p-6")}>
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={`${view}-${currentDate.toISOString()}`}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {view === 'month' && renderMonthView()}
-                    {view === 'week' && renderWeekView()}
-                    {view === 'day' && renderDayView()}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Selected Day Reservations */}
-          <div className="space-y-4">
-            <div className="bg-card border border-border rounded-xl p-4">
-              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                <CalendarIcon className="h-4 w-4 text-primary" />
-                {format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
-              </h3>
-
-              {isLoading ? (
-                <p className="text-sm text-muted-foreground">Carregando...</p>
-              ) : selectedDayReservations.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhuma reserva para este dia</p>
-              ) : (
-                <div className="space-y-3">
-                  {selectedDayReservations.map((reservation) => (
-                    <motion.div
-                      key={reservation.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="p-3 bg-muted/50 rounded-lg border border-border"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground truncate">
-                            {reservation.meeting_rooms?.name}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            <span>{reservation.start_time.slice(0, 5)} - {reservation.end_time.slice(0, 5)}</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {reservation.requester_name}
-                          </p>
-                          {reservation.meeting_types?.name && (
-                            <Badge variant="secondary" className="text-xs mt-2">
-                              {reservation.meeting_types.name}
-                            </Badge>
-                          )}
-                        </div>
-                        {reservation.user_id === user?.id && (
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => setDeleteReservationId(reservation.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        )}
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsFullscreen(!isFullscreen)}
+              >
+                {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </Button>
             </div>
           </div>
+
+          {/* Calendar Content */}
+          <div className={cn("p-4", isFullscreen && "h-[calc(100%-120px)] overflow-auto")}>
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+            ) : (
+              <>
+                {view === 'month' && renderMonthView()}
+                {view === 'week' && renderWeekView()}
+                {view === 'day' && renderDayView()}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Selected Day Reservations */}
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-4">
+            <CalendarIcon className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold">
+              Reservas de {format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
+            </h3>
+          </div>
+
+          {selectedDayReservations.length === 0 ? (
+            <p className="text-muted-foreground text-sm">Nenhuma reserva para este dia</p>
+          ) : (
+            <div className="space-y-3">
+              {selectedDayReservations.map((reservation) => (
+                <motion.div
+                  key={reservation.cod_reserva}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {reservation.hra_inicio} - {reservation.hra_fim}
+                      </Badge>
+                      <span className="font-medium">
+                        {reservation.tab_sala_reuniao?.des_nome}
+                      </span>
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      <span>{reservation.des_nome_solicitante}</span>
+                      {reservation.tab_tipo_reuniao && (
+                        <span className="ml-2">• {reservation.tab_tipo_reuniao.des_nome}</span>
+                      )}
+                      <span className="ml-2">
+                        • <Users className="h-3 w-3 inline mr-1" />
+                        {reservation.num_participantes}
+                      </span>
+                    </div>
+                    {reservation.des_observacao && (
+                      <p className="text-xs text-muted-foreground mt-1">{reservation.des_observacao}</p>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setDeleteReservationId(reservation.cod_reserva)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </motion.div>
 
-      {isFullscreen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
-          onClick={() => setIsFullscreen(false)}
-        />
-      )}
-
-      {/* Delete Confirmation */}
+      {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteReservationId} onOpenChange={(open) => !open && setDeleteReservationId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

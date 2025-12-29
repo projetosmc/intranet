@@ -125,10 +125,6 @@ export function Sidebar() {
         setIsLoading(false);
         return;
       }
-        autoExpandMenus(processedItems);
-        setIsLoading(false);
-        return;
-      }
     }
 
     try {
