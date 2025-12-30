@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useMemo } from 'react';
 import { User, Session } from '@supabase/supabase-js';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 type AppRole = 'admin' | 'moderator' | 'user';
@@ -10,12 +11,15 @@ interface ScreenPermission {
   ind_pode_acessar: boolean;
 }
 
+export type LoadingStage = 'idle' | 'session' | 'roles' | 'permissions' | 'complete';
+
 interface AuthContextType {
   // Auth
   user: User | null;
   session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  loadingStage: LoadingStage;
   signIn: (email: string, password: string) => Promise<{ error: unknown }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: unknown }>;
   signOut: () => Promise<void>;
@@ -35,171 +39,170 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const ROLES_CACHE_KEY = 'mc-hub-user-roles';
-const PERMISSIONS_CACHE_KEY = 'mc-hub-screen-permissions';
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+// Query keys
+const ROLES_QUERY_KEY = 'user-roles';
+const PERMISSIONS_QUERY_KEY = 'screen-permissions';
+
+// Stale time: 5 minutes
+const STALE_TIME = 5 * 60 * 1000;
+
+// Fetch roles function
+async function fetchUserRoles(userId: string): Promise<AppRole[]> {
+  const { data, error } = await supabase
+    .from('tab_usuario_role')
+    .select('des_role')
+    .eq('seq_usuario', userId);
+
+  if (error) {
+    console.error('Error fetching roles:', error);
+    return [];
+  }
+
+  return (data || []).map((r) => r.des_role as AppRole);
+}
+
+// Fetch permissions function
+async function fetchUserPermissions(roles: AppRole[]): Promise<ScreenPermission[]> {
+  if (roles.length === 0) {
+    return [];
+  }
+
+  // Admin has access to everything - no need to fetch
+  if (roles.includes('admin')) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('tab_permissao_tela')
+    .select('des_rota, des_nome_tela, ind_pode_acessar')
+    .in('des_role', roles);
+
+  if (error) {
+    console.error('Error fetching permissions:', error);
+    return [];
+  }
+
+  return (data || []) as ScreenPermission[];
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
+  
   // Auth state
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [isDataLoading, setIsDataLoading] = useState(false);
-  
-  // Roles state
-  const [roles, setRoles] = useState<AppRole[]>([]);
-  
-  // Permissions state
-  const [permissions, setPermissions] = useState<ScreenPermission[]>([]);
-  
-  // Loading is true during initial auth OR data load
-  const isLoading = isInitializing || isDataLoading;
+  const [isSessionLoading, setIsSessionLoading] = useState(true);
+  const [loadingStage, setLoadingStage] = useState<LoadingStage>('session');
+
+  // Roles query with React Query
+  const {
+    data: roles = [],
+    isLoading: isRolesLoading,
+    isFetching: isRolesFetching,
+  } = useQuery({
+    queryKey: [ROLES_QUERY_KEY, user?.id],
+    queryFn: async () => {
+      setLoadingStage('roles');
+      const result = await fetchUserRoles(user!.id);
+      return result;
+    },
+    enabled: !!user?.id && !isSessionLoading,
+    staleTime: STALE_TIME,
+    gcTime: STALE_TIME * 2,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 2,
+  });
 
   const isAdmin = roles.includes('admin');
   const isModerator = roles.includes('moderator') || isAdmin;
 
-  // Fetch roles for a user
-  const fetchRoles = useCallback(async (userId: string): Promise<AppRole[]> => {
-    try {
-      // Check cache
-      const cached = localStorage.getItem(ROLES_CACHE_KEY);
-      if (cached) {
-        const data = JSON.parse(cached);
-        if (data.userId === userId && Date.now() - data.timestamp < CACHE_DURATION) {
-          return data.roles as AppRole[];
-        }
-      }
+  // Permissions query with React Query
+  const {
+    data: permissions = [],
+    isLoading: isPermissionsLoading,
+    isFetching: isPermissionsFetching,
+  } = useQuery({
+    queryKey: [PERMISSIONS_QUERY_KEY, roles],
+    queryFn: async () => {
+      setLoadingStage('permissions');
+      const result = await fetchUserPermissions(roles);
+      setLoadingStage('complete');
+      return result;
+    },
+    enabled: !!user?.id && !isSessionLoading && !isRolesLoading && roles.length >= 0,
+    staleTime: STALE_TIME,
+    gcTime: STALE_TIME * 2,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 2,
+  });
 
-      const { data, error } = await supabase
-        .from('tab_usuario_role')
-        .select('des_role')
-        .eq('seq_usuario', userId);
+  // Combined loading state
+  const isLoading = useMemo(() => {
+    // Still loading session
+    if (isSessionLoading) return true;
+    
+    // No user = not loading
+    if (!user) return false;
+    
+    // Loading roles or permissions
+    if (isRolesLoading || isPermissionsLoading) return true;
+    
+    // Fetching in background but have data already
+    if ((isRolesFetching || isPermissionsFetching) && roles.length === 0) return true;
+    
+    return false;
+  }, [isSessionLoading, user, isRolesLoading, isPermissionsLoading, isRolesFetching, isPermissionsFetching, roles.length]);
 
-      if (error) throw error;
-
-      const fetchedRoles = (data || []).map((r) => r.des_role as AppRole);
-      
-      // Cache
-      localStorage.setItem(ROLES_CACHE_KEY, JSON.stringify({
-        userId,
-        roles: fetchedRoles,
-        timestamp: Date.now(),
-      }));
-
-      return fetchedRoles;
-    } catch (error) {
-      console.error('Error fetching roles:', error);
-      return [];
+  // Update loading stage when complete
+  useEffect(() => {
+    if (!isLoading && user) {
+      setLoadingStage('complete');
+    } else if (!isLoading && !user) {
+      setLoadingStage('idle');
     }
-  }, []);
+  }, [isLoading, user]);
 
-  // Fetch permissions based on roles
-  const fetchPermissions = useCallback(async (userRoles: AppRole[], userIsAdmin: boolean): Promise<ScreenPermission[]> => {
-    try {
-      // Admin has access to everything
-      if (userIsAdmin) {
-        return [];
-      }
-
-      // No roles
-      if (userRoles.length === 0) {
-        return [];
-      }
-
-      // Check cache
-      const cached = localStorage.getItem(PERMISSIONS_CACHE_KEY);
-      if (cached) {
-        const data = JSON.parse(cached);
-        if (
-          JSON.stringify(data.roles.sort()) === JSON.stringify(userRoles.sort()) &&
-          Date.now() - data.timestamp < CACHE_DURATION
-        ) {
-          return data.permissions as ScreenPermission[];
-        }
-      }
-
-      const { data, error } = await supabase
-        .from('tab_permissao_tela')
-        .select('des_rota, des_nome_tela, ind_pode_acessar')
-        .in('des_role', userRoles);
-
-      if (error) throw error;
-
-      const fetchedPermissions = (data || []) as ScreenPermission[];
-
-      // Cache
-      localStorage.setItem(PERMISSIONS_CACHE_KEY, JSON.stringify({
-        roles: userRoles,
-        permissions: fetchedPermissions,
-        timestamp: Date.now(),
-      }));
-
-      return fetchedPermissions;
-    } catch (error) {
-      console.error('Error fetching permissions:', error);
-      return [];
-    }
-  }, []);
-
-  // Load user data (roles and permissions)
-  const loadUserData = useCallback(async (userId: string) => {
-    setIsDataLoading(true);
-    try {
-      const userRoles = await fetchRoles(userId);
-      setRoles(userRoles);
-      const userIsAdmin = userRoles.includes('admin');
-      const userPermissions = await fetchPermissions(userRoles, userIsAdmin);
-      setPermissions(userPermissions);
-    } finally {
-      setIsDataLoading(false);
-    }
-  }, [fetchRoles, fetchPermissions]);
-
-  // Initialize auth and load data
+  // Initialize auth and set up listener
   useEffect(() => {
     let isMounted = true;
-    let isInitialized = false;
 
     const initializeAuth = async () => {
       try {
-        // Get the current session
+        setLoadingStage('session');
+        
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (!isMounted) return;
         
         if (error) {
           console.error('Error getting session:', error);
-          setIsInitializing(false);
-          isInitialized = true;
+          setIsSessionLoading(false);
+          setLoadingStage('idle');
           return;
         }
         
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
         
-        if (initialSession?.user) {
-          await loadUserData(initialSession.user.id);
-        } else {
-          setRoles([]);
-          setPermissions([]);
-          setIsDataLoading(false);
+        if (!initialSession?.user) {
+          setLoadingStage('idle');
         }
         
-        setIsInitializing(false);
-        isInitialized = true;
+        setIsSessionLoading(false);
       } catch (error) {
         console.error('Error initializing auth:', error);
         if (isMounted) {
-          setIsInitializing(false);
-          isInitialized = true;
+          setIsSessionLoading(false);
+          setLoadingStage('idle');
         }
       }
     };
 
-    // Initialize auth first
     initializeAuth();
 
-    // Set up auth state listener AFTER initialization starts
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
         if (!isMounted) return;
@@ -210,20 +213,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Handle specific events
         if (event === 'SIGNED_OUT') {
-          localStorage.removeItem(ROLES_CACHE_KEY);
-          localStorage.removeItem(PERMISSIONS_CACHE_KEY);
-          setRoles([]);
-          setPermissions([]);
-          setIsDataLoading(false);
-        } else if (event === 'SIGNED_IN' && newSession?.user && isInitialized) {
-          // Only reload data on SIGNED_IN if already initialized
-          // Use setTimeout to prevent deadlock
+          // Clear React Query cache
+          queryClient.removeQueries({ queryKey: [ROLES_QUERY_KEY] });
+          queryClient.removeQueries({ queryKey: [PERMISSIONS_QUERY_KEY] });
+          setLoadingStage('idle');
+        } else if (event === 'SIGNED_IN' && newSession?.user) {
+          // Invalidate and refetch on sign in
           setTimeout(() => {
             if (!isMounted) return;
-            loadUserData(newSession.user.id);
+            queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY, newSession.user.id] });
           }, 0);
         }
-        // Ignore TOKEN_REFRESHED and other events to prevent unnecessary reloads
       }
     );
 
@@ -231,7 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [loadUserData]);
+  }, [queryClient]);
 
   // Auth methods
   const signIn = useCallback(async (email: string, password: string) => {
@@ -281,32 +281,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [permissions]);
 
   const invalidateCache = useCallback(() => {
-    localStorage.removeItem(ROLES_CACHE_KEY);
-    localStorage.removeItem(PERMISSIONS_CACHE_KEY);
-    
     if (user) {
-      loadUserData(user.id);
+      queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY, user.id] });
+      queryClient.invalidateQueries({ queryKey: [PERMISSIONS_QUERY_KEY] });
     }
-  }, [user, loadUserData]);
+  }, [user, queryClient]);
+
+  const value = useMemo(() => ({
+    user,
+    session,
+    isAuthenticated: !!session,
+    isLoading,
+    loadingStage,
+    signIn,
+    signUp,
+    signOut,
+    roles,
+    isAdmin,
+    isModerator,
+    canAccess,
+    getScreenName,
+    invalidateCache,
+  }), [
+    user,
+    session,
+    isLoading,
+    loadingStage,
+    signIn,
+    signUp,
+    signOut,
+    roles,
+    isAdmin,
+    isModerator,
+    canAccess,
+    getScreenName,
+    invalidateCache,
+  ]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        isAuthenticated: !!session,
-        isLoading,
-        signIn,
-        signUp,
-        signOut,
-        roles,
-        isAdmin,
-        isModerator,
-        canAccess,
-        getScreenName,
-        invalidateCache,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
