@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Announcement } from '@/types/announcements';
+import { Announcement, ImagePosition } from '@/types/announcements';
 import { useNavigate } from 'react-router-dom';
 
 interface BannerCarouselProps {
@@ -52,6 +52,16 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   const currentBanner = banners[currentIndex];
   const bannerImageUrl = getOptimizedBannerUrl(currentBanner.imageUrl);
 
+  const getObjectPosition = (position?: ImagePosition): string => {
+    switch (position) {
+      case 'top': return 'object-top';
+      case 'bottom': return 'object-bottom';
+      case 'left': return 'object-left';
+      case 'right': return 'object-right';
+      default: return 'object-center';
+    }
+  };
+
   return (
     <div className="relative w-full rounded-2xl overflow-hidden bg-card border border-border shadow-lg">
       {/* Main Carousel Container - Fixed aspect ratio, image adapts to container */}
@@ -72,7 +82,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
             <img
               src={bannerImageUrl}
               alt={currentBanner.title}
-              className="absolute inset-0 w-full h-full object-cover"
+              className={`absolute inset-0 w-full h-full object-cover ${getObjectPosition(currentBanner.imagePosition)}`}
               loading="eager"
               decoding="async"
               onLoad={() => setImageLoaded(true)}

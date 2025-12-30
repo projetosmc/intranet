@@ -41,7 +41,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useDbAnnouncements } from '@/hooks/useDbAnnouncements';
-import { Announcement, TemplateType, PollType, PopupMode } from '@/types/announcements';
+import { Announcement, TemplateType, PollType, PopupMode, ImagePosition } from '@/types/announcements';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -56,6 +56,7 @@ type FormData = {
   active: boolean;
   templateType: TemplateType;
   imageUrl?: string;
+  imagePosition: ImagePosition;
   pollType?: PollType;
   pollOptions: string[];
   startDate?: string;
@@ -80,6 +81,7 @@ const initialFormData: FormData = {
   active: true,
   templateType: 'simple',
   imageUrl: undefined,
+  imagePosition: 'center',
   pollType: 'single',
   pollOptions: ['', ''],
   startDate: '',
@@ -140,6 +142,7 @@ export default function AdminAnnouncementsPage() {
       active: announcement.active,
       templateType: announcement.templateType,
       imageUrl: announcement.imageUrl,
+      imagePosition: announcement.imagePosition || 'center',
       pollType: announcement.pollType || 'single',
       pollOptions: announcement.pollOptions?.map((o) => o.optionText) || ['', ''],
       startDate: startDateTime ? startDateTime.toISOString().split('T')[0] : '',
@@ -243,6 +246,7 @@ export default function AdminAnnouncementsPage() {
       active: formData.active,
       templateType: formData.templateType,
       imageUrl: formData.imageUrl,
+      imagePosition: formData.imagePosition,
       pollType: formData.templateType === 'poll' ? formData.pollType : undefined,
       startDate,
       endDate,
@@ -596,6 +600,39 @@ export default function AdminAnnouncementsPage() {
                     <p className="text-sm text-destructive">{formErrors.imageUrl}</p>
                   )}
                 </div>
+
+                {/* Image Position - Only show for banners */}
+                {formData.templateType === 'banner' && formData.imageUrl && (
+                  <div className="space-y-2">
+                    <Label>Posicionamento Focal da Imagem</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Define qual parte da imagem ficará visível quando for recortada
+                    </p>
+                    <div className="grid grid-cols-5 gap-2">
+                      {([
+                        { value: 'center', label: 'Centro' },
+                        { value: 'top', label: 'Topo' },
+                        { value: 'bottom', label: 'Base' },
+                        { value: 'left', label: 'Esquerda' },
+                        { value: 'right', label: 'Direita' },
+                      ] as { value: ImagePosition; label: string }[]).map((pos) => (
+                        <button
+                          key={pos.value}
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, imagePosition: pos.value }))}
+                          className={cn(
+                            "p-2 text-xs rounded-lg border transition-all",
+                            formData.imagePosition === pos.value
+                              ? "border-primary bg-primary/10 text-primary font-medium"
+                              : "border-border hover:border-primary/50"
+                          )}
+                        >
+                          {pos.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Poll Options */}
                 {formData.templateType === 'poll' && (
