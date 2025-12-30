@@ -22,6 +22,7 @@ interface AuthContextType {
   loadingStage: LoadingStage;
   hasTimedOut: boolean;
   hasError: boolean;
+  isRevalidating: boolean; // True when revalidating in background after using cache
   signIn: (email: string, password: string) => Promise<{ error: unknown }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: unknown }>;
   signOut: () => Promise<void>;
@@ -154,6 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Try to restore from cache immediately for faster initial render
   const cachedData = useRef(getCachedSession());
   const cachedRoles = useRef(getCachedRoles());
+  const usedCacheOnInit = useRef(!!cachedData.current);
   
   // Auth state - initialize from cache if available
   const [user, setUser] = useState<User | null>(cachedData.current?.user ?? null);
@@ -164,6 +166,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Track if initial data fetch is complete - start as loaded if we have cached roles
   const [rolesLoaded, setRolesLoaded] = useState(!!cachedRoles.current);
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
+  
+  // Revalidation state - true when we used cache and are refreshing in background
+  const [isRevalidating, setIsRevalidating] = useState(usedCacheOnInit.current);
   
   // Timeout and error states
   const [hasTimedOut, setHasTimedOut] = useState(false);
@@ -310,9 +315,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoadingStage('complete');
       // Cache session and roles for faster next load
       cacheSession(user, session, roles);
+      // Stop revalidation indicator when data is fresh
+      setIsRevalidating(false);
     } else if (!isLoading && !user && isSessionChecked) {
       setLoadingStage('idle');
       clearSessionCache();
+      setIsRevalidating(false);
     }
   }, [isLoading, user, session, roles, isSessionChecked, hasTimedOut, hasError]);
 
@@ -453,6 +461,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadingStage,
     hasTimedOut,
     hasError,
+    isRevalidating,
     signIn,
     signUp,
     signOut,
@@ -470,6 +479,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadingStage,
     hasTimedOut,
     hasError,
+    isRevalidating,
     signIn,
     signUp,
     signOut,

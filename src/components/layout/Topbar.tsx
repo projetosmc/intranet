@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, User, LogOut, CheckCheck, Trash2 } from 'lucide-react';
+import { Bell, User, LogOut, CheckCheck, Trash2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -19,7 +19,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useUser } from '@/contexts/UserContext';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useNotificationsSystem } from '@/hooks/useNotificationsSystem';
 import { cn } from '@/lib/utils';
@@ -28,6 +35,7 @@ import { ptBR } from 'date-fns/locale';
 
 export function Topbar() {
   const { user, signOut } = useUser();
+  const { isRevalidating } = useAuthContext();
   const { profile } = useUserProfile();
   const navigate = useNavigate();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -62,6 +70,29 @@ export function Topbar() {
       <div className="flex items-center justify-end h-full px-6">
         {/* Right Side Actions */}
         <div className="flex items-center gap-2">
+
+          {/* Revalidation Indicator - subtle spinning icon when refreshing cached data */}
+          <AnimatePresence>
+            {isRevalidating && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="flex items-center justify-center"
+                    >
+                      <RefreshCw className="h-4 w-4 text-muted-foreground/60 animate-spin" />
+                    </motion.div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p className="text-xs">Atualizando dados...</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </AnimatePresence>
 
           {/* Theme Toggle - Animated */}
           <AnimatedThemeToggler />
