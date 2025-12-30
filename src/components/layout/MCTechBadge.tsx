@@ -8,7 +8,7 @@ interface MCTechBadgeProps {
 export function MCTechBadge({ className }: MCTechBadgeProps) {
   return (
     <a
-      href="https://mctech.com.br"
+      href="https://www.redemontecarlo.com.br"
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
