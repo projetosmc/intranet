@@ -3,6 +3,8 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthContext, LoadingStage } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
+import { RefreshCw, AlertCircle, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import loadingIcon from '@/assets/loading-icon.png';
 
 interface AdminRouteProps {
@@ -15,16 +17,18 @@ const stageMessages: Record<LoadingStage, string> = {
   roles: 'Verificando administrador...',
   permissions: 'Carregando permissões...',
   complete: 'Pronto!',
+  timeout: 'Tempo esgotado',
+  error: 'Erro ao carregar',
 };
 
 export function AdminRoute({ children }: AdminRouteProps) {
-  const { isAuthenticated, isLoading, loadingStage, isAdmin } = useAuthContext();
+  const { isAuthenticated, isLoading, loadingStage, isAdmin, hasTimedOut, hasError, retryLoading } = useAuthContext();
   const { toast } = useToast();
   const location = useLocation();
   const hasShownToast = useRef(false);
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated && !isAdmin && !hasShownToast.current) {
+    if (!isLoading && isAuthenticated && !isAdmin && !hasShownToast.current && !hasTimedOut && !hasError) {
       hasShownToast.current = true;
       toast({
         title: 'Acesso negado',
@@ -32,7 +36,7 @@ export function AdminRoute({ children }: AdminRouteProps) {
         variant: 'destructive',
       });
     }
-  }, [isLoading, isAuthenticated, isAdmin, toast]);
+  }, [isLoading, isAuthenticated, isAdmin, toast, hasTimedOut, hasError]);
 
   // Reset toast flag when navigating away
   useEffect(() => {
@@ -40,6 +44,45 @@ export function AdminRoute({ children }: AdminRouteProps) {
       hasShownToast.current = false;
     };
   }, [location.pathname]);
+
+  // Show timeout/error state with retry button
+  if (hasTimedOut || hasError) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center gap-4 max-w-md text-center px-4"
+        >
+          {hasTimedOut ? (
+            <Clock className="w-12 h-12 text-amber-500" />
+          ) : (
+            <AlertCircle className="w-12 h-12 text-destructive" />
+          )}
+          
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold text-foreground">
+              {hasTimedOut ? 'Carregamento demorou muito' : 'Erro ao carregar dados'}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {hasTimedOut 
+                ? 'A conexão está lenta ou houve um problema de rede. Tente novamente.'
+                : 'Não foi possível carregar suas informações. Verifique sua conexão e tente novamente.'}
+            </p>
+          </div>
+          
+          <Button 
+            onClick={retryLoading}
+            variant="default"
+            className="gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Tentar novamente
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

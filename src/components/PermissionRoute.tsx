@@ -3,6 +3,8 @@ import { useAuthContext, LoadingStage } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { RefreshCw, AlertCircle, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import loadingIcon from '@/assets/loading-icon.png';
 
 interface PermissionRouteProps {
@@ -15,6 +17,8 @@ const stageMessages: Record<LoadingStage, string> = {
   roles: 'Carregando perfis...',
   permissions: 'Verificando permissões...',
   complete: 'Pronto!',
+  timeout: 'Tempo esgotado',
+  error: 'Erro ao carregar',
 };
 
 /**
@@ -24,15 +28,15 @@ const stageMessages: Record<LoadingStage, string> = {
  * tem acesso à rota atual baseado em seus perfis (roles)
  */
 export function PermissionRoute({ children }: PermissionRouteProps) {
-  const { isAuthenticated, isLoading, loadingStage, canAccess, getScreenName } = useAuthContext();
+  const { isAuthenticated, isLoading, loadingStage, canAccess, getScreenName, hasTimedOut, hasError, retryLoading } = useAuthContext();
   const { toast } = useToast();
   const location = useLocation();
   const hasShownToast = useRef(false);
 
-  const hasAccess = !isLoading && isAuthenticated ? canAccess(location.pathname) : true;
+  const hasAccess = !isLoading && isAuthenticated && !hasTimedOut && !hasError ? canAccess(location.pathname) : true;
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated && !hasAccess && !hasShownToast.current) {
+    if (!isLoading && isAuthenticated && !hasAccess && !hasShownToast.current && !hasTimedOut && !hasError) {
       hasShownToast.current = true;
       const screenName = getScreenName(location.pathname);
       toast({
@@ -43,7 +47,7 @@ export function PermissionRoute({ children }: PermissionRouteProps) {
         variant: 'destructive',
       });
     }
-  }, [isLoading, isAuthenticated, hasAccess, toast, getScreenName, location.pathname]);
+  }, [isLoading, isAuthenticated, hasAccess, toast, getScreenName, location.pathname, hasTimedOut, hasError]);
 
   // Reset toast flag quando navegar para outra página
   useEffect(() => {
@@ -51,6 +55,45 @@ export function PermissionRoute({ children }: PermissionRouteProps) {
       hasShownToast.current = false;
     };
   }, [location.pathname]);
+
+  // Show timeout/error state with retry button
+  if (hasTimedOut || hasError) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center gap-4 max-w-md text-center px-4"
+        >
+          {hasTimedOut ? (
+            <Clock className="w-12 h-12 text-amber-500" />
+          ) : (
+            <AlertCircle className="w-12 h-12 text-destructive" />
+          )}
+          
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold text-foreground">
+              {hasTimedOut ? 'Carregamento demorou muito' : 'Erro ao carregar dados'}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {hasTimedOut 
+                ? 'A conexão está lenta ou houve um problema de rede. Tente novamente.'
+                : 'Não foi possível carregar suas informações. Verifique sua conexão e tente novamente.'}
+            </p>
+          </div>
+          
+          <Button 
+            onClick={retryLoading}
+            variant="default"
+            className="gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Tentar novamente
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
 
   // Loading state with progress indicator
   if (isLoading) {
