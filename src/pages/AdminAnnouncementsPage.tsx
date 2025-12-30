@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Pencil, Trash2, Pin, PinOff, Eye, EyeOff, Upload, Image, FileText, BarChart3, X, Users, Clock, CalendarClock, MessageCircle, AlertTriangle, Bell, Move } from 'lucide-react';
+import { Plus, Pencil, Trash2, Pin, PinOff, Eye, EyeOff, Upload, Image, FileText, BarChart3, X, Users, Clock, CalendarClock, MessageCircle, AlertTriangle, Bell, Move, Crop } from 'lucide-react';
+import { BannerCropModal } from '@/components/announcements/BannerCropModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -120,6 +121,10 @@ export default function AdminAnnouncementsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Estados para crop modal
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [tempImageSrc, setTempImageSrc] = useState<string | null>(null);
 
   const handleOpenCreate = () => {
     setEditingId(null);
@@ -170,11 +175,54 @@ export default function AdminAnnouncementsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Se for banner, mostra opção de crop
+    if (formData.templateType === 'banner') {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setTempImageSrc(reader.result as string);
+        setIsCropModalOpen(true);
+      };
+      reader.readAsDataURL(file);
+      // Limpa o input para permitir reselecionar o mesmo arquivo
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    // Para outros tipos, faz upload direto
     setIsUploading(true);
     const url = await uploadImage(file);
     if (url) {
       setFormData((prev) => ({ ...prev, imageUrl: url }));
     }
+    setIsUploading(false);
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setIsUploading(true);
+    const file = new File([croppedBlob], 'banner-cropped.jpg', { type: 'image/jpeg' });
+    const url = await uploadImage(file);
+    if (url) {
+      setFormData((prev) => ({ ...prev, imageUrl: url, imagePosition: 'center' }));
+    }
+    setTempImageSrc(null);
+    setIsUploading(false);
+  };
+
+  const handleSkipCrop = async () => {
+    if (!tempImageSrc) return;
+    
+    // Converter data URL para blob e fazer upload
+    setIsUploading(true);
+    setIsCropModalOpen(false);
+    
+    const response = await fetch(tempImageSrc);
+    const blob = await response.blob();
+    const file = new File([blob], 'banner-original.jpg', { type: blob.type || 'image/jpeg' });
+    const url = await uploadImage(file);
+    if (url) {
+      setFormData((prev) => ({ ...prev, imageUrl: url }));
+    }
+    setTempImageSrc(null);
     setIsUploading(false);
   };
 
@@ -568,14 +616,29 @@ export default function AdminAnnouncementsPage() {
                         alt="Preview"
                         className="w-full h-40 object-cover"
                       />
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-2 right-2"
-                        onClick={() => setFormData((prev) => ({ ...prev, imageUrl: undefined }))}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        {formData.templateType === 'banner' && (
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="bg-black/50 hover:bg-black/70 text-white backdrop-blur-sm"
+                            onClick={() => {
+                              setTempImageSrc(formData.imageUrl!);
+                              setIsCropModalOpen(true);
+                            }}
+                            title="Ajustar recorte"
+                          >
+                            <Crop className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => setFormData((prev) => ({ ...prev, imageUrl: undefined }))}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <Button
@@ -1023,6 +1086,20 @@ export default function AdminAnnouncementsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Banner Crop Modal */}
+      {tempImageSrc && (
+        <BannerCropModal
+          open={isCropModalOpen}
+          onOpenChange={(open) => {
+            setIsCropModalOpen(open);
+            if (!open) setTempImageSrc(null);
+          }}
+          imageSrc={tempImageSrc}
+          onCropComplete={handleCropComplete}
+          onSkipCrop={handleSkipCrop}
+        />
+      )}
     </div>
   );
 }
