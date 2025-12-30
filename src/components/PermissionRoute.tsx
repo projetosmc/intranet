@@ -2,6 +2,8 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { LoadingIcon } from '@/components/layout/GlobalLoadingIndicator';
 
 interface PermissionRouteProps {
   children: React.ReactNode;
@@ -42,9 +44,20 @@ export function PermissionRoute({ children }: PermissionRouteProps) {
     };
   }, [location.pathname]);
 
-  // Aguarda o carregamento completar
+  // Aguarda o carregamento completar - mostra loading spinner
   if (isLoading) {
-    return null; // Parent ProtectedRoute já mostra loading
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex flex-col items-center gap-3"
+        >
+          <LoadingIcon size="lg" />
+          <span className="text-sm text-muted-foreground">Verificando permissões...</span>
+        </motion.div>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
