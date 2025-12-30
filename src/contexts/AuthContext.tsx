@@ -94,16 +94,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSessionChecked, setIsSessionChecked] = useState(false);
   const [loadingStage, setLoadingStage] = useState<LoadingStage>('session');
 
+  // Track if initial data fetch is complete
+  const [rolesLoaded, setRolesLoaded] = useState(false);
+  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
+
+  // Reset loaded flags when user changes
+  useEffect(() => {
+    if (!user) {
+      setRolesLoaded(false);
+      setPermissionsLoaded(false);
+    }
+  }, [user]);
+
   // Roles query with React Query
   const {
     data: roles = [],
     isLoading: isRolesLoading,
-    isFetching: isRolesFetching,
   } = useQuery({
     queryKey: [ROLES_QUERY_KEY, user?.id],
     queryFn: async () => {
       setLoadingStage('roles');
       const result = await fetchUserRoles(user!.id);
+      setRolesLoaded(true);
       return result;
     },
     enabled: !!user?.id && isSessionChecked,
@@ -121,16 +133,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const {
     data: permissions = [],
     isLoading: isPermissionsLoading,
-    isFetching: isPermissionsFetching,
   } = useQuery({
     queryKey: [PERMISSIONS_QUERY_KEY, roles],
     queryFn: async () => {
       setLoadingStage('permissions');
       const result = await fetchUserPermissions(roles);
+      setPermissionsLoaded(true);
       setLoadingStage('complete');
       return result;
     },
-    enabled: !!user?.id && isSessionChecked && !isRolesLoading && roles.length >= 0,
+    enabled: !!user?.id && isSessionChecked && rolesLoaded,
     staleTime: STALE_TIME,
     gcTime: STALE_TIME * 2,
     refetchOnWindowFocus: false,
@@ -146,14 +158,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // No user after checking = definitely not authenticated, stop loading
     if (!user) return false;
     
-    // Have user, now wait for roles and permissions
-    if (isRolesLoading || isPermissionsLoading) return true;
+    // User exists - wait for roles to be loaded
+    if (!rolesLoaded || isRolesLoading) return true;
     
-    // Initial fetch with no data yet
-    if ((isRolesFetching || isPermissionsFetching) && roles.length === 0) return true;
+    // Roles loaded - wait for permissions to be loaded
+    if (!permissionsLoaded || isPermissionsLoading) return true;
     
     return false;
-  }, [isSessionChecked, user, isRolesLoading, isPermissionsLoading, isRolesFetching, isPermissionsFetching, roles.length]);
+  }, [isSessionChecked, user, rolesLoaded, isRolesLoading, permissionsLoaded, isPermissionsLoading]);
 
   // Update loading stage when complete
   useEffect(() => {
@@ -214,9 +226,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Handle specific events
         if (event === 'SIGNED_OUT') {
-          // Clear React Query cache
+          // Clear React Query cache and reset flags
           queryClient.removeQueries({ queryKey: [ROLES_QUERY_KEY] });
           queryClient.removeQueries({ queryKey: [PERMISSIONS_QUERY_KEY] });
+          setRolesLoaded(false);
+          setPermissionsLoaded(false);
           setLoadingStage('idle');
         } else if (event === 'SIGNED_IN' && newSession?.user) {
           // Invalidate and refetch on sign in
