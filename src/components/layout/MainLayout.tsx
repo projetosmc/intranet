@@ -6,6 +6,7 @@ import { PageTransition } from './PageTransition';
 import { GlobalLoadingIndicator } from './GlobalLoadingIndicator';
 import { GlobalLoadingProvider, useGlobalLoading } from '@/contexts/GlobalLoadingContext';
 import { UrgentAnnouncementPopup } from '@/components/announcements/UrgentAnnouncementPopup';
+import { MCTechBadge } from './MCTechBadge';
 
 function MainLayoutContent() {
   const location = useLocation();
@@ -33,6 +34,8 @@ function MainLayoutContent() {
           </AnimatePresence>
         </main>
       </div>
+      
+      <MCTechBadge />
     </div>
   );
 }
