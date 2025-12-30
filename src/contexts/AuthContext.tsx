@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Auth state
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [isSessionLoading, setIsSessionLoading] = useState(true);
+  const [isSessionChecked, setIsSessionChecked] = useState(false);
   const [loadingStage, setLoadingStage] = useState<LoadingStage>('session');
 
   // Roles query with React Query
@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result = await fetchUserRoles(user!.id);
       return result;
     },
-    enabled: !!user?.id && !isSessionLoading,
+    enabled: !!user?.id && isSessionChecked,
     staleTime: STALE_TIME,
     gcTime: STALE_TIME * 2,
     refetchOnWindowFocus: false,
@@ -130,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoadingStage('complete');
       return result;
     },
-    enabled: !!user?.id && !isSessionLoading && !isRolesLoading && roles.length >= 0,
+    enabled: !!user?.id && isSessionChecked && !isRolesLoading && roles.length >= 0,
     staleTime: STALE_TIME,
     gcTime: STALE_TIME * 2,
     refetchOnWindowFocus: false,
@@ -138,31 +138,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     retry: 2,
   });
 
-  // Combined loading state
+  // Combined loading state - CRITICAL: only false when we KNOW the auth state
   const isLoading = useMemo(() => {
-    // Still loading session
-    if (isSessionLoading) return true;
+    // Haven't checked session yet - MUST wait
+    if (!isSessionChecked) return true;
     
-    // No user = not loading
+    // No user after checking = definitely not authenticated, stop loading
     if (!user) return false;
     
-    // Loading roles or permissions
+    // Have user, now wait for roles and permissions
     if (isRolesLoading || isPermissionsLoading) return true;
     
-    // Fetching in background but have data already
+    // Initial fetch with no data yet
     if ((isRolesFetching || isPermissionsFetching) && roles.length === 0) return true;
     
     return false;
-  }, [isSessionLoading, user, isRolesLoading, isPermissionsLoading, isRolesFetching, isPermissionsFetching, roles.length]);
+  }, [isSessionChecked, user, isRolesLoading, isPermissionsLoading, isRolesFetching, isPermissionsFetching, roles.length]);
 
   // Update loading stage when complete
   useEffect(() => {
     if (!isLoading && user) {
       setLoadingStage('complete');
-    } else if (!isLoading && !user) {
+    } else if (!isLoading && !user && isSessionChecked) {
       setLoadingStage('idle');
     }
-  }, [isLoading, user]);
+  }, [isLoading, user, isSessionChecked]);
 
   // Initialize auth and set up listener
   useEffect(() => {
@@ -178,7 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (error) {
           console.error('Error getting session:', error);
-          setIsSessionLoading(false);
+          setIsSessionChecked(true);
           setLoadingStage('idle');
           return;
         }
@@ -190,11 +190,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoadingStage('idle');
         }
         
-        setIsSessionLoading(false);
+        // Mark session as checked AFTER setting user/session
+        setIsSessionChecked(true);
       } catch (error) {
         console.error('Error initializing auth:', error);
         if (isMounted) {
-          setIsSessionLoading(false);
+          setIsSessionChecked(true);
           setLoadingStage('idle');
         }
       }
