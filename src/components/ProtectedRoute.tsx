@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
+import loadingIcon from '@/assets/loading-icon.png';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -18,18 +19,20 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
           animate={{ opacity: 1, scale: 1 }}
           className="flex flex-col items-center gap-4"
         >
-          <div className="relative">
-            <motion.div
-              className="h-16 w-16 rounded-full border-4 border-primary/20"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            />
-            <motion.div
-              className="absolute inset-0 h-16 w-16 rounded-full border-4 border-transparent border-t-primary"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            />
-          </div>
+          <motion.img
+            src={loadingIcon}
+            alt="Carregando"
+            className="w-16 h-16 object-contain"
+            animate={{
+              opacity: [0.4, 1, 0.4],
+              scale: [0.9, 1.1, 0.9],
+            }}
+            transition={{
+              duration: 1.5,
+              ease: "easeInOut",
+              repeat: Infinity,
+            }}
+          />
           <motion.p
             className="text-muted-foreground font-medium"
             animate={{ opacity: [0.5, 1, 0.5] }}
