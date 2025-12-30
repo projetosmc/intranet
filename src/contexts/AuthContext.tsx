@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useMemo, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +11,7 @@ interface ScreenPermission {
   ind_pode_acessar: boolean;
 }
 
-export type LoadingStage = 'idle' | 'session' | 'roles' | 'permissions' | 'complete';
+export type LoadingStage = 'idle' | 'session' | 'roles' | 'permissions' | 'complete' | 'timeout' | 'error';
 
 interface AuthContextType {
   // Auth
@@ -20,6 +20,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   loadingStage: LoadingStage;
+  hasTimedOut: boolean;
+  hasError: boolean;
   signIn: (email: string, password: string) => Promise<{ error: unknown }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: unknown }>;
   signOut: () => Promise<void>;
@@ -33,8 +35,9 @@ interface AuthContextType {
   canAccess: (route: string) => boolean;
   getScreenName: (route: string) => string | null;
   
-  // Cache
+  // Cache & Retry
   invalidateCache: () => void;
+  retryLoading: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -97,19 +100,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Track if initial data fetch is complete
   const [rolesLoaded, setRolesLoaded] = useState(false);
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
+  
+  // Timeout and error states
+  const [hasTimedOut, setHasTimedOut] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const loadingStartTime = useRef<number>(Date.now());
+  const LOADING_TIMEOUT = 10000; // 10 seconds
 
   // Reset loaded flags when user changes
   useEffect(() => {
     if (!user) {
       setRolesLoaded(false);
       setPermissionsLoaded(false);
+      setHasTimedOut(false);
+      setHasError(false);
     }
   }, [user]);
+
+  // Timeout effect - triggers after 10 seconds of loading
+  useEffect(() => {
+    if (!isSessionChecked || !user) return;
+    
+    loadingStartTime.current = Date.now();
+    setHasTimedOut(false);
+    
+    const checkTimeout = setInterval(() => {
+      if (rolesLoaded && permissionsLoaded) {
+        clearInterval(checkTimeout);
+        return;
+      }
+      
+      const elapsed = Date.now() - loadingStartTime.current;
+      if (elapsed >= LOADING_TIMEOUT) {
+        setHasTimedOut(true);
+        setLoadingStage('timeout');
+        clearInterval(checkTimeout);
+      }
+    }, 1000);
+    
+    return () => clearInterval(checkTimeout);
+  }, [isSessionChecked, user, rolesLoaded, permissionsLoaded]);
 
   // Roles query with React Query
   const {
     data: roles = [],
     isLoading: isRolesLoading,
+    isError: isRolesError,
+    refetch: refetchRoles,
   } = useQuery({
     queryKey: [ROLES_QUERY_KEY, user?.id],
     queryFn: async () => {
@@ -118,12 +155,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRolesLoaded(true);
       return result;
     },
-    enabled: !!user?.id && isSessionChecked,
+    enabled: !!user?.id && isSessionChecked && !hasTimedOut,
     staleTime: STALE_TIME,
     gcTime: STALE_TIME * 2,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
-    retry: 2,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   });
 
   const isAdmin = roles.includes('admin');
@@ -133,6 +171,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const {
     data: permissions = [],
     isLoading: isPermissionsLoading,
+    isError: isPermissionsError,
+    refetch: refetchPermissions,
   } = useQuery({
     queryKey: [PERMISSIONS_QUERY_KEY, roles],
     queryFn: async () => {
@@ -142,16 +182,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoadingStage('complete');
       return result;
     },
-    enabled: !!user?.id && isSessionChecked && rolesLoaded,
+    enabled: !!user?.id && isSessionChecked && rolesLoaded && !hasTimedOut,
     staleTime: STALE_TIME,
     gcTime: STALE_TIME * 2,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
-    retry: 2,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   });
+
+  // Track errors
+  useEffect(() => {
+    if (isRolesError || isPermissionsError) {
+      setHasError(true);
+      setLoadingStage('error');
+    }
+  }, [isRolesError, isPermissionsError]);
+
+  // Retry function
+  const retryLoading = useCallback(() => {
+    setHasTimedOut(false);
+    setHasError(false);
+    setRolesLoaded(false);
+    setPermissionsLoaded(false);
+    loadingStartTime.current = Date.now();
+    setLoadingStage('roles');
+    
+    // Clear cache and refetch
+    queryClient.removeQueries({ queryKey: [ROLES_QUERY_KEY] });
+    queryClient.removeQueries({ queryKey: [PERMISSIONS_QUERY_KEY] });
+    
+    if (user) {
+      setTimeout(() => {
+        refetchRoles();
+      }, 100);
+    }
+  }, [user, queryClient, refetchRoles]);
 
   // Combined loading state - CRITICAL: only false when we KNOW the auth state
   const isLoading = useMemo(() => {
+    // Timeout or error - stop loading to show error state
+    if (hasTimedOut || hasError) return false;
+    
     // Haven't checked session yet - MUST wait
     if (!isSessionChecked) return true;
     
@@ -165,16 +237,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!permissionsLoaded || isPermissionsLoading) return true;
     
     return false;
-  }, [isSessionChecked, user, rolesLoaded, isRolesLoading, permissionsLoaded, isPermissionsLoading]);
+  }, [isSessionChecked, user, rolesLoaded, isRolesLoading, permissionsLoaded, isPermissionsLoading, hasTimedOut, hasError]);
 
   // Update loading stage when complete
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading && user && !hasTimedOut && !hasError) {
       setLoadingStage('complete');
     } else if (!isLoading && !user && isSessionChecked) {
       setLoadingStage('idle');
     }
-  }, [isLoading, user, isSessionChecked]);
+  }, [isLoading, user, isSessionChecked, hasTimedOut, hasError]);
 
   // Initialize auth and set up listener
   useEffect(() => {
@@ -308,6 +380,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: !!session,
     isLoading,
     loadingStage,
+    hasTimedOut,
+    hasError,
     signIn,
     signUp,
     signOut,
@@ -317,11 +391,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     canAccess,
     getScreenName,
     invalidateCache,
+    retryLoading,
   }), [
     user,
     session,
     isLoading,
     loadingStage,
+    hasTimedOut,
+    hasError,
     signIn,
     signUp,
     signOut,
@@ -331,6 +408,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     canAccess,
     getScreenName,
     invalidateCache,
+    retryLoading,
   ]);
 
   return (
