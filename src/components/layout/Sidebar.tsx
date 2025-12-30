@@ -69,7 +69,7 @@ interface CachedKBArticle {
 }
 
 const MENU_CACHE_KEY = 'mc_hub_menu_cache';
-const MENU_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours - only refreshes on login
+const MENU_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes - shorter cache for better responsiveness
 
 interface MenuCache {
   items: DbMenuItem[];
@@ -140,8 +140,28 @@ export function Sidebar() {
     };
     
     window.addEventListener('menu-cache-cleared', handleMenuCacheCleared);
+    
+    // Subscribe to realtime changes on tab_menu_item
+    const channel = supabase
+      .channel('menu-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tab_menu_item'
+        },
+        () => {
+          console.log('[Sidebar] Menu item changed, refreshing...');
+          clearMenuCache();
+          fetchMenuItems(true);
+        }
+      )
+      .subscribe();
+    
     return () => {
       window.removeEventListener('menu-cache-cleared', handleMenuCacheCleared);
+      supabase.removeChannel(channel);
     };
   }, []);
 
