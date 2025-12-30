@@ -1,6 +1,7 @@
 export type TemplateType = 'simple' | 'banner' | 'poll';
 export type PollType = 'single' | 'multiple';
 export type PopupMode = 'imediato' | 'proximo_login';
+export type ImagePosition = 'center' | 'top' | 'bottom' | 'left' | 'right';
 
 export interface PollOption {
   id: string;
@@ -49,4 +50,5 @@ export interface Announcement {
   isUrgent?: boolean;
   isPopup?: boolean;
   popupMode?: PopupMode;
+  imagePosition?: ImagePosition;
 }

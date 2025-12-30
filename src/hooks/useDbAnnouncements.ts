@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Announcement, PollOption, TemplateType, PollType, AnnouncementAuthor, PopupMode } from '@/types/announcements';
+import { Announcement, PollOption, TemplateType, PollType, AnnouncementAuthor, PopupMode, ImagePosition } from '@/types/announcements';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -122,6 +122,7 @@ export function useDbAnnouncements() {
             isUrgent: item.ind_urgente ?? false,
             isPopup: item.ind_popup ?? false,
             popupMode: (item.des_popup_modo as PopupMode) || 'proximo_login',
+            imagePosition: (item.des_posicao_imagem as ImagePosition) || 'center',
           };
         })
       );
@@ -196,6 +197,7 @@ export function useDbAnnouncements() {
           ind_urgente: announcement.isUrgent ?? false,
           ind_popup: announcement.isPopup ?? false,
           des_popup_modo: announcement.popupMode || 'proximo_login',
+          des_posicao_imagem: announcement.imagePosition || 'center',
         })
         .select()
         .single();
@@ -255,6 +257,7 @@ export function useDbAnnouncements() {
       if (updates.isUrgent !== undefined) dbUpdates.ind_urgente = updates.isUrgent;
       if (updates.isPopup !== undefined) dbUpdates.ind_popup = updates.isPopup;
       if (updates.popupMode !== undefined) dbUpdates.des_popup_modo = updates.popupMode;
+      if (updates.imagePosition !== undefined) dbUpdates.des_posicao_imagem = updates.imagePosition;
 
       const { error } = await supabase
         .from('tab_comunicado')
