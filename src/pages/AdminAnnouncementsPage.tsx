@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Pencil, Trash2, Pin, PinOff, Eye, EyeOff, Upload, Image, FileText, BarChart3, X, Users, Clock, CalendarClock, MessageCircle, AlertTriangle, Bell } from 'lucide-react';
+import { Plus, Pencil, Trash2, Pin, PinOff, Eye, EyeOff, Upload, Image, FileText, BarChart3, X, Users, Clock, CalendarClock, MessageCircle, AlertTriangle, Bell, Move } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -47,6 +47,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { announcementSchema, validateForm, type AnnouncementFormData } from '@/lib/validations';
 import { toast } from '@/hooks/use-toast';
+import { LoadingIcon } from '@/components/layout/GlobalLoadingIndicator';
 
 type FormData = {
   title: string;
@@ -587,7 +588,7 @@ export default function AdminAnnouncementsPage() {
                       disabled={isUploading}
                     >
                       {isUploading ? (
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+                        <LoadingIcon size="md" />
                       ) : (
                         <>
                           <Upload className="h-6 w-6" />
@@ -603,11 +604,43 @@ export default function AdminAnnouncementsPage() {
 
                 {/* Image Position - Only show for banners */}
                 {formData.templateType === 'banner' && formData.imageUrl && (
-                  <div className="space-y-2">
-                    <Label>Posicionamento Focal da Imagem</Label>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Move className="h-4 w-4 text-muted-foreground" />
+                      <Label>Posicionamento Focal da Imagem</Label>
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       Define qual parte da imagem ficará visível quando for recortada
                     </p>
+                    
+                    {/* Preview do posicionamento */}
+                    <div className="relative rounded-xl overflow-hidden border border-border bg-muted">
+                      <div className="relative w-full h-0 pb-[33.33%]">
+                        <img
+                          src={formData.imageUrl}
+                          alt="Preview posicionamento"
+                          className={cn(
+                            "absolute inset-0 w-full h-full object-cover transition-all duration-300",
+                            formData.imagePosition === 'top' && 'object-top',
+                            formData.imagePosition === 'bottom' && 'object-bottom',
+                            formData.imagePosition === 'left' && 'object-left',
+                            formData.imagePosition === 'right' && 'object-right',
+                            formData.imagePosition === 'center' && 'object-center'
+                          )}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                        <div className="absolute bottom-2 left-2 text-white text-xs font-medium px-2 py-1 bg-black/50 rounded">
+                          Preview: {
+                            formData.imagePosition === 'center' ? 'Centro' :
+                            formData.imagePosition === 'top' ? 'Topo' :
+                            formData.imagePosition === 'bottom' ? 'Base' :
+                            formData.imagePosition === 'left' ? 'Esquerda' : 'Direita'
+                          }
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Botões de seleção */}
                     <div className="grid grid-cols-5 gap-2">
                       {([
                         { value: 'center', label: 'Centro' },
