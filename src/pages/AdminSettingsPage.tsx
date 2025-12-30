@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Settings, Plus, Pencil, Trash2, GripVertical, ExternalLink, Menu, FileText, ChevronDown, ChevronRight, Link, FolderOpen, Tag, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -542,7 +542,25 @@ export default function AdminSettingsPage() {
     });
   };
 
-  const SortableMenuItem = ({ item, isChild = false }: { item: MenuItem; isChild?: boolean }) => {
+  // Função para obter o caminho hierárquico completo de um menu
+  const getMenuPath = (item: MenuItem): string => {
+    const path: string[] = [item.des_nome];
+    let currentParentId = item.seq_menu_pai;
+    
+    while (currentParentId) {
+      const parent = menuItems.find(m => m.cod_menu_item === currentParentId);
+      if (parent) {
+        path.unshift(parent.des_nome);
+        currentParentId = parent.seq_menu_pai;
+      } else {
+        break;
+      }
+    }
+    
+    return path.join(' → ');
+  };
+
+  const SortableMenuItem = ({ item, depth = 0 }: { item: MenuItem; depth?: number }) => {
     const {
       attributes,
       listeners,
@@ -556,126 +574,187 @@ export default function AdminSettingsPage() {
     const children = menuItems.filter(m => m.seq_menu_pai === item.cod_menu_item);
     const childCount = children.length;
     const activeChildCount = children.filter(c => c.ind_ativo).length;
-    const hasChildren = !isChild && childCount > 0;
+    const hasChildren = childCount > 0;
     const isExpanded = expandedMenus.has(item.cod_menu_item);
+    const isChild = depth > 0;
+    
+    // Obter nome do menu pai para submenus
+    const parentMenu = item.seq_menu_pai 
+      ? menuItems.find(m => m.cod_menu_item === item.seq_menu_pai) 
+      : null;
 
     const style = {
       transform: CSS.Transform.toString(transform),
       transition: transition || 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1)',
     };
 
+    const indentPadding = 12 + (depth * 24); // Padding progressivo baseado na profundidade
+
     return (
-      <motion.div
-        ref={setNodeRef}
-        style={style}
-        initial={false}
-        animate={{
-          scale: isDragging ? 1.02 : 1,
-          boxShadow: isDragging ? '0 10px 40px rgba(0,0,0,0.15)' : 'none',
-          opacity: isDragging ? 0.9 : 1,
-        }}
-        transition={{ duration: 0.2 }}
-        className={`flex items-center gap-3 p-4 transition-all duration-200 ${
-          isChild ? 'pl-12 bg-muted/10' : ''
-        } ${isDragging ? 'z-50 bg-card rounded-lg relative' : 'hover:bg-muted/30'} ${
-          isOver && !isChild ? 'bg-primary/10 border-l-4 border-primary' : ''
-        }`}
-      >
-        <motion.div 
-          {...attributes} 
-          {...listeners} 
-          className="cursor-grab active:cursor-grabbing"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
+      <Fragment>
+        <motion.div
+          ref={setNodeRef}
+          initial={false}
+          animate={{
+            scale: isDragging ? 1.02 : 1,
+            boxShadow: isDragging ? '0 10px 40px rgba(0,0,0,0.15)' : 'none',
+            opacity: isDragging ? 0.9 : 1,
+          }}
+          transition={{ duration: 0.2 }}
+          className={`flex items-center gap-3 p-4 transition-all duration-200 relative ${
+            isDragging ? 'z-50 bg-card rounded-lg' : 'hover:bg-muted/30'
+          } ${isOver && !isChild ? 'bg-primary/10 border-l-4 border-primary' : ''}`}
+          style={{ ...style, paddingLeft: `${indentPadding}px` }}
         >
-          <GripVertical className={`h-4 w-4 transition-colors ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
-        </motion.div>
-        
-        {/* Ícone de expandir/retrair para menus com submenus */}
-        {hasChildren ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="h-6 w-6 p-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleExpand(item.cod_menu_item);
-            }}
-          >
-            <motion.div
-              animate={{ rotate: isExpanded ? 90 : 0 }}
-              transition={{ duration: 0.2 }}
+          {/* Linha de conexão visual para submenus */}
+          {depth > 0 && (
+            <div 
+              className="absolute left-0 top-0 bottom-0 flex items-center"
+              style={{ left: `${(depth - 1) * 24 + 20}px` }}
             >
-              <ChevronRight className="h-4 w-4" />
-            </motion.div>
-          </Button>
-        ) : !isChild ? (
-          <div className="w-6" /> // Espaço para alinhar
-        ) : null}
-        
-        <div className="flex items-center gap-2 flex-1">
-          {getIconComponent(item.des_icone)}
-          <span className="font-medium">{item.des_nome}</span>
-          {hasChildren && (
-            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-              activeChildCount === childCount 
-                ? 'bg-green-500/10 text-green-600' 
-                : activeChildCount === 0 
-                  ? 'bg-muted text-muted-foreground' 
-                  : 'bg-yellow-500/10 text-yellow-600'
-            }`}>
-              {activeChildCount}/{childCount} ativo{activeChildCount !== 1 ? 's' : ''}
-            </span>
-          )}
-          <span className="text-sm text-muted-foreground">{item.des_caminho}</span>
-          {item.des_tags && item.des_tags.length > 0 && (
-            <div className="flex items-center gap-1">
-              <Tag className="h-3 w-3 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">
-                {item.des_tags.slice(0, 2).join(', ')}
-                {item.des_tags.length > 2 && ` +${item.des_tags.length - 2}`}
-              </span>
+              <div className="w-4 border-b-2 border-l-2 border-border/30 h-1/2 -translate-y-1/2 rounded-bl" />
             </div>
           )}
-          {item.ind_nova_aba && (
-            <ExternalLink className="h-3 w-3 text-muted-foreground" />
-          )}
-          {item.ind_admin_only && (
-            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Admin</span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Switch
-            checked={item.ind_ativo}
-            onCheckedChange={() => handleToggleActive(item.cod_menu_item, item.ind_ativo)}
-          />
-          <Button 
-            variant="ghost" 
-            size="icon-sm" 
-            onClick={() => { 
-              setEditingItem(item); 
-              setSelectedParentId(item.seq_menu_pai || '__none__'); 
-              setSelectedIcon(item.des_icone || 'Circle');
-              setNamePreview(item.des_nome);
-              const isExternal = item.des_caminho?.startsWith('http');
-              setPathType(isExternal ? 'external' : 'internal');
-              setSelectedPath(isExternal ? '' : item.des_caminho || '');
-              setEditingTags(item.des_tags || []);
-              setNewTag('');
-              setIsDialogOpen(true); 
-            }}
+          
+          <motion.div 
+            {...attributes} 
+            {...listeners} 
+            className="cursor-grab active:cursor-grabbing"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
           >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon-sm" 
-            onClick={() => setDeleteItemId(item.cod_menu_item)}
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        </div>
-      </motion.div>
+            <GripVertical className={`h-4 w-4 transition-colors ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
+          </motion.div>
+          
+          {/* Ícone de expandir/retrair para menus com submenus */}
+          {hasChildren ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="h-6 w-6 p-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleExpand(item.cod_menu_item);
+              }}
+            >
+              <motion.div
+                animate={{ rotate: isExpanded ? 90 : 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </motion.div>
+            </Button>
+          ) : (
+            <div className="w-6" /> // Espaço para alinhar
+          )}
+          
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {getIconComponent(item.des_icone)}
+            <span className="font-medium truncate">{item.des_nome}</span>
+            
+            {/* Badge indicando menu pai para submenus */}
+            {parentMenu && (
+              <span className="text-xs bg-secondary/50 text-secondary-foreground px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+                <LucideIcons.CornerDownRight className="h-3 w-3" />
+                {parentMenu.des_nome}
+              </span>
+            )}
+            
+            {hasChildren && (
+              <span className={`text-xs px-1.5 py-0.5 rounded-full shrink-0 ${
+                activeChildCount === childCount 
+                  ? 'bg-green-500/10 text-green-600' 
+                  : activeChildCount === 0 
+                    ? 'bg-muted text-muted-foreground' 
+                    : 'bg-yellow-500/10 text-yellow-600'
+              }`}>
+                {activeChildCount}/{childCount} ativo{activeChildCount !== 1 ? 's' : ''}
+              </span>
+            )}
+            <span className="text-sm text-muted-foreground truncate">{item.des_caminho}</span>
+            {item.des_tags && item.des_tags.length > 0 && (
+              <div className="flex items-center gap-1 shrink-0">
+                <Tag className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  {item.des_tags.slice(0, 2).join(', ')}
+                  {item.des_tags.length > 2 && ` +${item.des_tags.length - 2}`}
+                </span>
+              </div>
+            )}
+            {item.ind_nova_aba && (
+              <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+            )}
+            {item.ind_admin_only && (
+              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded shrink-0">Admin</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Switch
+              checked={item.ind_ativo}
+              onCheckedChange={() => handleToggleActive(item.cod_menu_item, item.ind_ativo)}
+            />
+            <Button 
+              variant="ghost" 
+              size="icon-sm" 
+              onClick={() => { 
+                setEditingItem(item); 
+                setSelectedParentId(item.seq_menu_pai || '__none__'); 
+                setSelectedIcon(item.des_icone || 'Circle');
+                setNamePreview(item.des_nome);
+                const isExternal = item.des_caminho?.startsWith('http');
+                setPathType(isExternal ? 'external' : 'internal');
+                setSelectedPath(isExternal ? '' : item.des_caminho || '');
+                setEditingTags(item.des_tags || []);
+                setNewTag('');
+                setIsDialogOpen(true); 
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon-sm" 
+              onClick={() => setDeleteItemId(item.cod_menu_item)}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        </motion.div>
+        
+        {/* Renderizar filhos recursivamente quando expandido */}
+        {hasChildren && isExpanded && (
+          <AnimatePresence>
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragEnd={(event) => handleChildDragEnd(item.cod_menu_item, event)}
+              >
+                <SortableContext
+                  items={children.map(child => child.cod_menu_item)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {children.map((child) => (
+                    <SortableMenuItem key={child.cod_menu_item} item={child} depth={depth + 1} />
+                  ))}
+                </SortableContext>
+                <DragOverlay>
+                  {activeId && getActiveItem()?.seq_menu_pai === item.cod_menu_item ? (
+                    <DragOverlayItem item={getActiveItem()!} />
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
+            </motion.div>
+          </AnimatePresence>
+        )}
+      </Fragment>
     );
   };
 
@@ -685,6 +764,11 @@ export default function AdminSettingsPage() {
       <div className="flex items-center gap-2 flex-1">
         {getIconComponent(item.des_icone)}
         <span className="font-semibold">{item.des_nome}</span>
+        {item.seq_menu_pai && (
+          <span className="text-xs bg-secondary/50 text-secondary-foreground px-2 py-0.5 rounded-md">
+            {menuItems.find(m => m.cod_menu_item === item.seq_menu_pai)?.des_nome}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -1131,52 +1215,13 @@ export default function AdminSettingsPage() {
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="divide-y divide-border">
-                      {parentItems.map((item) => {
-                        const children = getChildItems(item.cod_menu_item);
-                        const isExpanded = expandedMenus.has(item.cod_menu_item);
-                        
-                        return (
-                          <div key={item.cod_menu_item}>
-                            <SortableMenuItem item={item} />
-                            
-                            {children.length > 0 && isExpanded && (
-                              <AnimatePresence>
-                                <motion.div
-                                  initial={{ opacity: 0, height: 0 }}
-                                  animate={{ opacity: 1, height: 'auto' }}
-                                  exit={{ opacity: 0, height: 0 }}
-                                  transition={{ duration: 0.2 }}
-                                >
-                                  <DndContext
-                                    sensors={sensors}
-                                    collisionDetection={closestCenter}
-                                    onDragStart={handleDragStart}
-                                    onDragOver={handleDragOver}
-                                    onDragEnd={(event) => handleChildDragEnd(item.cod_menu_item, event)}
-                                  >
-                                    <SortableContext
-                                      items={children.map(child => child.cod_menu_item)}
-                                      strategy={verticalListSortingStrategy}
-                                    >
-                                      {children.map((child) => (
-                                        <SortableMenuItem key={child.cod_menu_item} item={child} isChild />
-                                      ))}
-                                    </SortableContext>
-                                    <DragOverlay>
-                                      {activeId && getActiveItem()?.seq_menu_pai === item.cod_menu_item ? (
-                                        <DragOverlayItem item={getActiveItem()!} />
-                                      ) : null}
-                                    </DragOverlay>
-                                  </DndContext>
-                                </motion.div>
-                              </AnimatePresence>
-                            )}
-                          </div>
-                        );
-                      })}
+                      {parentItems.map((item) => (
+                        <SortableMenuItem key={item.cod_menu_item} item={item} depth={0} />
+                      ))}
 
-                      {menuItems.filter(item => item.seq_menu_pai && !parentItems.find(p => p.cod_menu_item === item.seq_menu_pai)).map((item) => (
-                        <SortableMenuItem key={item.cod_menu_item} item={item} />
+                      {/* Menus órfãos (pai não existe mais) */}
+                      {menuItems.filter(item => item.seq_menu_pai && !menuItems.find(p => p.cod_menu_item === item.seq_menu_pai)).map((item) => (
+                        <SortableMenuItem key={item.cod_menu_item} item={item} depth={0} />
                       ))}
                     </div>
                   </SortableContext>
