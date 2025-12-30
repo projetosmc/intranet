@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(false);
   
   // Roles state
   const [roles, setRoles] = useState<AppRole[]>([]);
@@ -51,8 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Permissions state
   const [permissions, setPermissions] = useState<ScreenPermission[]>([]);
   
-  // Loading is true only during initial auth + data load
-  const isLoading = isInitializing;
+  // Loading is true during initial auth OR data load
+  const isLoading = isInitializing || isDataLoading;
 
   const isAdmin = roles.includes('admin');
   const isModerator = roles.includes('moderator') || isAdmin;
@@ -142,11 +143,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Load user data (roles and permissions)
   const loadUserData = useCallback(async (userId: string) => {
-    const userRoles = await fetchRoles(userId);
-    setRoles(userRoles);
-    const userIsAdmin = userRoles.includes('admin');
-    const userPermissions = await fetchPermissions(userRoles, userIsAdmin);
-    setPermissions(userPermissions);
+    setIsDataLoading(true);
+    try {
+      const userRoles = await fetchRoles(userId);
+      setRoles(userRoles);
+      const userIsAdmin = userRoles.includes('admin');
+      const userPermissions = await fetchPermissions(userRoles, userIsAdmin);
+      setPermissions(userPermissions);
+    } finally {
+      setIsDataLoading(false);
+    }
   }, [fetchRoles, fetchPermissions]);
 
   // Initialize auth and load data
@@ -176,6 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setRoles([]);
           setPermissions([]);
+          setIsDataLoading(false);
         }
         
         setIsInitializing(false);
@@ -207,6 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem(PERMISSIONS_CACHE_KEY);
           setRoles([]);
           setPermissions([]);
+          setIsDataLoading(false);
         } else if (event === 'SIGNED_IN' && newSession?.user && isInitialized) {
           // Only reload data on SIGNED_IN if already initialized
           // Use setTimeout to prevent deadlock
