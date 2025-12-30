@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import loadingIcon from '@/assets/loading-icon.png';
 
 interface GlobalLoadingIndicatorProps {
   isLoading: boolean;
@@ -61,27 +62,32 @@ export function GlobalLoadingIndicator({ isLoading, className }: GlobalLoadingIn
 }
 
 /**
- * Versão alternativa com spinner discreto no canto
+ * Versão alternativa com ícone MC animado
  */
 export function GlobalLoadingSpinner({ isLoading, className }: GlobalLoadingIndicatorProps) {
   return (
     <AnimatePresence>
       {isLoading && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.8 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           className={cn(
             "fixed top-4 right-4 z-[100] flex items-center gap-2 px-3 py-2 rounded-full bg-card border border-border shadow-lg",
             className
           )}
         >
-          <motion.div
-            className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full"
-            animate={{ rotate: 360 }}
+          <motion.img
+            src={loadingIcon}
+            alt="Carregando"
+            className="w-6 h-6 object-contain"
+            animate={{
+              opacity: [0.4, 1, 0.4],
+              scale: [0.9, 1.1, 0.9],
+            }}
             transition={{
-              duration: 1,
-              ease: "linear",
+              duration: 1.5,
+              ease: "easeInOut",
               repeat: Infinity,
             }}
           />
@@ -89,5 +95,33 @@ export function GlobalLoadingSpinner({ isLoading, className }: GlobalLoadingIndi
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+/**
+ * Componente de loading inline (para uso em botões, cards, etc.)
+ */
+export function LoadingIcon({ className, size = 'md' }: { className?: string; size?: 'sm' | 'md' | 'lg' }) {
+  const sizeClasses = {
+    sm: 'w-4 h-4',
+    md: 'w-6 h-6',
+    lg: 'w-8 h-8',
+  };
+
+  return (
+    <motion.img
+      src={loadingIcon}
+      alt="Carregando"
+      className={cn(sizeClasses[size], "object-contain", className)}
+      animate={{
+        opacity: [0.4, 1, 0.4],
+        scale: [0.9, 1.1, 0.9],
+      }}
+      transition={{
+        duration: 1.5,
+        ease: "easeInOut",
+        repeat: Infinity,
+      }}
+    />
   );
 }
