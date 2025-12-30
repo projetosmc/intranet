@@ -49,6 +49,66 @@ const PERMISSIONS_QUERY_KEY = 'screen-permissions';
 // Stale time: 5 minutes
 const STALE_TIME = 5 * 60 * 1000;
 
+// LocalStorage keys for session persistence
+const SESSION_CACHE_KEY = 'mc-hub-session-cache';
+const ROLES_CACHE_KEY = 'mc-hub-roles-cache';
+const CACHE_EXPIRY_KEY = 'mc-hub-cache-expiry';
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Cache helper functions
+function getCachedSession(): { user: User; session: Session } | null {
+  try {
+    const expiry = localStorage.getItem(CACHE_EXPIRY_KEY);
+    if (!expiry || Date.now() > parseInt(expiry, 10)) {
+      clearSessionCache();
+      return null;
+    }
+    
+    const cached = localStorage.getItem(SESSION_CACHE_KEY);
+    if (!cached) return null;
+    
+    return JSON.parse(cached);
+  } catch {
+    return null;
+  }
+}
+
+function getCachedRoles(): AppRole[] | null {
+  try {
+    const expiry = localStorage.getItem(CACHE_EXPIRY_KEY);
+    if (!expiry || Date.now() > parseInt(expiry, 10)) {
+      return null;
+    }
+    
+    const cached = localStorage.getItem(ROLES_CACHE_KEY);
+    if (!cached) return null;
+    
+    return JSON.parse(cached);
+  } catch {
+    return null;
+  }
+}
+
+function cacheSession(user: User, session: Session, roles: AppRole[]) {
+  try {
+    localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({ user, session }));
+    localStorage.setItem(ROLES_CACHE_KEY, JSON.stringify(roles));
+    localStorage.setItem(CACHE_EXPIRY_KEY, (Date.now() + CACHE_TTL).toString());
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function clearSessionCache() {
+  try {
+    localStorage.removeItem(SESSION_CACHE_KEY);
+    localStorage.removeItem(ROLES_CACHE_KEY);
+    localStorage.removeItem(CACHE_EXPIRY_KEY);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 // Fetch roles function
 async function fetchUserRoles(userId: string): Promise<AppRole[]> {
   const { data, error } = await supabase
@@ -91,14 +151,18 @@ async function fetchUserPermissions(roles: AppRole[]): Promise<ScreenPermission[
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   
-  // Auth state
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  // Try to restore from cache immediately for faster initial render
+  const cachedData = useRef(getCachedSession());
+  const cachedRoles = useRef(getCachedRoles());
+  
+  // Auth state - initialize from cache if available
+  const [user, setUser] = useState<User | null>(cachedData.current?.user ?? null);
+  const [session, setSession] = useState<Session | null>(cachedData.current?.session ?? null);
   const [isSessionChecked, setIsSessionChecked] = useState(false);
-  const [loadingStage, setLoadingStage] = useState<LoadingStage>('session');
+  const [loadingStage, setLoadingStage] = useState<LoadingStage>(cachedData.current ? 'roles' : 'session');
 
-  // Track if initial data fetch is complete
-  const [rolesLoaded, setRolesLoaded] = useState(false);
+  // Track if initial data fetch is complete - start as loaded if we have cached roles
+  const [rolesLoaded, setRolesLoaded] = useState(!!cachedRoles.current);
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
   
   // Timeout and error states
@@ -141,9 +205,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(checkTimeout);
   }, [isSessionChecked, user, rolesLoaded, permissionsLoaded]);
 
-  // Roles query with React Query
+  // Roles query with React Query - use cached roles as initial data
   const {
-    data: roles = [],
+    data: roles = cachedRoles.current ?? [],
     isLoading: isRolesLoading,
     isError: isRolesError,
     refetch: refetchRoles,
@@ -162,6 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refetchOnMount: false,
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
+    initialData: cachedRoles.current ?? undefined,
   });
 
   const isAdmin = roles.includes('admin');
@@ -239,14 +304,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   }, [isSessionChecked, user, rolesLoaded, isRolesLoading, permissionsLoaded, isPermissionsLoading, hasTimedOut, hasError]);
 
-  // Update loading stage when complete
+  // Update loading stage when complete and cache session data
   useEffect(() => {
-    if (!isLoading && user && !hasTimedOut && !hasError) {
+    if (!isLoading && user && session && !hasTimedOut && !hasError) {
       setLoadingStage('complete');
+      // Cache session and roles for faster next load
+      cacheSession(user, session, roles);
     } else if (!isLoading && !user && isSessionChecked) {
       setLoadingStage('idle');
+      clearSessionCache();
     }
-  }, [isLoading, user, isSessionChecked, hasTimedOut, hasError]);
+  }, [isLoading, user, session, roles, isSessionChecked, hasTimedOut, hasError]);
 
   // Initialize auth and set up listener
   useEffect(() => {
@@ -298,9 +366,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Handle specific events
         if (event === 'SIGNED_OUT') {
-          // Clear React Query cache and reset flags
+          // Clear React Query cache, local storage cache, and reset flags
           queryClient.removeQueries({ queryKey: [ROLES_QUERY_KEY] });
           queryClient.removeQueries({ queryKey: [PERMISSIONS_QUERY_KEY] });
+          clearSessionCache();
+          cachedData.current = null;
+          cachedRoles.current = null;
           setRolesLoaded(false);
           setPermissionsLoaded(false);
           setLoadingStage('idle');
