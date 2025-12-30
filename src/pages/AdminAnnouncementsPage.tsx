@@ -614,13 +614,20 @@ export default function AdminAnnouncementsPage() {
                     </p>
                     
                     {/* Preview do posicionamento */}
-                    <div className="relative rounded-xl overflow-hidden border border-border bg-muted">
-                      <div className="relative w-full h-0 pb-[33.33%]">
-                        <img
+                    <motion.div 
+                      className="relative rounded-xl overflow-hidden border border-border bg-muted"
+                      layout
+                    >
+                      <div className="relative w-full h-0 pb-[33.33%] overflow-hidden">
+                        <motion.img
+                          key={formData.imagePosition}
                           src={formData.imageUrl}
                           alt="Preview posicionamento"
+                          initial={{ opacity: 0, scale: 1.05 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.3, ease: "easeOut" }}
                           className={cn(
-                            "absolute inset-0 w-full h-full object-cover transition-all duration-300",
+                            "absolute inset-0 w-full h-full object-cover",
                             formData.imagePosition === 'top' && 'object-top',
                             formData.imagePosition === 'bottom' && 'object-bottom',
                             formData.imagePosition === 'left' && 'object-left',
@@ -629,16 +636,22 @@ export default function AdminAnnouncementsPage() {
                           )}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                        <div className="absolute bottom-2 left-2 text-white text-xs font-medium px-2 py-1 bg-black/50 rounded">
+                        <motion.div 
+                          key={`label-${formData.imagePosition}`}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2, delay: 0.1 }}
+                          className="absolute bottom-2 left-2 text-white text-xs font-medium px-2 py-1 bg-black/50 rounded backdrop-blur-sm"
+                        >
                           Preview: {
                             formData.imagePosition === 'center' ? 'Centro' :
                             formData.imagePosition === 'top' ? 'Topo' :
                             formData.imagePosition === 'bottom' ? 'Base' :
                             formData.imagePosition === 'left' ? 'Esquerda' : 'Direita'
                           }
-                        </div>
+                        </motion.div>
                       </div>
-                    </div>
+                    </motion.div>
 
                     {/* Botões de seleção */}
                     <div className="grid grid-cols-5 gap-2">
