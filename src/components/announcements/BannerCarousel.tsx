@@ -54,8 +54,8 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
 
   return (
     <div className="relative w-full rounded-2xl overflow-hidden bg-card border border-border shadow-lg">
-      {/* Main Carousel Container */}
-      <div className="relative aspect-[21/9] md:aspect-[3/1] bg-muted">
+      {/* Main Carousel Container - Fixed aspect ratio, image adapts to container */}
+      <div className="relative w-full h-0 pb-[42.86%] md:pb-[33.33%] bg-muted">
         {!imageLoaded && (
           <Skeleton className="absolute inset-0 w-full h-full" />
         )}
