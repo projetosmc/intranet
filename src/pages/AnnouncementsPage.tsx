@@ -17,7 +17,6 @@ import { AnnouncementsPageSkeleton } from '@/components/announcements/Announceme
 import { RichTextContent } from '@/components/ui/rich-text-editor';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { useDbAnnouncements } from '@/hooks/useDbAnnouncements';
-import { useGlobalLoading } from '@/contexts/GlobalLoadingContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -31,17 +30,7 @@ export default function AnnouncementsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { activeAnnouncements, isLoading, refetch, vote, registerView } = useDbAnnouncements();
-  const { startLoading, stopLoading } = useGlobalLoading();
   const [imageModalOpen, setImageModalOpen] = useState(false);
-
-  // Sync local loading with global loading
-  useEffect(() => {
-    if (isLoading) {
-      startLoading('announcements');
-    } else {
-      stopLoading('announcements');
-    }
-  }, [isLoading, startLoading, stopLoading]);
 
   const selectedAnnouncement = id ? activeAnnouncements.find(a => a.id === id) : null;
 

@@ -11,7 +11,7 @@ export function useDbAnnouncements() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
 
   const fetchAnnouncements = useCallback(async () => {
     setIsLoading(true);
@@ -138,11 +138,14 @@ export function useDbAnnouncements() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast, user]);
+  }, [toast, user?.id]);
 
   useEffect(() => {
-    fetchAnnouncements();
-  }, [fetchAnnouncements]);
+    // Only fetch when auth is ready
+    if (!authLoading) {
+      fetchAnnouncements();
+    }
+  }, [fetchAnnouncements, authLoading]);
 
   const uploadImage = useCallback(async (file: File): Promise<string | null> => {
     try {
