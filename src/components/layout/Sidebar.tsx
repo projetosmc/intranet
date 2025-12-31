@@ -526,7 +526,7 @@ export function Sidebar() {
           depth >= 3 && "px-2 py-1.5 ml-1 text-sm",
           // Estados ativo/inativo
           active 
-            ? "bg-primary/10 text-primary font-semibold" 
+            ? "bg-primary/10 text-primary font-semibold hover:bg-primary/20 hover:text-primary" 
             : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
         )}
       >
