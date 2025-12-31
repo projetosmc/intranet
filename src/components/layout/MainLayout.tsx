@@ -12,6 +12,8 @@ function MainLayoutContent() {
   const location = useLocation();
   const { isLoading } = useGlobalLoading();
 
+  console.log('[MainLayout] Render:', { pathname: location.pathname, isLoading });
+
   return (
     <div className="min-h-screen bg-background">
       <GlobalLoadingIndicator isLoading={isLoading} />
