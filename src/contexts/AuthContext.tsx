@@ -139,28 +139,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // SIMPLIFIED loading logic - only block on session check
   const isLoading = useMemo(() => {
-    const result = (() => {
-      if (hasTimedOut || hasError) return false;
-      if (!isSessionChecked) return true;
-      if (!user) return false;
-      
-      // Only wait for roles on initial load
-      if (!rolesQuery.data && rolesQuery.isFetching) return true;
-      
-      return false;
-    })();
+    if (hasTimedOut || hasError) return false;
+    if (!isSessionChecked) return true;
+    if (!user) return false;
     
-    // Debug log
-    console.log('[Auth] isLoading:', result, {
-      hasTimedOut,
-      hasError,
-      isSessionChecked,
-      hasUser: !!user,
-      rolesData: rolesQuery.data,
-      rolesFetching: rolesQuery.isFetching,
-    });
+    // Only wait for roles on initial load
+    if (!rolesQuery.data && rolesQuery.isFetching) return true;
     
-    return result;
+    return false;
   }, [isSessionChecked, user, rolesQuery.data, rolesQuery.isFetching, hasTimedOut, hasError]);
 
   // Timeout effect
