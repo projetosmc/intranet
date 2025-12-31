@@ -22,7 +22,7 @@ interface AuthContextType {
   loadingStage: LoadingStage;
   hasTimedOut: boolean;
   hasError: boolean;
-  isRevalidating: boolean; // True when revalidating in background after using cache
+  isRevalidating: boolean;
   signIn: (email: string, password: string) => Promise<{ error: unknown }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: unknown }>;
   signOut: () => Promise<void>;
@@ -119,7 +119,7 @@ async function fetchUserRoles(userId: string): Promise<AppRole[]> {
 
   if (error) {
     console.error('Error fetching roles:', error);
-    return [];
+    throw error; // Throw to let React Query handle retry
   }
 
   return (data || []).map((r) => r.des_role as AppRole);
@@ -143,7 +143,7 @@ async function fetchUserPermissions(roles: AppRole[]): Promise<ScreenPermission[
 
   if (error) {
     console.error('Error fetching permissions:', error);
-    return [];
+    throw error;
   }
 
   return (data || []) as ScreenPermission[];
@@ -155,20 +155,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Try to restore from cache immediately for faster initial render
   const cachedData = useRef(getCachedSession());
   const cachedRoles = useRef(getCachedRoles());
-  const usedCacheOnInit = useRef(!!cachedData.current);
+  const usedCacheOnInit = useRef(!!cachedData.current && !!cachedRoles.current);
   
   // Auth state - initialize from cache if available
   const [user, setUser] = useState<User | null>(cachedData.current?.user ?? null);
   const [session, setSession] = useState<Session | null>(cachedData.current?.session ?? null);
   const [isSessionChecked, setIsSessionChecked] = useState(false);
-  const [loadingStage, setLoadingStage] = useState<LoadingStage>(cachedData.current ? 'roles' : 'session');
+  const [loadingStage, setLoadingStage] = useState<LoadingStage>('session');
 
-  // Track if initial data fetch is complete - start as loaded if we have cached roles
-  const [rolesLoaded, setRolesLoaded] = useState(!!cachedRoles.current);
-  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
-  
   // Revalidation state - true when we used cache and are refreshing in background
-  const [isRevalidating, setIsRevalidating] = useState(usedCacheOnInit.current);
+  const [isRevalidating, setIsRevalidating] = useState(false);
   
   // Timeout and error states
   const [hasTimedOut, setHasTimedOut] = useState(false);
@@ -176,31 +172,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadingStartTime = useRef<number>(Date.now());
   const LOADING_TIMEOUT = 10000; // 10 seconds
 
-  // Reset loaded flags when user changes
-  useEffect(() => {
-    if (!user) {
-      setRolesLoaded(false);
-      setPermissionsLoaded(false);
-      setHasTimedOut(false);
-      setHasError(false);
-    }
-  }, [user]);
+  // Roles query with React Query
+  const rolesQuery = useQuery({
+    queryKey: [ROLES_QUERY_KEY, user?.id],
+    queryFn: async () => {
+      setLoadingStage('roles');
+      return await fetchUserRoles(user!.id);
+    },
+    enabled: !!user?.id && isSessionChecked && !hasTimedOut && !hasError,
+    staleTime: STALE_TIME,
+    gcTime: STALE_TIME * 2,
+    refetchOnWindowFocus: false,
+    retry: 2,
+    retryDelay: 1000,
+  });
+
+  const roles = rolesQuery.data ?? [];
+  const isAdmin = roles.includes('admin');
+  const isModerator = roles.includes('moderator') || isAdmin;
+
+  // Permissions query with React Query
+  const permissionsQuery = useQuery({
+    queryKey: [PERMISSIONS_QUERY_KEY, roles],
+    queryFn: async () => {
+      setLoadingStage('permissions');
+      return await fetchUserPermissions(roles);
+    },
+    enabled: !!user?.id && isSessionChecked && rolesQuery.isSuccess && roles.length >= 0 && !hasTimedOut && !hasError,
+    staleTime: STALE_TIME,
+    gcTime: STALE_TIME * 2,
+    refetchOnWindowFocus: false,
+    retry: 2,
+    retryDelay: 1000,
+  });
+
+  const permissions = permissionsQuery.data ?? [];
+
+  // Combined loading state - SIMPLIFIED and ROBUST
+  const isLoading = useMemo(() => {
+    // Error or timeout - stop loading
+    if (hasTimedOut || hasError) return false;
+    
+    // Haven't checked session yet - loading
+    if (!isSessionChecked) return true;
+    
+    // No user after session check = not authenticated, done loading
+    if (!user) return false;
+    
+    // User exists - check if roles are ready
+    if (rolesQuery.isLoading || rolesQuery.isPending) return true;
+    
+    // If roles query failed, stop loading (will show error)
+    if (rolesQuery.isError) return false;
+    
+    // Roles are ready - check permissions
+    if (permissionsQuery.isLoading || permissionsQuery.isPending) return true;
+    
+    // All done
+    return false;
+  }, [isSessionChecked, user, rolesQuery.isLoading, rolesQuery.isPending, rolesQuery.isError, permissionsQuery.isLoading, permissionsQuery.isPending, hasTimedOut, hasError]);
 
   // Timeout effect - triggers after 10 seconds of loading
   useEffect(() => {
-    if (!isSessionChecked || !user) return;
+    if (!isLoading) return;
     
     loadingStartTime.current = Date.now();
-    setHasTimedOut(false);
     
     const checkTimeout = setInterval(() => {
-      if (rolesLoaded && permissionsLoaded) {
-        clearInterval(checkTimeout);
-        return;
-      }
-      
       const elapsed = Date.now() - loadingStartTime.current;
-      if (elapsed >= LOADING_TIMEOUT) {
+      if (elapsed >= LOADING_TIMEOUT && isLoading) {
         setHasTimedOut(true);
         setLoadingStage('timeout');
         clearInterval(checkTimeout);
@@ -208,114 +248,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 1000);
     
     return () => clearInterval(checkTimeout);
-  }, [isSessionChecked, user, rolesLoaded, permissionsLoaded]);
+  }, [isLoading]);
 
-  // Roles query with React Query - use cached roles as initial data
-  const {
-    data: roles = cachedRoles.current ?? [],
-    isLoading: isRolesLoading,
-    isError: isRolesError,
-    refetch: refetchRoles,
-  } = useQuery({
-    queryKey: [ROLES_QUERY_KEY, user?.id],
-    queryFn: async () => {
-      setLoadingStage('roles');
-      const result = await fetchUserRoles(user!.id);
-      setRolesLoaded(true);
-      return result;
-    },
-    enabled: !!user?.id && isSessionChecked && !hasTimedOut,
-    staleTime: STALE_TIME,
-    gcTime: STALE_TIME * 2,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
-    initialData: cachedRoles.current ?? undefined,
-  });
-
-  const isAdmin = roles.includes('admin');
-  const isModerator = roles.includes('moderator') || isAdmin;
-
-  // Permissions query with React Query
-  const {
-    data: permissions = [],
-    isLoading: isPermissionsLoading,
-    isError: isPermissionsError,
-    refetch: refetchPermissions,
-  } = useQuery({
-    queryKey: [PERMISSIONS_QUERY_KEY, roles],
-    queryFn: async () => {
-      setLoadingStage('permissions');
-      const result = await fetchUserPermissions(roles);
-      setPermissionsLoaded(true);
-      setLoadingStage('complete');
-      return result;
-    },
-    enabled: !!user?.id && isSessionChecked && rolesLoaded && !hasTimedOut,
-    staleTime: STALE_TIME,
-    gcTime: STALE_TIME * 2,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
-  });
-
-  // Track errors
+  // Track errors from queries
   useEffect(() => {
-    if (isRolesError || isPermissionsError) {
+    if (rolesQuery.isError || permissionsQuery.isError) {
       setHasError(true);
       setLoadingStage('error');
     }
-  }, [isRolesError, isPermissionsError]);
+  }, [rolesQuery.isError, permissionsQuery.isError]);
 
-  // Retry function
-  const retryLoading = useCallback(() => {
-    setHasTimedOut(false);
-    setHasError(false);
-    setRolesLoaded(false);
-    setPermissionsLoaded(false);
-    loadingStartTime.current = Date.now();
-    setLoadingStage('roles');
-    
-    // Clear cache and refetch
-    queryClient.removeQueries({ queryKey: [ROLES_QUERY_KEY] });
-    queryClient.removeQueries({ queryKey: [PERMISSIONS_QUERY_KEY] });
-    
-    if (user) {
-      setTimeout(() => {
-        refetchRoles();
-      }, 100);
-    }
-  }, [user, queryClient, refetchRoles]);
-
-  // Combined loading state - CRITICAL: only false when we KNOW the auth state
-  const isLoading = useMemo(() => {
-    // Timeout or error - stop loading to show error state
-    if (hasTimedOut || hasError) return false;
-    
-    // Haven't checked session yet - MUST wait
-    if (!isSessionChecked) return true;
-    
-    // No user after checking = definitely not authenticated, stop loading
-    if (!user) return false;
-    
-    // User exists - wait for roles to be loaded
-    if (!rolesLoaded || isRolesLoading) return true;
-    
-    // Roles loaded - wait for permissions to be loaded
-    if (!permissionsLoaded || isPermissionsLoading) return true;
-    
-    return false;
-  }, [isSessionChecked, user, rolesLoaded, isRolesLoading, permissionsLoaded, isPermissionsLoading, hasTimedOut, hasError]);
-
-  // Update loading stage when complete and cache session data
+  // Update loading stage when complete
   useEffect(() => {
     if (!isLoading && user && session && !hasTimedOut && !hasError) {
       setLoadingStage('complete');
-      // Cache session and roles for faster next load
       cacheSession(user, session, roles);
-      // Stop revalidation indicator when data is fresh
       setIsRevalidating(false);
     } else if (!isLoading && !user && isSessionChecked) {
       setLoadingStage('idle');
@@ -323,6 +270,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsRevalidating(false);
     }
   }, [isLoading, user, session, roles, isSessionChecked, hasTimedOut, hasError]);
+
+  // Retry function
+  const retryLoading = useCallback(() => {
+    setHasTimedOut(false);
+    setHasError(false);
+    loadingStartTime.current = Date.now();
+    setLoadingStage('roles');
+    
+    // Invalidate and refetch
+    queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] });
+    queryClient.invalidateQueries({ queryKey: [PERMISSIONS_QUERY_KEY] });
+  }, [queryClient]);
 
   // Initialize auth and set up listener
   useEffect(() => {
@@ -332,12 +291,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         setLoadingStage('session');
         
+        // If we have valid cache, mark as revalidating
+        if (usedCacheOnInit.current) {
+          setIsRevalidating(true);
+        }
+        
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (!isMounted) return;
         
         if (error) {
           console.error('Error getting session:', error);
+          // Still allow app to function, just without auth
           setIsSessionChecked(true);
           setLoadingStage('idle');
           return;
@@ -350,7 +315,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoadingStage('idle');
         }
         
-        // Mark session as checked AFTER setting user/session
         setIsSessionChecked(true);
       } catch (error) {
         console.error('Error initializing auth:', error);
@@ -368,23 +332,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (event, newSession) => {
         if (!isMounted) return;
 
-        // Update session state synchronously
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
-        // Handle specific events
         if (event === 'SIGNED_OUT') {
-          // Clear React Query cache, local storage cache, and reset flags
           queryClient.removeQueries({ queryKey: [ROLES_QUERY_KEY] });
           queryClient.removeQueries({ queryKey: [PERMISSIONS_QUERY_KEY] });
           clearSessionCache();
           cachedData.current = null;
           cachedRoles.current = null;
-          setRolesLoaded(false);
-          setPermissionsLoaded(false);
           setLoadingStage('idle');
+          setHasTimedOut(false);
+          setHasError(false);
         } else if (event === 'SIGNED_IN' && newSession?.user) {
-          // Invalidate and refetch on sign in
           setTimeout(() => {
             if (!isMounted) return;
             queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY, newSession.user.id] });
