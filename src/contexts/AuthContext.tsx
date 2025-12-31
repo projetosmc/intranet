@@ -139,15 +139,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // SIMPLIFIED loading logic - only block on session check
   const isLoading = useMemo(() => {
-    if (hasTimedOut || hasError) return false;
-    if (!isSessionChecked) return true;
-    if (!user) return false;
+    const result = (() => {
+      if (hasTimedOut || hasError) return false;
+      if (!isSessionChecked) return true;
+      if (!user) return false;
+      
+      // Only wait for roles on initial load
+      if (!rolesQuery.data && rolesQuery.isFetching) return true;
+      
+      return false;
+    })();
     
-    // Only wait for roles on initial load - after that, let the page render
-    // and show stale data while refetching in background
-    if (!rolesQuery.data && rolesQuery.isFetching) return true;
+    // Debug log
+    console.log('[Auth] isLoading:', result, {
+      hasTimedOut,
+      hasError,
+      isSessionChecked,
+      hasUser: !!user,
+      rolesData: rolesQuery.data,
+      rolesFetching: rolesQuery.isFetching,
+    });
     
-    return false;
+    return result;
   }, [isSessionChecked, user, rolesQuery.data, rolesQuery.isFetching, hasTimedOut, hasError]);
 
   // Timeout effect
@@ -237,12 +250,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoadingStage('idle');
           setHasTimedOut(false);
           setHasError(false);
+          setIsSessionChecked(true); // Ensure session is marked as checked
         } else if (event === 'SIGNED_IN' && newSession?.user) {
+          setIsSessionChecked(true); // CRITICAL: Mark session as checked on sign in
           setLoadingStage('roles');
           setTimeout(() => {
             if (!isMounted) return;
             queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY, newSession.user.id] });
           }, 0);
+        } else if (event === 'TOKEN_REFRESHED') {
+          // Just update session, don't trigger loading
+          setIsSessionChecked(true);
         }
       }
     );
