@@ -198,7 +198,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoadingStage('permissions');
       return await fetchUserPermissions(roles);
     },
-    enabled: !!user?.id && isSessionChecked && rolesQuery.isSuccess && roles.length >= 0 && !hasTimedOut && !hasError,
+    // Only enable when we have roles data (even if empty array)
+    enabled: !!user?.id && isSessionChecked && rolesQuery.isSuccess && !hasTimedOut && !hasError,
     staleTime: STALE_TIME,
     gcTime: STALE_TIME * 2,
     refetchOnWindowFocus: false,
@@ -219,18 +220,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // No user after session check = not authenticated, done loading
     if (!user) return false;
     
-    // User exists - check if roles are ready
-    if (rolesQuery.isLoading || rolesQuery.isPending) return true;
+    // User exists - check if roles query is actively fetching
+    // Note: isFetching is true when actively loading, isPending just means no data yet
+    if (rolesQuery.isFetching) return true;
     
     // If roles query failed, stop loading (will show error)
     if (rolesQuery.isError) return false;
     
-    // Roles are ready - check permissions
-    if (permissionsQuery.isLoading || permissionsQuery.isPending) return true;
+    // Roles are ready - check if permissions query is actively fetching
+    if (permissionsQuery.isFetching) return true;
+    
+    // If we have user but roles query hasn't started yet (not fetching, no data, no error)
+    // This can happen briefly - give it a moment
+    if (!rolesQuery.data && !rolesQuery.isError && !rolesQuery.isFetching) {
+      // Query should start soon since it's enabled
+      return true;
+    }
     
     // All done
     return false;
-  }, [isSessionChecked, user, rolesQuery.isLoading, rolesQuery.isPending, rolesQuery.isError, permissionsQuery.isLoading, permissionsQuery.isPending, hasTimedOut, hasError]);
+  }, [isSessionChecked, user, rolesQuery.isFetching, rolesQuery.isError, rolesQuery.data, permissionsQuery.isFetching, hasTimedOut, hasError]);
 
   // Timeout effect - triggers after 10 seconds of loading
   useEffect(() => {
