@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { Announcement } from '@/types/announcements';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -12,7 +12,8 @@ interface AnnouncementCardProps {
   delay?: number;
 }
 
-export function AnnouncementCard({ announcement, onClick, delay = 0 }: AnnouncementCardProps) {
+export const AnnouncementCard = forwardRef<HTMLElement, AnnouncementCardProps>(
+  function AnnouncementCard({ announcement, onClick, delay = 0 }, ref) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const placeholderImage = '/placeholder.svg';
@@ -42,6 +43,7 @@ export function AnnouncementCard({ announcement, onClick, delay = 0 }: Announcem
 
   return (
     <motion.article
+      ref={ref}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: delay * 0.05 }}
@@ -103,4 +105,4 @@ export function AnnouncementCard({ announcement, onClick, delay = 0 }: Announcem
       </div>
     </motion.article>
   );
-}
+});

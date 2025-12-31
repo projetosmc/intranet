@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { ChevronRight, Home } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -27,7 +28,8 @@ interface BreadcrumbsProps {
   isLoading?: boolean;
 }
 
-export function Breadcrumbs({ className, isLoading = false }: BreadcrumbsProps) {
+export const Breadcrumbs = forwardRef<HTMLElement, BreadcrumbsProps>(
+  function Breadcrumbs({ className, isLoading = false }, ref) {
   const location = useLocation();
   const pathSegments = location.pathname.split('/').filter(Boolean);
 
@@ -58,6 +60,7 @@ export function Breadcrumbs({ className, isLoading = false }: BreadcrumbsProps) 
 
   return (
     <motion.nav
+      ref={ref}
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
@@ -72,7 +75,7 @@ export function Breadcrumbs({ className, isLoading = false }: BreadcrumbsProps) 
         <span className="hidden sm:inline">Início</span>
       </Link>
 
-      {breadcrumbs.map((crumb, index) => (
+      {breadcrumbs.map((crumb) => (
         <div key={crumb.path} className="flex items-center gap-1">
           <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
           {crumb.isLast ? (
@@ -89,4 +92,4 @@ export function Breadcrumbs({ className, isLoading = false }: BreadcrumbsProps) 
       ))}
     </motion.nav>
   );
-}
+});
