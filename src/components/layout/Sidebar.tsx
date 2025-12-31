@@ -526,8 +526,8 @@ export function Sidebar() {
           depth >= 3 && "px-2 py-1.5 ml-1 text-sm",
           // Estados ativo/inativo
           active 
-            ? "bg-primary/15 text-primary font-semibold hover:bg-primary/25" 
-            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            ? "bg-sidebar-accent text-sidebar-foreground font-semibold hover:bg-sidebar-accent/80" 
+            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
         )}
       >
         {/* Indicador de item ativo */}
@@ -544,7 +544,7 @@ export function Sidebar() {
         {/* Ícone - exibir em todos os níveis */}
         <Icon className={cn(
           "shrink-0 transition-colors h-4 w-4",
-          active ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-primary"
+          active ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground"
         )} />
         
         {/* Texto */}
