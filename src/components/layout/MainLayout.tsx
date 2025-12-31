@@ -1,8 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
-import { PageTransition } from './PageTransition';
 import { GlobalLoadingIndicator } from './GlobalLoadingIndicator';
 import { GlobalLoadingProvider, useGlobalLoading } from '@/contexts/GlobalLoadingContext';
 import { UrgentAnnouncementPopup } from '@/components/announcements/UrgentAnnouncementPopup';
@@ -29,11 +27,7 @@ function MainLayoutContent() {
         <Topbar />
         
         <main className="flex-1 p-6 overflow-auto">
-          <AnimatePresence mode="wait">
-            <PageTransition key={location.pathname}>
-              <Outlet />
-            </PageTransition>
-          </AnimatePresence>
+          <Outlet />
         </main>
       </div>
       
