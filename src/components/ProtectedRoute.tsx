@@ -20,8 +20,20 @@ const stageMessages: Record<LoadingStage, string> = {
 };
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, loadingStage, hasTimedOut, hasError, retryLoading } = useAuthContext();
+  const { isAuthenticated, isLoading, loadingStage, hasTimedOut, hasError, retryLoading, user, session } = useAuthContext();
   const location = useLocation();
+
+  // Debug log
+  console.log('[ProtectedRoute]', {
+    isAuthenticated,
+    isLoading,
+    loadingStage,
+    hasTimedOut,
+    hasError,
+    hasUser: !!user,
+    hasSession: !!session,
+    path: location.pathname,
+  });
 
   // Show timeout/error state with retry button
   if (hasTimedOut || hasError) {
