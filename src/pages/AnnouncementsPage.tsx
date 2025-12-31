@@ -32,13 +32,6 @@ export default function AnnouncementsPage() {
   const { activeAnnouncements, isLoading, refetch, vote, registerView } = useDbAnnouncements();
   const [imageModalOpen, setImageModalOpen] = useState(false);
 
-  // Debug log
-  console.log('[AnnouncementsPage] Render:', { 
-    isLoading, 
-    announcementsCount: activeAnnouncements.length,
-    hasId: !!id 
-  });
-
   const selectedAnnouncement = id ? activeAnnouncements.find(a => a.id === id) : null;
 
   // Registrar visualização quando acessar o comunicado

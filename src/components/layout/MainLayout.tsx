@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { GlobalLoadingIndicator } from './GlobalLoadingIndicator';
@@ -7,10 +7,7 @@ import { UrgentAnnouncementPopup } from '@/components/announcements/UrgentAnnoun
 import { MCTechBadge } from './MCTechBadge';
 
 function MainLayoutContent() {
-  const location = useLocation();
   const { isLoading } = useGlobalLoading();
-
-  console.log('[MainLayout] Render:', { pathname: location.pathname, isLoading });
 
   return (
     <div className="min-h-screen bg-background">
