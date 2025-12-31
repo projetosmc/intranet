@@ -14,6 +14,7 @@ export function useDbAnnouncements() {
   const { user, isLoading: authLoading } = useAuth();
 
   const fetchAnnouncements = useCallback(async () => {
+    console.log('[useDbAnnouncements] fetchAnnouncements called, authLoading:', authLoading, 'userId:', user?.id);
     setIsLoading(true);
     try {
       const { data, error } = await supabase
