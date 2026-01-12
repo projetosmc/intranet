@@ -42,6 +42,7 @@ interface MenuItemType {
   openInNewTab: boolean;
   isAdminOnly: boolean;
   isParent: boolean;
+  isContainer: boolean; // Menu é container (sem página, apenas agrupador)
   children?: MenuItemType[];
 }
 
@@ -251,6 +252,12 @@ export function Sidebar() {
     return Icon || LucideIcons.Circle;
   };
 
+  // Rotas válidas do sistema (para identificar containers)
+  const validInternalPaths = useMemo(() => [
+    '/', '/comunicados', '/status', '/reserva-salas', '/perfil',
+    '/admin/configuracoes', '/admin/comunicados', '/admin/perfis'
+  ], []);
+
   // Processa items de menu recursivamente para suportar N níveis
   const processMenuItems = (items: DbMenuItem[]): MenuItemType[] => {
     const buildMenuTree = (parentId: string | null): MenuItemType[] => {
@@ -258,6 +265,12 @@ export function Sidebar() {
         .filter(item => item.seq_menu_pai === parentId)
         .map(item => {
           const children = buildMenuTree(item.cod_menu_item);
+          const hasChildren = children.length > 0;
+          const isExternalUrl = item.des_caminho?.startsWith('http');
+          const isValidInternalPath = validInternalPaths.includes(item.des_caminho);
+          // É container se: tem filhos OU (não é URL externa E não é rota válida)
+          const isContainer = hasChildren || (!isExternalUrl && !isValidInternalPath);
+          
           return {
             id: item.cod_menu_item,
             name: item.des_nome,
@@ -266,7 +279,8 @@ export function Sidebar() {
             openInNewTab: item.ind_nova_aba,
             isAdminOnly: item.ind_admin_only,
             isParent: !item.seq_menu_pai, // Top-level items are parents
-            children: children.length > 0 ? children : undefined,
+            isContainer,
+            children: hasChildren ? children : undefined,
           };
         });
     };
@@ -457,16 +471,16 @@ export function Sidebar() {
             }}
             className={cn(
               "w-full ripple-container group flex items-center justify-between gap-2 rounded-lg px-3 py-2 transition-all duration-200 relative overflow-hidden",
-              // Nível 0 e 1: mesmo estilo (maiúsculas, mesma cor, sem ícone)
+              // Containers (com filhos) não têm ícone nos níveis 0 e 1
               (depth === 0 || depth === 1) && "text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70",
-              // Nível 2+: estilo diferenciado
+              // Nível 2+: estilo diferenciado, com ícone apenas se não for container
               depth >= 2 && "text-sm font-medium text-sidebar-foreground/80 pl-3",
               "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
             )}
           >
             <div className="flex items-center gap-2">
-              {/* Ícone apenas para depth >= 2 */}
-              {depth >= 2 && (
+              {/* Ícone apenas para depth >= 2 e somente se NÃO for container */}
+              {depth >= 2 && !item.isContainer && (
                 <Icon className="shrink-0 transition-colors h-4 w-4 text-sidebar-foreground/50 group-hover:text-primary" />
               )}
               <span className="truncate">{depth <= 1 ? item.name.toUpperCase() : item.name}</span>
@@ -493,16 +507,18 @@ export function Sidebar() {
       );
     }
 
-    // Menu pai sem filhos visíveis - mostra como header
-    if (item.isParent && depth === 0) {
+    // Container sem filhos visíveis - mostra como header não clicável (sem ícone)
+    if (item.isContainer) {
       return (
         <div
           className={cn(
-            "w-full flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider",
-            "text-sidebar-foreground/70"
+            "w-full flex items-center gap-2 rounded-lg px-3 py-2",
+            depth === 0 && "text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70",
+            depth === 1 && "text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 ml-2",
+            depth >= 2 && "text-sm font-medium text-sidebar-foreground/60 ml-1 pl-3"
           )}
         >
-          <span>{item.name}</span>
+          <span className="truncate">{depth <= 1 ? item.name.toUpperCase() : item.name}</span>
         </div>
       );
     }
@@ -541,11 +557,13 @@ export function Sidebar() {
           />
         )}
         
-        {/* Ícone - exibir em todos os níveis */}
-        <Icon className={cn(
-          "shrink-0 transition-colors h-4 w-4",
-          active ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground"
-        )} />
+        {/* Ícone - exibir apenas se não for container */}
+        {!item.isContainer && (
+          <Icon className={cn(
+            "shrink-0 transition-colors h-4 w-4",
+            active ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground"
+          )} />
+        )}
         
         {/* Texto */}
         <span className="truncate">{item.name}</span>
