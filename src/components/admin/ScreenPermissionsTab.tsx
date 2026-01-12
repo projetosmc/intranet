@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Lock, Save, Loader2, Check, X, Info, Copy, Plus, Trash2, Search, Users, ChevronDown, ChevronRight, FolderOpen, FileText } from 'lucide-react';
+import { Lock, Save, Loader2, Check, X, Info, Copy, Plus, Trash2, Search, Users, ChevronDown, ChevronRight, FolderOpen, FileText, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -333,6 +333,46 @@ export function ScreenPermissionsTab() {
     }
   };
 
+  // Criar permissão para item de menu (incluindo links externos)
+  const handleCreatePermission = async (menuItem: MenuItem) => {
+    try {
+      // Verificar se a rota já existe
+      const existingRoute = permissoes.find(p => p.des_rota === menuItem.des_caminho);
+      if (existingRoute) {
+        toast({ title: 'Permissão já existe para esta rota', variant: 'destructive' });
+        return;
+      }
+
+      // Calcular próxima ordem
+      const maxOrder = Math.max(...permissoes.map(p => p.num_ordem), 0);
+      
+      // Inserir para o primeiro perfil (o trigger criará para os demais)
+      const firstRole = roleTypes[0];
+      if (!firstRole) {
+        toast({ title: 'Nenhum tipo de perfil encontrado', variant: 'destructive' });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('tab_permissao_tela')
+        .insert({
+          des_role: firstRole.des_codigo,
+          des_rota: menuItem.des_caminho,
+          des_nome_tela: menuItem.des_nome,
+          ind_pode_acessar: false,
+          num_ordem: maxOrder + 1,
+        });
+
+      if (error) throw error;
+
+      toast({ title: `Permissão criada para "${menuItem.des_nome}"` });
+      await fetchData();
+    } catch (error) {
+      console.error('Erro ao criar permissão:', error);
+      toast({ title: 'Erro ao criar permissão', variant: 'destructive' });
+    }
+  };
+
   // Construir árvore de menus com permissões associadas
   const menuTree = useMemo(() => {
     const rolePerms = permissoes.filter(p => p.des_role === selectedRole);
@@ -653,6 +693,7 @@ export function ScreenPermissionsTab() {
                           pendingChanges={pendingChanges}
                           onToggle={handleToggle}
                           onDelete={setDeleteScreenName}
+                          onCreatePermission={handleCreatePermission}
                         />
                       ))}
 
@@ -857,6 +898,7 @@ function MenuTreeNode({
   pendingChanges,
   onToggle,
   onDelete,
+  onCreatePermission,
 }: {
   node: MenuNode;
   depth: number;
@@ -865,10 +907,12 @@ function MenuTreeNode({
   pendingChanges: Map<string, boolean>;
   onToggle: (permission: Permissao) => void;
   onDelete: (name: string) => void;
+  onCreatePermission: (menuItem: MenuItem) => void;
 }) {
   const hasChildren = node.children.length > 0;
   const isExpanded = expandedMenus.has(node.item.cod_menu_item);
   const hasPermission = !!node.permission;
+  const isExternal = node.item.des_caminho.startsWith('http://') || node.item.des_caminho.startsWith('https://');
 
   // Contar permissões habilitadas nos filhos
   const countChildPermissions = (nodes: MenuNode[]): { enabled: number; total: number } => {
@@ -925,6 +969,7 @@ function MenuTreeNode({
                 pendingChanges={pendingChanges}
                 onToggle={onToggle}
                 onDelete={onDelete}
+                onCreatePermission={onCreatePermission}
               />
             ))}
           </div>
@@ -943,24 +988,49 @@ function MenuTreeNode({
         onDelete={onDelete}
         indent={depth}
         menuName={node.item.des_nome}
+        isExternal={isExternal}
       />
     );
   }
 
-  // Item de menu sem permissão associada (link externo, etc)
+  // Item de menu sem permissão associada - permite criar permissão
   return (
     <div
       className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-dashed border-border"
       style={{ marginLeft: `${depth * 16}px` }}
     >
-      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+      {isExternal ? (
+        <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+      ) : (
+        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+      )}
       <div className="flex flex-col min-w-0 flex-1">
         <span className="text-sm truncate">{node.item.des_nome}</span>
         <span className="text-xs text-muted-foreground truncate">{node.item.des_caminho}</span>
       </div>
-      <Badge variant="outline" className="text-xs shrink-0 text-muted-foreground">
-        Sem permissão
-      </Badge>
+      <div className="flex items-center gap-2 shrink-0">
+        {isExternal && (
+          <Badge variant="secondary" className="text-xs">
+            Link externo
+          </Badge>
+        )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onCreatePermission(node.item)}
+              className="text-xs"
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Criar permissão
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Adicionar controle de acesso para este item</p>
+          </TooltipContent>
+        </Tooltip>
+      </div>
     </div>
   );
 }
@@ -973,6 +1043,7 @@ function PermissionItem({
   onDelete,
   indent = 0,
   menuName,
+  isExternal = false,
 }: {
   permission: Permissao;
   pendingChanges: Map<string, boolean>;
@@ -980,6 +1051,7 @@ function PermissionItem({
   onDelete: (name: string) => void;
   indent?: number;
   menuName?: string;
+  isExternal?: boolean;
 }) {
   const hasChange = pendingChanges.has(permission.cod_permissao);
 
@@ -989,9 +1061,20 @@ function PermissionItem({
       style={{ marginLeft: `${indent * 16}px` }}
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+        {isExternal ? (
+          <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+        ) : (
+          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+        )}
         <div className="flex flex-col min-w-0">
-          <span className="font-medium truncate">{menuName || permission.des_nome_tela}</span>
+          <div className="flex items-center gap-2">
+            <span className="font-medium truncate">{menuName || permission.des_nome_tela}</span>
+            {isExternal && (
+              <Badge variant="secondary" className="text-xs shrink-0">
+                Externo
+              </Badge>
+            )}
+          </div>
           <span className="text-xs text-muted-foreground truncate">
             {permission.des_rota}
           </span>
