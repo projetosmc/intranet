@@ -1303,7 +1303,36 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      view_diretorio_usuarios: {
+        Row: {
+          cod_usuario: string | null
+          des_avatar_url: string | null
+          des_cargo: string | null
+          des_departamento: string | null
+          des_nome_completo: string | null
+          des_unidade: string | null
+          ind_ativo: boolean | null
+        }
+        Insert: {
+          cod_usuario?: string | null
+          des_avatar_url?: string | null
+          des_cargo?: string | null
+          des_departamento?: string | null
+          des_nome_completo?: string | null
+          des_unidade?: string | null
+          ind_ativo?: boolean | null
+        }
+        Update: {
+          cod_usuario?: string | null
+          des_avatar_url?: string | null
+          des_cargo?: string | null
+          des_departamento?: string | null
+          des_nome_completo?: string | null
+          des_unidade?: string | null
+          ind_ativo?: boolean | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
