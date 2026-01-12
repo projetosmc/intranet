@@ -75,7 +75,7 @@ export default function AdminSettingsPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
-  const [pathType, setPathType] = useState<'internal' | 'external'>('internal');
+  const [pathType, setPathType] = useState<'internal' | 'external' | 'container'>('internal');
   const [selectedPath, setSelectedPath] = useState<string>('');
   const [deactivateConfirm, setDeactivateConfirm] = useState<{ id: string; name: string; activeSubmenus: number } | null>(null);
   const [editingTags, setEditingTags] = useState<string[]>([]);
@@ -148,52 +148,51 @@ export default function AdminSettingsPage() {
     try {
       const parentId = (formData.get('parent_id') as string) === '__none__' ? null : (formData.get('parent_id') as string) || null;
       
-      // Para submenus, usar o caminho selecionado ou digitado
+      // Determinar o caminho baseado no tipo
       let pathValue: string;
-      if (parentId) {
-        if (pathType === 'internal') {
-          // Se estiver editando e o selectedPath estiver vazio, usar o caminho existente
-          pathValue = selectedPath || (editingItem?.des_caminho && !editingItem.des_caminho.startsWith('http') ? editingItem.des_caminho : '');
-          if (!pathValue) {
-            toast({ 
-              title: 'Selecione uma página', 
-              description: 'Escolha uma página interna para o submenu.', 
-              variant: 'destructive' 
-            });
-            return;
-          }
-        } else {
-          pathValue = (formData.get('external_url') as string)?.trim() || '';
-          // Validar URL externa
-          if (!pathValue) {
-            toast({ 
-              title: 'URL obrigatória', 
-              description: 'Digite uma URL externa válida.', 
-              variant: 'destructive' 
-            });
-            return;
-          }
-          try {
-            const url = new URL(pathValue);
-            if (!['http:', 'https:'].includes(url.protocol)) {
-              throw new Error('Protocolo inválido');
-            }
-          } catch {
-            toast({ 
-              title: 'URL inválida', 
-              description: 'Digite uma URL válida começando com http:// ou https://', 
-              variant: 'destructive' 
-            });
-            return;
-          }
+      const rawName = (formData.get('name') as string)?.trim();
+      
+      if (pathType === 'container' || (!parentId && pathType !== 'external')) {
+        // Para containers (menus principais ou submenus container), gerar caminho baseado no nome
+        pathValue = `/${rawName.toLowerCase().replace(/\s+/g, '-')}`;
+      } else if (pathType === 'internal') {
+        // Se estiver editando e o selectedPath estiver vazio, usar o caminho existente
+        pathValue = selectedPath || (editingItem?.des_caminho && !editingItem.des_caminho.startsWith('http') ? editingItem.des_caminho : '');
+        if (!pathValue) {
+          toast({ 
+            title: 'Selecione uma página', 
+            description: 'Escolha uma página interna para o submenu.', 
+            variant: 'destructive' 
+          });
+          return;
         }
       } else {
-        // Para menus pai, gerar caminho baseado no nome
-        const rawName = (formData.get('name') as string)?.trim();
-        pathValue = `/${rawName.toLowerCase().replace(/\s+/g, '-')}`;
+        // URL externa
+        pathValue = (formData.get('external_url') as string)?.trim() || '';
+        // Validar URL externa
+        if (!pathValue) {
+          toast({ 
+            title: 'URL obrigatória', 
+            description: 'Digite uma URL externa válida.', 
+            variant: 'destructive' 
+          });
+          return;
+        }
+        try {
+          const url = new URL(pathValue);
+          if (!['http:', 'https:'].includes(url.protocol)) {
+            throw new Error('Protocolo inválido');
+          }
+        } catch {
+          toast({ 
+            title: 'URL inválida', 
+            description: 'Digite uma URL válida começando com http:// ou https://', 
+            variant: 'destructive' 
+          });
+          return;
+        }
       }
       
-      const rawName = (formData.get('name') as string)?.trim();
       const formattedName = parentId ? rawName : rawName.toUpperCase();
       
       const iconValue = (formData.get('icon') as string)?.trim() || 'Circle';
@@ -702,8 +701,12 @@ export default function AdminSettingsPage() {
                 setSelectedIcon(item.des_icone || 'Circle');
                 setNamePreview(item.des_nome);
                 const isExternal = item.des_caminho?.startsWith('http');
-                setPathType(isExternal ? 'external' : 'internal');
-                setSelectedPath(isExternal ? '' : item.des_caminho || '');
+                const hasChildren = menuItems.some(m => m.seq_menu_pai === item.cod_menu_item);
+                const isInternalPath = availablePaths.some(p => p.path === item.des_caminho);
+                // Determinar tipo: container se tem filhos ou se o caminho não é uma rota válida
+                const detectedPathType = isExternal ? 'external' : (isInternalPath ? 'internal' : 'container');
+                setPathType(detectedPathType);
+                setSelectedPath(isExternal || !isInternalPath ? '' : item.des_caminho || '');
                 setEditingTags(item.des_tags || []);
                 setNewTag('');
                 setIsDialogOpen(true); 
@@ -842,7 +845,7 @@ export default function AdminSettingsPage() {
                   setSelectedParentId('__none__');
                   setNamePreview('');
                   setSelectedIcon('Circle');
-                  setPathType('internal');
+                  setPathType('container');
                   setSelectedPath('');
                   setEditingTags([]);
                   setNewTag('');
@@ -851,8 +854,10 @@ export default function AdminSettingsPage() {
                   setNamePreview(editingItem.des_nome);
                   setSelectedIcon(editingItem.des_icone || 'Circle');
                   const isExternal = editingItem.des_caminho?.startsWith('http');
-                  setPathType(isExternal ? 'external' : 'internal');
-                  setSelectedPath(isExternal ? '' : editingItem.des_caminho || '');
+                  const isInternalPath = availablePaths.some(p => p.path === editingItem.des_caminho);
+                  const detectedPathType = isExternal ? 'external' : (isInternalPath ? 'internal' : 'container');
+                  setPathType(detectedPathType);
+                  setSelectedPath(isExternal || !isInternalPath ? '' : editingItem.des_caminho || '');
                   setEditingTags(editingItem.des_tags || []);
                 }
               }}>
@@ -861,7 +866,7 @@ export default function AdminSettingsPage() {
                     setSelectedParentId('__none__'); 
                     setNamePreview(''); 
                     setSelectedIcon('Circle'); 
-                    setPathType('internal');
+                    setPathType('container');
                     setSelectedPath('');
                     setEditingTags([]);
                     setNewTag('');
@@ -956,83 +961,92 @@ export default function AdminSettingsPage() {
                       )}
                     </div>
                     
-                    {selectedParentId !== '__none__' && (
-                      <div className="space-y-3">
-                        <Label className="block">Tipo de Destino</Label>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant={pathType === 'internal' ? 'default' : 'outline'}
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => setPathType('internal')}
-                          >
-                            <FolderOpen className="h-4 w-4 mr-1" />
-                            Página Interna
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={pathType === 'external' ? 'default' : 'outline'}
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => setPathType('external')}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                            URL Externa
-                          </Button>
+                    <div className="space-y-3">
+                      <Label className="block">Tipo de Destino</Label>
+                      <div className="flex gap-2 flex-wrap">
+                        <Button
+                          type="button"
+                          variant={pathType === 'container' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => setPathType('container')}
+                        >
+                          <Menu className="h-4 w-4 mr-1" />
+                          Container
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={pathType === 'internal' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => setPathType('internal')}
+                        >
+                          <FolderOpen className="h-4 w-4 mr-1" />
+                          Página Interna
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={pathType === 'external' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => setPathType('external')}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          URL Externa
+                        </Button>
+                      </div>
+
+                      {pathType === 'container' && (
+                        <div className="p-3 bg-muted/50 rounded-md border border-muted">
+                          <p className="text-sm text-muted-foreground">
+                            <strong>Menu Container:</strong> Este item será um agrupador de submenus, sem link próprio.
+                            O caminho será gerado automaticamente baseado no nome.
+                          </p>
                         </div>
+                      )}
 
-                        {pathType === 'internal' ? (
-                          <div>
-                            <Label className="mb-1.5 block text-sm">Selecione a Página</Label>
-                            <Select 
-                              value={selectedPath}
-                              onValueChange={setSelectedPath}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione uma página" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availablePaths.map(route => (
-                                  <SelectItem key={route.path} value={route.path}>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-muted-foreground text-xs">{route.path}</span>
-                                      <span>{route.label}</span>
-                                    </div>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Selecione a página que será aberta ao clicar neste item
-                            </p>
-                          </div>
-                        ) : (
-                          <div>
-                            <Label className="mb-1.5 block text-sm">URL Externa</Label>
-                            <Input 
-                              name="external_url" 
-                              defaultValue={editingItem?.des_caminho?.startsWith('http') ? editingItem.des_caminho : ''} 
-                              required={pathType === 'external'}
-                              placeholder="https://exemplo.com" 
-                            />
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Links externos sempre abrem em nova aba
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                      {pathType === 'internal' && (
+                        <div>
+                          <Label className="mb-1.5 block text-sm">Selecione a Página</Label>
+                          <Select 
+                            value={selectedPath}
+                            onValueChange={setSelectedPath}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione uma página" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availablePaths.map(route => (
+                                <SelectItem key={route.path} value={route.path}>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-muted-foreground text-xs">{route.path}</span>
+                                    <span>{route.label}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Selecione a página que será aberta ao clicar neste item
+                          </p>
+                        </div>
+                      )}
 
-                    {/* Submenu container - sem caminho obrigatório */}
-                    {selectedParentId === '__none__' && (
-                      <div className="p-3 bg-muted/50 rounded-md border border-muted">
-                        <p className="text-sm text-muted-foreground">
-                          <strong>Menu Principal:</strong> Este item será um agrupador de submenus. 
-                          O caminho será gerado automaticamente baseado no nome.
-                        </p>
-                      </div>
-                    )}
+                      {pathType === 'external' && (
+                        <div>
+                          <Label className="mb-1.5 block text-sm">URL Externa</Label>
+                          <Input 
+                            name="external_url" 
+                            defaultValue={editingItem?.des_caminho?.startsWith('http') ? editingItem.des_caminho : ''} 
+                            required={pathType === 'external'}
+                            placeholder="https://exemplo.com" 
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Links externos sempre abrem em nova aba
+                          </p>
+                        </div>
+                      )}
+                    </div>
 
                     <div>
                       <Label className="mb-1.5 block">Ícone</Label>
