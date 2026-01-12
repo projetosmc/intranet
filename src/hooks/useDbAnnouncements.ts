@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Announcement, PollOption, TemplateType, PollType, AnnouncementAuthor, PopupMode, ImagePosition } from '@/types/announcements';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { logAudit } from '@/hooks/useAuditLog';
 
 /**
  * Hook para gerenciamento de comunicados/anúncios
@@ -221,6 +222,13 @@ export function useDbAnnouncements() {
         if (optionsError) throw optionsError;
       }
 
+      await logAudit({
+        action: 'announcement_created',
+        entity_type: 'announcement',
+        entity_id: data.cod_comunicado,
+        new_value: { titulo: announcement.title, tipo: announcement.templateType }
+      });
+
       toast({
         title: 'Sucesso',
         description: 'Comunicado criado com sucesso.',
@@ -283,6 +291,13 @@ export function useDbAnnouncements() {
         }
       }
 
+      await logAudit({
+        action: 'announcement_updated',
+        entity_type: 'announcement',
+        entity_id: id,
+        new_value: dbUpdates
+      });
+
       toast({
         title: 'Sucesso',
         description: 'Comunicado atualizado com sucesso.',
@@ -316,12 +331,22 @@ export function useDbAnnouncements() {
 
   const deleteAnnouncement = useCallback(async (id: string) => {
     try {
+      // Buscar dados antes de deletar para o log
+      const announcementToDelete = announcements.find(a => a.id === id);
+      
       const { error } = await supabase
         .from('tab_comunicado')
         .delete()
         .eq('cod_comunicado', id);
 
       if (error) throw error;
+
+      await logAudit({
+        action: 'announcement_deleted',
+        entity_type: 'announcement',
+        entity_id: id,
+        old_value: announcementToDelete ? { titulo: announcementToDelete.title, tipo: announcementToDelete.templateType } : undefined
+      });
 
       toast({
         title: 'Sucesso',
@@ -337,7 +362,7 @@ export function useDbAnnouncements() {
         variant: 'destructive',
       });
     }
-  }, [toast, fetchAnnouncements]);
+  }, [toast, fetchAnnouncements, announcements]);
 
   const vote = useCallback(async (optionId: string) => {
     if (!user) return;
