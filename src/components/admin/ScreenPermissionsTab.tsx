@@ -1,18 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Lock, Save, Loader2, Check, X, Info, Copy, GripVertical, Plus, Trash2, Search } from 'lucide-react';
+import { Lock, Save, Loader2, Check, X, Info, Copy, GripVertical, Plus, Trash2, Search, Users, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
   DialogContent,
@@ -43,6 +37,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
   DndContext,
   closestCenter,
@@ -86,24 +85,23 @@ interface ScreenGroup {
   permissions: Record<string, Permissao>;
 }
 
-function SortableScreenRow({
+// Componente de item de tela com drag-and-drop
+function SortableScreenItem({
   screen,
   screenData,
-  roles,
-  roleLabels,
+  selectedRole,
   pendingChanges,
   onToggle,
   onDelete,
 }: {
   screen: string;
   screenData: ScreenGroup;
-  roles: RoleType[];
-  roleLabels: Record<string, { label: string; abbrev: string; color: string }>;
+  selectedRole: string;
   pendingChanges: Map<string, boolean>;
   onToggle: (permissao: Permissao) => void;
   onDelete: (screenName: string) => void;
 }) {
-  const firstPermission = Object.values(screenData.permissions)[0];
+  const permissao = screenData.permissions[selectedRole];
   const {
     attributes,
     listeners,
@@ -111,7 +109,7 @@ function SortableScreenRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: firstPermission?.cod_permissao || screen });
+  } = useSortable({ id: permissao?.cod_permissao || screen });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -119,53 +117,49 @@ function SortableScreenRow({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  if (!permissao) return null;
+
+  const hasChange = pendingChanges.has(permissao.cod_permissao);
+
   return (
-    <TableRow ref={setNodeRef} style={style}>
-      <TableCell className="w-[40px]">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center justify-between p-3 border border-border rounded-lg bg-card hover:bg-muted/30 transition-colors"
+    >
+      <div className="flex items-center gap-3 flex-1 min-w-0">
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded"
+          className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded shrink-0"
         >
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </button>
-      </TableCell>
-      <TableCell>
-        <div className="flex flex-col">
-          <span className="font-medium">{screen}</span>
-          <span className="text-xs text-muted-foreground">
+        <div className="flex flex-col min-w-0">
+          <span className="font-medium truncate">{screen}</span>
+          <span className="text-xs text-muted-foreground truncate">
             {screenData.rota}
           </span>
         </div>
-      </TableCell>
-      {roles.map((role) => {
-        const permissao = screenData.permissions[role.des_codigo];
-        if (!permissao) return <TableCell key={role.des_codigo} />;
-
-        const hasChange = pendingChanges.has(permissao.cod_permissao);
-        const label = roleLabels[role.des_codigo];
-
-        return (
-          <TableCell key={role.des_codigo} className="text-center">
-            <div className="flex items-center justify-center gap-2">
-              <Switch
-                checked={permissao.ind_pode_acessar}
-                onCheckedChange={() => onToggle(permissao)}
-                className="data-[state=checked]:bg-green-500"
-              />
-              {permissao.ind_pode_acessar ? (
-                <Check className="h-3 w-3 text-green-500" />
-              ) : (
-                <X className="h-3 w-3 text-destructive" />
-              )}
-              {hasChange && (
-                <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
-              )}
-            </div>
-          </TableCell>
-        );
-      })}
-      <TableCell className="w-[60px]">
+      </div>
+      
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={permissao.ind_pode_acessar}
+            onCheckedChange={() => onToggle(permissao)}
+            className="data-[state=checked]:bg-green-500"
+          />
+          {permissao.ind_pode_acessar ? (
+            <Check className="h-4 w-4 text-green-500" />
+          ) : (
+            <X className="h-4 w-4 text-destructive" />
+          )}
+          {hasChange && (
+            <span className="h-2 w-2 rounded-full bg-orange-500" />
+          )}
+        </div>
+        
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -181,8 +175,8 @@ function SortableScreenRow({
             <p>Remover tela</p>
           </TooltipContent>
         </Tooltip>
-      </TableCell>
-    </TableRow>
+      </div>
+    </div>
   );
 }
 
@@ -197,6 +191,9 @@ export function ScreenPermissionsTab() {
   const [targetRole, setTargetRole] = useState<string>('');
   const [isCopying, setIsCopying] = useState(false);
   
+  // Estado para seleção de perfil
+  const [selectedRole, setSelectedRole] = useState<string>('');
+  
   // Estado para adicionar nova tela
   const [addScreenDialogOpen, setAddScreenDialogOpen] = useState(false);
   const [newScreenName, setNewScreenName] = useState('');
@@ -208,6 +205,9 @@ export function ScreenPermissionsTab() {
   
   // Estado para busca
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Estado para colapsar lista de perfis em mobile
+  const [rolesListOpen, setRolesListOpen] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -219,6 +219,13 @@ export function ScreenPermissionsTab() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Selecionar primeiro perfil automaticamente
+  useEffect(() => {
+    if (roleTypes.length > 0 && !selectedRole) {
+      setSelectedRole(roleTypes[0].des_codigo);
+    }
+  }, [roleTypes, selectedRole]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -249,19 +256,6 @@ export function ScreenPermissionsTab() {
       setIsLoading(false);
     }
   };
-
-  // Criar labels dinâmicos baseados nos tipos de perfil
-  const roleLabels = useMemo(() => {
-    const labels: Record<string, { label: string; abbrev: string; color: string }> = {};
-    roleTypes.forEach((role) => {
-      labels[role.des_codigo] = {
-        label: role.des_nome,
-        abbrev: role.des_nome.substring(0, 3).toUpperCase(),
-        color: role.des_cor,
-      };
-    });
-    return labels;
-  }, [roleTypes]);
 
   const handleToggle = (permissao: Permissao) => {
     setPermissoes((prev) =>
@@ -339,8 +333,8 @@ export function ScreenPermissionsTab() {
         }
       }
 
-      const sourceLabel = roleLabels[sourceRole]?.label || sourceRole;
-      const targetLabel = roleLabels[targetRole]?.label || targetRole;
+      const sourceLabel = roleTypes.find(r => r.des_codigo === sourceRole)?.des_nome || sourceRole;
+      const targetLabel = roleTypes.find(r => r.des_codigo === targetRole)?.des_nome || targetRole;
       toast({ title: `Permissões copiadas de ${sourceLabel} para ${targetLabel}` });
       setCopyDialogOpen(false);
       setSourceRole('');
@@ -360,12 +354,12 @@ export function ScreenPermissionsTab() {
     if (over && active.id !== over.id) {
       const screens = Object.keys(groupedByScreen);
       const oldIndex = screens.findIndex((s) => {
-        const firstPerm = groupedByScreen[s].permissions[Object.keys(groupedByScreen[s].permissions)[0]];
-        return firstPerm?.cod_permissao === active.id;
+        const perm = groupedByScreen[s].permissions[selectedRole];
+        return perm?.cod_permissao === active.id;
       });
       const newIndex = screens.findIndex((s) => {
-        const firstPerm = groupedByScreen[s].permissions[Object.keys(groupedByScreen[s].permissions)[0]];
-        return firstPerm?.cod_permissao === over.id;
+        const perm = groupedByScreen[s].permissions[selectedRole];
+        return perm?.cod_permissao === over.id;
       });
 
       if (oldIndex !== -1 && newIndex !== -1) {
@@ -514,10 +508,37 @@ export function ScreenPermissionsTab() {
 
   const sortableIds = useMemo(() => {
     return filteredScreens.map((screen) => {
-      const firstPerm = Object.values(groupedByScreen[screen].permissions)[0];
-      return firstPerm?.cod_permissao || screen;
+      const perm = groupedByScreen[screen].permissions[selectedRole];
+      return perm?.cod_permissao || screen;
     });
-  }, [filteredScreens, groupedByScreen]);
+  }, [filteredScreens, groupedByScreen, selectedRole]);
+
+  // Contar permissões habilitadas por perfil
+  const permissionCounts = useMemo(() => {
+    const counts: Record<string, { enabled: number; total: number }> = {};
+    roleTypes.forEach(role => {
+      const rolePerms = permissoes.filter(p => p.des_role === role.des_codigo);
+      counts[role.des_codigo] = {
+        enabled: rolePerms.filter(p => p.ind_pode_acessar).length,
+        total: rolePerms.length,
+      };
+    });
+    return counts;
+  }, [permissoes, roleTypes]);
+
+  // Contar mudanças pendentes para o perfil selecionado
+  const pendingCountForRole = useMemo(() => {
+    let count = 0;
+    pendingChanges.forEach((_, key) => {
+      const perm = permissoes.find(p => p.cod_permissao === key);
+      if (perm?.des_role === selectedRole) count++;
+    });
+    return count;
+  }, [pendingChanges, permissoes, selectedRole]);
+
+  const selectedRoleData = useMemo(() => {
+    return roleTypes.find(r => r.des_codigo === selectedRole);
+  }, [roleTypes, selectedRole]);
 
   if (isLoading) {
     return (
@@ -536,28 +557,11 @@ export function ScreenPermissionsTab() {
           <div>
             <h3 className="text-lg font-semibold">Permissões de Acesso por Perfil</h3>
             <p className="text-sm text-muted-foreground">
-              Configure quais telas cada perfil de usuário pode acessar
+              Selecione um perfil e configure quais telas ele pode acessar
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar tela ou rota..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-9 w-64"
-            />
-            {searchTerm && (
-              <button
-                onClick={handleClearSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
           <Button variant="outline" onClick={() => setAddScreenDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Nova Tela
@@ -585,89 +589,154 @@ export function ScreenPermissionsTab() {
         </div>
       </div>
 
-      {/* Results count */}
-      {searchTerm && (
-        <p className="text-sm text-muted-foreground">
-          {filteredScreens.length} tela{filteredScreens.length !== 1 ? 's' : ''} encontrada{filteredScreens.length !== 1 ? 's' : ''}
-        </p>
-      )}
-
       {/* Info box */}
       <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-lg">
-        <Info className="h-5 w-5 text-muted-foreground mt-0.5" />
+        <Info className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
         <p className="text-sm text-muted-foreground">
-          Ative ou desative o acesso de cada perfil às telas do sistema. Use "Copiar
-          Permissões" para replicar configurações entre perfis. Arraste as linhas para
-          reordenar as telas.
+          Selecione um perfil na lista à esquerda para configurar suas permissões. 
+          Use "Copiar Permissões" para replicar configurações entre perfis.
         </p>
       </div>
 
-      {/* Legenda de perfis */}
-      <div className="flex flex-wrap gap-2">
-        {roleTypes.map((role) => (
-          <Badge key={role.des_codigo} className={role.des_cor}>
-            {role.des_nome}
-          </Badge>
-        ))}
-      </div>
+      {/* Layout principal: Lista de perfis + Telas */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Lista de perfis */}
+        <div className="lg:col-span-4">
+          <Collapsible open={rolesListOpen} onOpenChange={setRolesListOpen} className="lg:hidden mb-4">
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" className="w-full justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  <span>Perfis ({roleTypes.length})</span>
+                  {selectedRoleData && (
+                    <Badge className={selectedRoleData.des_cor}>{selectedRoleData.des_nome}</Badge>
+                  )}
+                </div>
+                <ChevronDown className={`h-4 w-4 transition-transform ${rolesListOpen ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2">
+              <RolesList
+                roleTypes={roleTypes}
+                selectedRole={selectedRole}
+                setSelectedRole={setSelectedRole}
+                permissionCounts={permissionCounts}
+                pendingChanges={pendingChanges}
+                permissoes={permissoes}
+              />
+            </CollapsibleContent>
+          </Collapsible>
 
-      {/* Tabela de permissões com drag-and-drop */}
-      <div className="border border-border rounded-lg overflow-hidden">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[40px]"></TableHead>
-                <TableHead className="w-[250px]">Tela</TableHead>
-                {roleTypes.map((role) => (
-                  <TableHead key={role.des_codigo} className="text-center w-[120px]">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="cursor-help">
-                          <Badge className={role.des_cor}>
-                            {role.des_nome.substring(0, 3).toUpperCase()}
-                          </Badge>
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{role.des_nome}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TableHead>
-                ))}
-                <TableHead className="w-[60px]">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-                {filteredScreens.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={roleTypes.length + 3} className="text-center py-8 text-muted-foreground">
-                      {searchTerm ? 'Nenhuma tela encontrada' : 'Nenhuma tela cadastrada'}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredScreens.map((screen) => (
-                    <SortableScreenRow
-                      key={screen}
-                      screen={screen}
-                      screenData={groupedByScreen[screen]}
-                      roles={roleTypes}
-                      roleLabels={roleLabels}
-                      pendingChanges={pendingChanges}
-                      onToggle={handleToggle}
-                      onDelete={setDeleteScreenName}
-                    />
-                  ))
-                )}
-              </SortableContext>
-            </TableBody>
-          </Table>
-        </DndContext>
+          <div className="hidden lg:block">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Perfis
+                  <Badge variant="secondary" className="ml-auto">
+                    {roleTypes.length}
+                  </Badge>
+                </CardTitle>
+                <CardDescription>
+                  Clique em um perfil para editar suas permissões
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-[500px]">
+                  <RolesList
+                    roleTypes={roleTypes}
+                    selectedRole={selectedRole}
+                    setSelectedRole={setSelectedRole}
+                    permissionCounts={permissionCounts}
+                    pendingChanges={pendingChanges}
+                    permissoes={permissoes}
+                  />
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Telas do perfil selecionado */}
+        <div className="lg:col-span-8">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    Telas
+                    {selectedRoleData && (
+                      <Badge className={selectedRoleData.des_cor}>{selectedRoleData.des_nome}</Badge>
+                    )}
+                    {pendingCountForRole > 0 && (
+                      <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30">
+                        {pendingCountForRole} alteração{pendingCountForRole > 1 ? 'ões' : ''}
+                      </Badge>
+                    )}
+                  </CardTitle>
+                  <CardDescription>
+                    {permissionCounts[selectedRole]?.enabled || 0} de {permissionCounts[selectedRole]?.total || 0} telas habilitadas
+                  </CardDescription>
+                </div>
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar tela..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 pr-9"
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={handleClearSearch}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Results count */}
+              {searchTerm && (
+                <p className="text-sm text-muted-foreground mb-4">
+                  {filteredScreens.length} tela{filteredScreens.length !== 1 ? 's' : ''} encontrada{filteredScreens.length !== 1 ? 's' : ''}
+                </p>
+              )}
+
+              <ScrollArea className="h-[450px] pr-4">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-2">
+                      {filteredScreens.length === 0 ? (
+                        <div className="flex items-center justify-center py-12 text-muted-foreground">
+                          {searchTerm ? 'Nenhuma tela encontrada' : 'Nenhuma tela cadastrada'}
+                        </div>
+                      ) : (
+                        filteredScreens.map((screen) => (
+                          <SortableScreenItem
+                            key={screen}
+                            screen={screen}
+                            screenData={groupedByScreen[screen]}
+                            selectedRole={selectedRole}
+                            pendingChanges={pendingChanges}
+                            onToggle={handleToggle}
+                            onDelete={setDeleteScreenName}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Dialog de copiar permissões */}
@@ -810,6 +879,83 @@ export function ScreenPermissionsTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+// Componente separado para lista de perfis
+function RolesList({
+  roleTypes,
+  selectedRole,
+  setSelectedRole,
+  permissionCounts,
+  pendingChanges,
+  permissoes,
+}: {
+  roleTypes: RoleType[];
+  selectedRole: string;
+  setSelectedRole: (role: string) => void;
+  permissionCounts: Record<string, { enabled: number; total: number }>;
+  pendingChanges: Map<string, boolean>;
+  permissoes: Permissao[];
+}) {
+  // Contar mudanças pendentes por perfil
+  const pendingCountByRole = useMemo(() => {
+    const counts: Record<string, number> = {};
+    roleTypes.forEach(role => {
+      let count = 0;
+      pendingChanges.forEach((_, key) => {
+        const perm = permissoes.find(p => p.cod_permissao === key);
+        if (perm?.des_role === role.des_codigo) count++;
+      });
+      counts[role.des_codigo] = count;
+    });
+    return counts;
+  }, [roleTypes, pendingChanges, permissoes]);
+
+  return (
+    <div className="space-y-1 p-2">
+      {roleTypes.map((role) => {
+        const counts = permissionCounts[role.des_codigo];
+        const pendingCount = pendingCountByRole[role.des_codigo] || 0;
+        const isSelected = selectedRole === role.des_codigo;
+        const percentage = counts?.total > 0 ? Math.round((counts.enabled / counts.total) * 100) : 0;
+
+        return (
+          <button
+            key={role.des_codigo}
+            onClick={() => setSelectedRole(role.des_codigo)}
+            className={`w-full text-left p-3 rounded-lg transition-colors ${
+              isSelected
+                ? 'bg-primary/10 border border-primary/30'
+                : 'hover:bg-muted border border-transparent'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Badge className={`${role.des_cor} shrink-0`}>
+                  {role.des_nome.substring(0, 3).toUpperCase()}
+                </Badge>
+                <span className="font-medium truncate">{role.des_nome}</span>
+              </div>
+              {pendingCount > 0 && (
+                <span className="h-2 w-2 rounded-full bg-orange-500 shrink-0" />
+              )}
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-green-500 transition-all duration-300"
+                  style={{ width: `${percentage}%` }}
+                />
+              </div>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                {counts?.enabled || 0}/{counts?.total || 0}
+              </span>
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
