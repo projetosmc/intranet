@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Phone, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { User, Phone, Mail, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MaskedInput } from '@/components/ui/masked-input';
@@ -15,6 +15,10 @@ const profileSchema = z.object({
     .trim()
     .min(3, 'Nome deve ter pelo menos 3 caracteres')
     .max(100, 'Nome deve ter no máximo 100 caracteres'),
+  email: z.string()
+    .trim()
+    .email('Email inválido')
+    .max(255, 'Email deve ter no máximo 255 caracteres'),
   phone: z.string()
     .trim()
     .regex(/^\([1-9]{2}\) [0-9]{5}-[0-9]{4}$/, 'Telefone inválido - use o formato (XX) XXXXX-XXXX'),
@@ -31,27 +35,31 @@ export function ProfileCompletionModal({ onComplete }: ProfileCompletionModalPro
   const { toast } = useToast();
 
   const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [touched, setTouched] = useState<Set<string>>(new Set());
 
-  // Load existing profile data
+  // Load existing profile data (but NOT email from auth)
   useEffect(() => {
     if (user) {
       const fetchProfile = async () => {
         const { data } = await supabase
           .from('tab_perfil_usuario')
-          .select('des_nome_completo, des_telefone')
+          .select('des_nome_completo, des_telefone, des_email')
           .eq('cod_usuario', user.id)
           .maybeSingle();
 
         if (data) {
           setFullName(data.des_nome_completo || '');
           setPhone(data.des_telefone || '');
+          setEmail(data.des_email || ''); // Only use email from profile, not from auth
         } else {
-          // Use user metadata as fallback
+          // Use user metadata as fallback for name only
           setFullName(user.user_metadata?.full_name || '');
+          // Email starts blank - user must fill it
+          setEmail('');
         }
       };
       fetchProfile();
@@ -59,7 +67,7 @@ export function ProfileCompletionModal({ onComplete }: ProfileCompletionModalPro
   }, [user]);
 
   const validateField = (field: string, value: string) => {
-    const data = { fullName, phone, [field]: value };
+    const data = { fullName, email, phone, [field]: value };
     const result = profileSchema.safeParse(data);
     
     if (!result.success) {
@@ -93,7 +101,7 @@ export function ProfileCompletionModal({ onComplete }: ProfileCompletionModalPro
     if (!user) return;
 
     // Validate all fields
-    const result = profileSchema.safeParse({ fullName, phone });
+    const result = profileSchema.safeParse({ fullName, email, phone });
     
     if (!result.success) {
       const fieldErrors: FieldErrors = {};
@@ -102,7 +110,7 @@ export function ProfileCompletionModal({ onComplete }: ProfileCompletionModalPro
         fieldErrors[field] = err.message;
       });
       setErrors(fieldErrors);
-      setTouched(new Set(['fullName', 'phone']));
+      setTouched(new Set(['fullName', 'email', 'phone']));
       return;
     }
 
@@ -113,7 +121,7 @@ export function ProfileCompletionModal({ onComplete }: ProfileCompletionModalPro
         .upsert({
           cod_usuario: user.id,
           des_nome_completo: fullName.trim(),
-          des_email: user.email,
+          des_email: email.trim(),
           des_telefone: phone.trim(),
         });
 
@@ -143,7 +151,10 @@ export function ProfileCompletionModal({ onComplete }: ProfileCompletionModalPro
   };
 
   const hasErrors = Object.keys(errors).length > 0;
-  const isFormValid = fullName.trim().length >= 3 && /^\([1-9]{2}\) [0-9]{5}-[0-9]{4}$/.test(phone);
+  const isFormValid = 
+    fullName.trim().length >= 3 && 
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
+    /^\([1-9]{2}\) [0-9]{5}-[0-9]{4}$/.test(phone);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
@@ -195,6 +206,28 @@ export function ProfileCompletionModal({ onComplete }: ProfileCompletionModalPro
                   <p className="text-xs text-destructive flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" />
                     {errors.fullName}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email" className={`flex items-center gap-2 ${errors.email ? 'text-destructive' : ''}`}>
+                  <Mail className="h-4 w-4" />
+                  Email *
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => handleFieldChange('email', e.target.value, setEmail)}
+                  onBlur={() => handleFieldBlur('email', email)}
+                  placeholder="Digite seu email"
+                  className={errors.email ? 'border-destructive focus-visible:ring-destructive' : ''}
+                />
+                {errors.email && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.email}
                   </p>
                 )}
               </div>

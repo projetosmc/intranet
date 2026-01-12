@@ -8,7 +8,7 @@ interface ProfileCompletionStatus {
   missingFields: string[];
 }
 
-const REQUIRED_FIELDS = ['des_nome_completo', 'des_telefone'];
+const REQUIRED_FIELDS = ['des_nome_completo', 'des_telefone', 'des_email'];
 
 export function useProfileCompletion(): ProfileCompletionStatus {
   const { user } = useAuth();
@@ -42,7 +42,7 @@ export function useProfileCompletion(): ProfileCompletionStatus {
         
         // Check if profile exists
         if (!data) {
-          missing.push('des_nome_completo', 'des_telefone');
+          missing.push('des_nome_completo', 'des_telefone', 'des_email');
         } else {
           // Check required fields
           if (!data.des_nome_completo?.trim()) {
@@ -50,6 +50,9 @@ export function useProfileCompletion(): ProfileCompletionStatus {
           }
           if (!data.des_telefone?.trim()) {
             missing.push('des_telefone');
+          }
+          if (!data.des_email?.trim()) {
+            missing.push('des_email');
           }
         }
 
