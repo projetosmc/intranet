@@ -103,6 +103,9 @@ export function ScreenPermissionsTab() {
   // Estado para busca
   const [searchTerm, setSearchTerm] = useState('');
   
+  // Estado para filtro de permissão
+  const [permissionFilter, setPermissionFilter] = useState<'all' | 'with' | 'without'>('all');
+  
   // Estado para colapsar lista de perfis em mobile
   const [rolesListOpen, setRolesListOpen] = useState(true);
   
@@ -407,36 +410,62 @@ export function ScreenPermissionsTab() {
     return rolePerms.filter(p => !menuRoutes.has(p.des_rota));
   }, [permissoes, menuItems, selectedRole]);
 
-  // Filtrar árvore por busca
-  const filterTree = useCallback((nodes: MenuNode[], term: string): MenuNode[] => {
-    if (!term.trim()) return nodes;
-    const lowerTerm = term.toLowerCase();
-    
+  // Filtrar árvore por busca e status de permissão
+  const filterTree = useCallback((nodes: MenuNode[], term: string, filter: 'all' | 'with' | 'without'): MenuNode[] => {
     return nodes.reduce<MenuNode[]>((acc, node) => {
-      const matchesName = node.item.des_nome.toLowerCase().includes(lowerTerm);
-      const matchesRoute = node.item.des_caminho.toLowerCase().includes(lowerTerm);
-      const filteredChildren = filterTree(node.children, term);
+      const lowerTerm = term.toLowerCase();
+      const matchesSearch = !term.trim() || 
+        node.item.des_nome.toLowerCase().includes(lowerTerm) ||
+        node.item.des_caminho.toLowerCase().includes(lowerTerm);
       
-      if (matchesName || matchesRoute || filteredChildren.length > 0) {
-        acc.push({
-          ...node,
-          children: filteredChildren,
-        });
+      // Verificar filtro de permissão
+      const hasPermission = !!node.permission;
+      const matchesPermissionFilter = filter === 'all' || 
+        (filter === 'with' && hasPermission) ||
+        (filter === 'without' && !hasPermission);
+      
+      const filteredChildren = filterTree(node.children, term, filter);
+      
+      // Container: mostrar se tiver filhos que passam no filtro
+      if (node.children.length > 0) {
+        if (filteredChildren.length > 0) {
+          acc.push({
+            ...node,
+            children: filteredChildren,
+          });
+        }
+      } else {
+        // Folha: verificar busca e filtro
+        if (matchesSearch && matchesPermissionFilter) {
+          acc.push({ ...node, children: [] });
+        }
       }
+      
       return acc;
     }, []);
   }, []);
 
-  const filteredTree = useMemo(() => filterTree(menuTree, searchTerm), [menuTree, searchTerm, filterTree]);
+  const filteredTree = useMemo(() => filterTree(menuTree, searchTerm, permissionFilter), [menuTree, searchTerm, permissionFilter, filterTree]);
 
   const filteredOrphans = useMemo(() => {
-    if (!searchTerm.trim()) return orphanPermissions;
-    const lowerTerm = searchTerm.toLowerCase();
-    return orphanPermissions.filter(
-      p => p.des_nome_tela.toLowerCase().includes(lowerTerm) ||
-           p.des_rota.toLowerCase().includes(lowerTerm)
-    );
-  }, [orphanPermissions, searchTerm]);
+    let result = orphanPermissions;
+    
+    // Filtro de busca
+    if (searchTerm.trim()) {
+      const lowerTerm = searchTerm.toLowerCase();
+      result = result.filter(
+        p => p.des_nome_tela.toLowerCase().includes(lowerTerm) ||
+             p.des_rota.toLowerCase().includes(lowerTerm)
+      );
+    }
+    
+    // Órfãos sempre têm permissão, então só mostrar se filtro for 'all' ou 'with'
+    if (permissionFilter === 'without') {
+      return [];
+    }
+    
+    return result;
+  }, [orphanPermissions, searchTerm, permissionFilter]);
 
   const toggleMenuExpand = (menuId: string) => {
     setExpandedMenus(prev => {
@@ -634,8 +663,8 @@ export function ScreenPermissionsTab() {
                     {permissionCounts[selectedRole]?.enabled || 0} de {permissionCounts[selectedRole]?.total || 0} telas habilitadas
                   </CardDescription>
                 </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <div className="relative flex-1 sm:w-48">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:w-40">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Buscar..."
@@ -652,6 +681,16 @@ export function ScreenPermissionsTab() {
                       </button>
                     )}
                   </div>
+                  <Select value={permissionFilter} onValueChange={(v) => setPermissionFilter(v as 'all' | 'with' | 'without')}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      <SelectItem value="with">Com permissão</SelectItem>
+                      <SelectItem value="without">Sem permissão</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <div className="flex gap-1">
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -678,8 +717,25 @@ export function ScreenPermissionsTab() {
                 <div className="space-y-2">
                   {/* Árvore de menus */}
                   {filteredTree.length === 0 && filteredOrphans.length === 0 ? (
-                    <div className="flex items-center justify-center py-12 text-muted-foreground">
-                      {searchTerm ? 'Nenhuma tela encontrada' : 'Nenhum menu configurado'}
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
+                      <span>
+                        {searchTerm || permissionFilter !== 'all'
+                          ? 'Nenhuma tela encontrada com os filtros aplicados'
+                          : 'Nenhum menu configurado'
+                        }
+                      </span>
+                      {(searchTerm || permissionFilter !== 'all') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSearchTerm('');
+                            setPermissionFilter('all');
+                          }}
+                        >
+                          Limpar filtros
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <>
