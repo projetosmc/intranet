@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Lock, Save, Loader2, Check, X, Info, Copy, Plus, Trash2, Search, Users, ChevronDown, ChevronRight, FolderOpen, FileText, ExternalLink } from 'lucide-react';
+import { Lock, Save, Loader2, Check, X, Info, Copy, Plus, Trash2, Search, Users, ChevronDown, ChevronRight, FolderOpen, FileText, ExternalLink, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -475,6 +475,52 @@ export function ScreenPermissionsTab() {
     return count;
   }, [pendingChanges, permissoes, selectedRole]);
 
+  // Coletar todas as permissões de um nó e seus filhos
+  const collectAllPermissions = useCallback((node: MenuNode): Permissao[] => {
+    const result: Permissao[] = [];
+    if (node.permission) {
+      result.push(node.permission);
+    }
+    for (const child of node.children) {
+      result.push(...collectAllPermissions(child));
+    }
+    return result;
+  }, []);
+
+  // Handler para habilitar/desabilitar todas as permissões de um submenu
+  const handleToggleAllInSubmenu = useCallback((node: MenuNode, enable: boolean) => {
+    const allPermissions = collectAllPermissions(node);
+    
+    // Atualizar estado local das permissões
+    setPermissoes((prev) =>
+      prev.map((p) => {
+        const isInSubmenu = allPermissions.some(ap => ap.cod_permissao === p.cod_permissao);
+        if (isInSubmenu && p.ind_pode_acessar !== enable) {
+          return { ...p, ind_pode_acessar: enable };
+        }
+        return p;
+      })
+    );
+
+    // Atualizar mudanças pendentes
+    setPendingChanges((prev) => {
+      const newMap = new Map(prev);
+      for (const perm of allPermissions) {
+        // Verificar o valor original (antes de qualquer alteração nesta sessão)
+        const originalValue = permissoes.find(p => p.cod_permissao === perm.cod_permissao)?.ind_pode_acessar;
+        
+        // Se o novo valor é diferente do original, adicionar às mudanças pendentes
+        if (originalValue !== enable) {
+          newMap.set(perm.cod_permissao, enable);
+        } else {
+          // Se voltou ao valor original, remover das mudanças pendentes
+          newMap.delete(perm.cod_permissao);
+        }
+      }
+      return newMap;
+    });
+  }, [collectAllPermissions, permissoes]);
+
   const selectedRoleData = useMemo(() => {
     return roleTypes.find(r => r.des_codigo === selectedRole);
   }, [roleTypes, selectedRole]);
@@ -709,6 +755,7 @@ export function ScreenPermissionsTab() {
                           pendingChanges={pendingChanges}
                           onToggle={handleToggle}
                           onDelete={setDeleteScreenName}
+                          onToggleAll={handleToggleAllInSubmenu}
                         />
                       ))}
 
@@ -913,6 +960,7 @@ function MenuTreeNode({
   pendingChanges,
   onToggle,
   onDelete,
+  onToggleAll,
 }: {
   node: MenuNode;
   depth: number;
@@ -921,6 +969,7 @@ function MenuTreeNode({
   pendingChanges: Map<string, boolean>;
   onToggle: (permission: Permissao) => void;
   onDelete: (name: string) => void;
+  onToggleAll: (node: MenuNode, enable: boolean) => void;
 }) {
   const hasChildren = node.children.length > 0;
   const isExpanded = expandedMenus.has(node.item.cod_menu_item);
@@ -944,31 +993,76 @@ function MenuTreeNode({
   };
 
   const childCounts = hasChildren ? countChildPermissions(node.children) : null;
+  const allEnabled = childCounts && childCounts.total > 0 && childCounts.enabled === childCounts.total;
+  const allDisabled = childCounts && childCounts.total > 0 && childCounts.enabled === 0;
 
   if (hasChildren) {
     // É um container/submenu
     return (
       <div className="space-y-1">
-        <button
-          onClick={() => toggleMenuExpand(node.item.cod_menu_item)}
-          className={`w-full flex items-center gap-2 p-3 rounded-lg transition-colors hover:bg-muted border ${
-            isExpanded ? 'bg-muted/50 border-border' : 'border-transparent'
+        <div
+          className={`flex items-center gap-2 p-3 rounded-lg transition-colors border ${
+            isExpanded ? 'bg-muted/50 border-border' : 'border-transparent hover:bg-muted'
           }`}
           style={{ paddingLeft: `${12 + depth * 16}px` }}
         >
-          {isExpanded ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-          )}
-          <FolderOpen className="h-4 w-4 text-primary shrink-0" />
-          <span className="font-medium flex-1 text-left truncate">{node.item.des_nome}</span>
+          <button
+            onClick={() => toggleMenuExpand(node.item.cod_menu_item)}
+            className="flex items-center gap-2 flex-1 min-w-0"
+          >
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            )}
+            <FolderOpen className="h-4 w-4 text-primary shrink-0" />
+            <span className="font-medium flex-1 text-left truncate">{node.item.des_nome}</span>
+          </button>
+          
           {childCounts && childCounts.total > 0 && (
-            <Badge variant="outline" className="text-xs shrink-0">
-              {childCounts.enabled}/{childCounts.total}
-            </Badge>
+            <div className="flex items-center gap-2 shrink-0">
+              <Badge variant="outline" className="text-xs">
+                {childCounts.enabled}/{childCounts.total}
+              </Badge>
+              <div className="flex gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleAll(node, true);
+                      }}
+                      disabled={allEnabled}
+                      className={`h-7 w-7 ${allEnabled ? 'opacity-30' : 'text-green-600 hover:text-green-700 hover:bg-green-500/10'}`}
+                    >
+                      <ToggleRight className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Habilitar todos</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleAll(node, false);
+                      }}
+                      disabled={allDisabled}
+                      className={`h-7 w-7 ${allDisabled ? 'opacity-30' : 'text-destructive hover:text-destructive hover:bg-destructive/10'}`}
+                    >
+                      <ToggleLeft className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Desabilitar todos</TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
           )}
-        </button>
+        </div>
 
         {isExpanded && (
           <div className="ml-4 space-y-1">
@@ -982,6 +1076,7 @@ function MenuTreeNode({
                 pendingChanges={pendingChanges}
                 onToggle={onToggle}
                 onDelete={onDelete}
+                onToggleAll={onToggleAll}
               />
             ))}
           </div>
