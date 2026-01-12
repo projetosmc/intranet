@@ -615,7 +615,7 @@ export function ScreenPermissionsTab() {
                     )}
                     {pendingCountForRole > 0 && (
                       <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30">
-                        {pendingCountForRole} alteração{pendingCountForRole > 1 ? 'ões' : ''}
+                        {pendingCountForRole} {pendingCountForRole > 1 ? 'alterações' : 'alteração'}
                       </Badge>
                     )}
                   </CardTitle>
