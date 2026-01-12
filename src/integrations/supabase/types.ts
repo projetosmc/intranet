@@ -1303,44 +1303,32 @@ export type Database = {
       }
     }
     Views: {
-      view_diretorio_usuarios: {
-        Row: {
-          cod_usuario: string | null
-          des_avatar_url: string | null
-          des_cargo: string | null
-          des_departamento: string | null
-          des_nome_completo: string | null
-          des_unidade: string | null
-          ind_ativo: boolean | null
-        }
-        Insert: {
-          cod_usuario?: string | null
-          des_avatar_url?: string | null
-          des_cargo?: string | null
-          des_departamento?: string | null
-          des_nome_completo?: string | null
-          des_unidade?: string | null
-          ind_ativo?: boolean | null
-        }
-        Update: {
-          cod_usuario?: string | null
-          des_avatar_url?: string | null
-          des_cargo?: string | null
-          des_departamento?: string | null
-          des_nome_completo?: string | null
-          des_unidade?: string | null
-          ind_ativo?: boolean | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
+      get_user_display_info: {
+        Args: { user_id: string }
+        Returns: {
+          avatar_url: string
+          nome: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      search_users_directory: {
+        Args: { result_limit?: number; search_term: string }
+        Returns: {
+          avatar_url: string
+          cargo: string
+          departamento: string
+          id: string
+          nome: string
+        }[]
       }
       setup_first_admin: { Args: { admin_user_id: string }; Returns: undefined }
     }
