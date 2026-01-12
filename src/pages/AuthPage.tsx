@@ -1,31 +1,28 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Fuel, Mail, Lock, User, Loader2 } from 'lucide-react';
+import { Fuel, User, Lock, Loader2, Network } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
 
 const loginSchema = z.object({
-  email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
-});
-
-const signupSchema = loginSchema.extend({
-  fullName: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+  username: z.string().min(1, 'Usuário é obrigatório'),
+  password: z.string().min(1, 'Senha é obrigatória'),
 });
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { signIn, signUp, isAuthenticated, isLoading } = useAuth();
+  const { toast } = useToast();
+  const { isAuthenticated, isLoading } = useAuthContext();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -40,43 +37,85 @@ export default function AuthPage() {
     setIsSubmitting(true);
 
     try {
-      if (isLogin) {
-        const result = loginSchema.safeParse({ email, password });
-        if (!result.success) {
-          const fieldErrors: Record<string, string> = {};
-          result.error.errors.forEach((err) => {
-            if (err.path[0]) {
-              fieldErrors[err.path[0] as string] = err.message;
-            }
-          });
-          setErrors(fieldErrors);
-          setIsSubmitting(false);
-          return;
-        }
+      // Validate form
+      const result = loginSchema.safeParse({ username, password });
+      if (!result.success) {
+        const fieldErrors: Record<string, string> = {};
+        result.error.errors.forEach((err) => {
+          if (err.path[0]) {
+            fieldErrors[err.path[0] as string] = err.message;
+          }
+        });
+        setErrors(fieldErrors);
+        setIsSubmitting(false);
+        return;
+      }
 
-        const { error } = await signIn(email, password);
-        if (!error) {
-          navigate('/');
-        }
-      } else {
-        const result = signupSchema.safeParse({ email, password, fullName });
-        if (!result.success) {
-          const fieldErrors: Record<string, string> = {};
-          result.error.errors.forEach((err) => {
-            if (err.path[0]) {
-              fieldErrors[err.path[0] as string] = err.message;
-            }
-          });
-          setErrors(fieldErrors);
-          setIsSubmitting(false);
-          return;
-        }
+      // Call LDAP auth edge function
+      const { data, error } = await supabase.functions.invoke('ldap-auth', {
+        body: { username, password },
+      });
 
-        const { error } = await signUp(email, password, fullName);
-        if (!error) {
-          setIsLogin(true);
+      if (error) {
+        console.error('LDAP auth error:', error);
+        toast({
+          title: 'Erro ao entrar',
+          description: 'Erro de comunicação com o servidor',
+          variant: 'destructive',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!data.success) {
+        toast({
+          title: 'Erro ao entrar',
+          description: data.error || 'Credenciais inválidas',
+          variant: 'destructive',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Use the magic link to authenticate
+      if (data.auth?.actionLink) {
+        // Extract token from magic link and verify OTP
+        const linkUrl = new URL(data.auth.actionLink);
+        const token = linkUrl.searchParams.get('token');
+        const type = linkUrl.searchParams.get('type') || 'magiclink';
+        
+        if (token) {
+          const { error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: token,
+            type: type as 'magiclink' | 'email',
+          });
+
+          if (verifyError) {
+            console.error('OTP verification error:', verifyError);
+            toast({
+              title: 'Erro ao entrar',
+              description: 'Erro ao estabelecer sessão',
+              variant: 'destructive',
+            });
+            setIsSubmitting(false);
+            return;
+          }
         }
       }
+
+      toast({
+        title: 'Bem-vindo!',
+        description: `Login realizado com sucesso${data.user?.isNewUser ? '. Sua conta foi criada automaticamente.' : '.'}`,
+      });
+      
+      navigate('/');
+    } catch (err) {
+      console.error('Login error:', err);
+      toast({
+        title: 'Erro ao entrar',
+        description: 'Ocorreu um erro inesperado',
+        variant: 'destructive',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -126,7 +165,7 @@ export default function AuthPage() {
           transition={{ delay: 0.4 }}
           className="text-muted-foreground text-center mb-6"
         >
-          Faça login para acessar o sistema
+          Faça login com sua conta de rede
         </motion.p>
 
         {/* Card */}
@@ -136,52 +175,35 @@ export default function AuthPage() {
           transition={{ delay: 0.3 }}
           className="bg-card border border-border rounded-2xl p-6 shadow-xl"
         >
+          {/* LDAP Badge */}
+          <div className="flex items-center justify-center gap-2 mb-6 pb-4 border-b border-border">
+            <Network className="h-4 w-4 text-primary" />
+            <span className="text-sm text-muted-foreground">
+              Autenticação via Active Directory
+            </span>
+          </div>
+
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-2"
-              >
-                <Label htmlFor="fullName" className="text-sm font-medium">
-                  Nome completo
-                </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="fullName"
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Seu nome"
-                    className="pl-10 bg-background border-input"
-                  />
-                </div>
-                {errors.fullName && (
-                  <p className="text-xs text-destructive">{errors.fullName}</p>
-                )}
-              </motion.div>
-            )}
-
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">
-                Email
+              <Label htmlFor="username" className="text-sm font-medium">
+                Usuário de rede
               </Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu@email.com"
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="seu.usuario"
                   className="pl-10 bg-background border-input"
+                  autoComplete="username"
+                  autoFocus
                 />
               </div>
-              {errors.email && (
-                <p className="text-xs text-destructive">{errors.email}</p>
+              {errors.username && (
+                <p className="text-xs text-destructive">{errors.username}</p>
               )}
             </div>
 
@@ -198,6 +220,7 @@ export default function AuthPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   className="pl-10 bg-background border-input"
+                  autoComplete="current-password"
                 />
               </div>
               {errors.password && (
@@ -213,26 +236,10 @@ export default function AuthPage() {
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                isLogin ? 'Entrar' : 'Criar conta'
+                'Entrar'
               )}
             </Button>
           </form>
-
-          {/* Toggle */}
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setErrors({});
-              }}
-              className="text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              {isLogin
-                ? 'Não tem conta? Criar agora'
-                : 'Já tem conta? Entrar'}
-            </button>
-          </div>
         </motion.div>
 
         {/* Footer */}
@@ -242,7 +249,7 @@ export default function AuthPage() {
           transition={{ delay: 0.5 }}
           className="text-center text-sm text-muted-foreground mt-6"
         >
-          Solicite acesso ao administrador do sistema
+          Use as mesmas credenciais que você utiliza para acessar seu computador
         </motion.p>
       </motion.div>
     </div>
