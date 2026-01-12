@@ -413,22 +413,6 @@ export function Sidebar() {
     setShowResults(false);
   }, [navigate]);
 
-  // Special top items (Meu Dia, Comunicados) - shown independently at the top
-  const topItemNames = ['Meu Dia', 'Comunicados'];
-  const topItems = menuItems.filter(item => 
-    topItemNames.includes(item.name) && 
-    (!item.isAdminOnly || isAdmin) &&
-    hasVisibleDescendants(item)
-  );
-  
-  // Filter menus based on admin status, excluding top items from regular menu
-  // Also hide menus that have no visible descendants (empty containers)
-  const visibleMenuItems = menuItems.filter(item => 
-    (!item.isAdminOnly || isAdmin) && 
-    !topItemNames.includes(item.name) &&
-    hasVisibleDescendants(item)
-  );
-
   // Função recursiva para verificar se um item ou seus descendentes são visíveis
   const hasVisibleDescendants = useCallback((menuItem: MenuItemType): boolean => {
     // Se não tem filhos, verifica se o próprio item é acessível
@@ -444,6 +428,22 @@ export function Sidebar() {
       return hasVisibleDescendants(child);
     });
   }, [isAdmin, canAccess]);
+
+  // Special top items (Meu Dia, Comunicados) - shown independently at the top
+  const topItemNames = ['Meu Dia', 'Comunicados'];
+  const topItems = menuItems.filter(item => 
+    topItemNames.includes(item.name) && 
+    (!item.isAdminOnly || isAdmin) &&
+    hasVisibleDescendants(item)
+  );
+  
+  // Filter menus based on admin status, excluding top items from regular menu
+  // Also hide menus that have no visible descendants (empty containers)
+  const visibleMenuItems = menuItems.filter(item => 
+    (!item.isAdminOnly || isAdmin) && 
+    !topItemNames.includes(item.name) &&
+    hasVisibleDescendants(item)
+  );
 
   // Componente recursivo para renderizar menus de N níveis
   const MenuItem = ({ item, depth = 0 }: { item: MenuItemType; depth?: number }) => {

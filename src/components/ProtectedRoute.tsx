@@ -1,9 +1,12 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthContext, LoadingStage } from '@/contexts/AuthContext';
+import { useProfileCompletion } from '@/hooks/useProfileCompletion';
+import { ProfileCompletionModal } from '@/components/profile/ProfileCompletionModal';
 import { motion } from 'framer-motion';
 import { RefreshCw, AlertCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import loadingIcon from '@/assets/loading-icon.png';
+import { useState, useCallback } from 'react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -21,7 +24,13 @@ const stageMessages: Record<LoadingStage, string> = {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, loadingStage, hasTimedOut, hasError, retryLoading } = useAuthContext();
+  const { isComplete: isProfileComplete, isLoading: isProfileLoading } = useProfileCompletion();
   const location = useLocation();
+  const [profileCompleted, setProfileCompleted] = useState(false);
+
+  const handleProfileComplete = useCallback(() => {
+    setProfileCompleted(true);
+  }, []);
 
   // Show timeout/error state with retry button
   if (hasTimedOut || hasError) {
@@ -62,7 +71,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || isProfileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <motion.div
@@ -129,6 +138,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  // Show profile completion modal if profile is incomplete
+  // Skip this check if user is on /perfil page to allow manual editing
+  if (!isProfileComplete && !profileCompleted && location.pathname !== '/perfil') {
+    return <ProfileCompletionModal onComplete={handleProfileComplete} />;
   }
 
   return <>{children}</>;
