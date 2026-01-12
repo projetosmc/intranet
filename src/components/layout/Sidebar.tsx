@@ -415,11 +415,18 @@ export function Sidebar() {
 
   // Special top items (Meu Dia, Comunicados) - shown independently at the top
   const topItemNames = ['Meu Dia', 'Comunicados'];
-  const topItems = menuItems.filter(item => topItemNames.includes(item.name) && (!item.isAdminOnly || isAdmin));
+  const topItems = menuItems.filter(item => 
+    topItemNames.includes(item.name) && 
+    (!item.isAdminOnly || isAdmin) &&
+    hasVisibleDescendants(item)
+  );
   
   // Filter menus based on admin status, excluding top items from regular menu
+  // Also hide menus that have no visible descendants (empty containers)
   const visibleMenuItems = menuItems.filter(item => 
-    (!item.isAdminOnly || isAdmin) && !topItemNames.includes(item.name)
+    (!item.isAdminOnly || isAdmin) && 
+    !topItemNames.includes(item.name) &&
+    hasVisibleDescendants(item)
   );
 
   // Função recursiva para verificar se um item ou seus descendentes são visíveis
