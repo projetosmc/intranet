@@ -58,19 +58,25 @@ export function useAuditLogs(options: UseAuditLogsOptions = {}) {
 
       if (error) throw error;
 
-      // Fetch user details for each log
+      // Fetch user details using the security definer function
       const userIds = new Set<string>();
       (data || []).forEach(log => {
         if (log.seq_usuario) userIds.add(log.seq_usuario);
         if (log.seq_usuario_alvo) userIds.add(log.seq_usuario_alvo);
       });
 
-      const { data: profiles } = await supabase
-        .from('tab_perfil_usuario')
-        .select('cod_usuario, des_email, des_nome_completo')
-        .in('cod_usuario', Array.from(userIds));
-
-      const profileMap = new Map((profiles || []).map(p => [p.cod_usuario, p]));
+      // Fetch profiles for all users - admins can see all profiles via RLS
+      const profileMap = new Map<string, { des_email?: string; des_nome_completo?: string }>();
+      
+      for (const userId of Array.from(userIds)) {
+        const { data: userInfo } = await supabase.rpc('get_user_display_info', { user_id: userId });
+        if (userInfo && userInfo.length > 0) {
+          profileMap.set(userId, {
+            des_nome_completo: userInfo[0].nome,
+            des_email: undefined // A função não retorna email
+          });
+        }
+      }
 
       const enrichedLogs = (data || []).map(log => ({
         ...log,

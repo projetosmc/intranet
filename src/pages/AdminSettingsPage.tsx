@@ -19,6 +19,7 @@ import { AuditLogsTab } from '@/components/admin/AuditLogsTab';
 import { RoomConfigTab } from '@/components/admin/RoomConfigTab';
 import { SystemsTab } from '@/components/admin/SystemsTab';
 import { menuItemSchema, validateForm, type MenuItemFormData } from '@/lib/validations';
+import { logAudit } from '@/hooks/useAuditLog';
 import {
   DndContext,
   closestCenter,
@@ -255,12 +256,31 @@ export default function AdminSettingsPage() {
           .update(item)
           .eq('cod_menu_item', editingItem.cod_menu_item);
         if (error) throw error;
+        
+        await logAudit({
+          action: 'menu_item_updated',
+          entity_type: 'menu_item',
+          entity_id: editingItem.cod_menu_item,
+          old_value: { nome: editingItem.des_nome, caminho: editingItem.des_caminho },
+          new_value: { nome: item.des_nome, caminho: item.des_caminho }
+        });
+        
         toast({ title: 'Item atualizado!' });
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('tab_menu_item')
-          .insert(item);
+          .insert(item)
+          .select()
+          .single();
         if (error) throw error;
+        
+        await logAudit({
+          action: 'menu_item_created',
+          entity_type: 'menu_item',
+          entity_id: data?.cod_menu_item,
+          new_value: { nome: item.des_nome, caminho: item.des_caminho }
+        });
+        
         toast({ title: 'Item criado!' });
       }
 
@@ -279,12 +299,22 @@ export default function AdminSettingsPage() {
   const confirmDelete = async () => {
     if (!deleteItemId) return;
     try {
+      const itemToDelete = menuItems.find(m => m.cod_menu_item === deleteItemId);
+      
       const { error } = await supabase
         .from('tab_menu_item')
         .delete()
         .eq('cod_menu_item', deleteItemId);
 
       if (error) throw error;
+      
+      await logAudit({
+        action: 'menu_item_deleted',
+        entity_type: 'menu_item',
+        entity_id: deleteItemId,
+        old_value: itemToDelete ? { nome: itemToDelete.des_nome, caminho: itemToDelete.des_caminho } : undefined
+      });
+      
       toast({ title: 'Item removido!' });
       clearMenuCache();
       await fetchMenuItems();
