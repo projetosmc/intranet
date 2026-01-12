@@ -12,12 +12,7 @@ import { PermissionRoute } from "@/components/PermissionRoute";
 import HomePage from "./pages/HomePage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
 import StatusPage from "./pages/StatusPage";
-import SupportPage from "./pages/SupportPage";
 import RoomReservationPage from "./pages/RoomReservationPage";
-import KnowledgeBaseListPage from "./pages/KnowledgeBaseListPage";
-import KnowledgeBaseDetailPage from "./pages/KnowledgeBaseDetailPage";
-import KnowledgeBaseEditorPage from "./pages/KnowledgeBaseEditorPage";
-import KnowledgeBaseAdminPage from "./pages/KnowledgeBaseAdminPage";
 import AdminSettingsPage from "./pages/AdminSettingsPage";
 import AdminAnnouncementsPage from "./pages/AdminAnnouncementsPage";
 import AdminProfilesPage from "./pages/AdminProfilesPage";
@@ -45,25 +40,17 @@ const App = () => (
                   <Route path="/comunicados" element={<AnnouncementsPage />} />
                   <Route path="/comunicados/:id" element={<AnnouncementsPage />} />
                   <Route path="/status" element={<StatusPage />} />
-                  <Route path="/suporte" element={<SupportPage />} />
                   <Route path="/reserva-salas" element={<RoomReservationPage />} />
-                  <Route path="/base-conhecimento" element={<Navigate to="/base-conhecimento-ti" replace />} />
-                  <Route path="/base-conhecimento-ti" element={<KnowledgeBaseListPage />} />
-                  <Route path="/base-conhecimento-ti/:id" element={<KnowledgeBaseDetailPage />} />
-                  <Route path="/base-conhecimento-ti/novo" element={<PermissionRoute><KnowledgeBaseEditorPage /></PermissionRoute>} />
-                  <Route path="/base-conhecimento-ti/:id/editar" element={<PermissionRoute><KnowledgeBaseEditorPage /></PermissionRoute>} />
                   <Route path="/perfil" element={<ProfilePage />} />
                   {/* Rotas administrativas com verificação de permissão */}
                   <Route path="/admin/configuracoes" element={<PermissionRoute><AdminSettingsPage /></PermissionRoute>} />
                   <Route path="/admin/comunicados" element={<PermissionRoute><AdminAnnouncementsPage /></PermissionRoute>} />
                   <Route path="/admin/perfis" element={<PermissionRoute><AdminProfilesPage /></PermissionRoute>} />
-                  <Route path="/admin/base-conhecimento" element={<PermissionRoute><KnowledgeBaseAdminPage /></PermissionRoute>} />
                   {/* Redireciona rotas antigas para as novas */}
                   <Route path="/admin/usuarios" element={<Navigate to="/admin/perfis" replace />} />
                   <Route path="/admin/auditoria" element={<Navigate to="/admin/configuracoes" replace />} />
                   <Route path="/admin/sistemas" element={<Navigate to="/admin/configuracoes" replace />} />
                   <Route path="/admin/reserva-salas" element={<Navigate to="/admin/configuracoes" replace />} />
-                  <Route path="/admin/faqs" element={<Navigate to="/suporte" replace />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
