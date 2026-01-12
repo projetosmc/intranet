@@ -7,18 +7,22 @@ const corsHeaders = {
 
 const LDAP_API_BASE = 'http://hubapi.redemontecarlo.com.br/auth/ldap';
 
-interface LdapLoginResponse {
-  success: boolean;
+// Response from the validate endpoint based on actual API response
+interface LdapValidateResponse {
+  ok?: boolean;
+  success?: boolean;
   message?: string;
-  user?: {
-    username: string;
-    displayName?: string;
-    email?: string;
-    department?: string;
-    title?: string;
-    objectId?: string;
-    // Add other fields as returned by the API
-  };
+  detail?: string;
+  username?: string;
+  full_name?: string;
+  groups?: string[];
+  // Additional profile fields if available
+  department?: string;
+  title?: string;
+  email?: string;
+  office?: string;
+  phone?: string;
+  objectId?: string;
 }
 
 Deno.serve(async (req) => {
@@ -48,7 +52,6 @@ Deno.serve(async (req) => {
 
     // Step 1: Validate credentials with LDAP API
     console.log(`Attempting LDAP validation for user: ${username}`);
-    console.log(`API Token present: ${!!apiToken}, length: ${apiToken?.length}`);
     
     const ldapResponse = await fetch(`${LDAP_API_BASE}/validate`, {
       method: 'POST',
@@ -64,7 +67,7 @@ Deno.serve(async (req) => {
     console.log('LDAP raw response:', ldapText);
     console.log('LDAP response status:', ldapResponse.status);
     
-    let ldapData: LdapLoginResponse;
+    let ldapData: LdapValidateResponse;
     try {
       ldapData = JSON.parse(ldapText);
     } catch {
@@ -76,24 +79,65 @@ Deno.serve(async (req) => {
     }
 
     // Check various possible success indicators from the API
-    const isSuccess = ldapResponse.ok && (ldapData.success !== false);
+    // The API returns { ok: true, username, full_name, groups } on success
+    const isSuccess = ldapResponse.ok && (ldapData.ok === true || ldapData.success === true);
     
     if (!isSuccess) {
       console.log('LDAP validation failed:', ldapData);
       return new Response(
-        JSON.stringify({ error: ldapData.message || 'Credenciais inválidas' }),
+        JSON.stringify({ error: ldapData.message || ldapData.detail || 'Credenciais inválidas' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Step 2: Create/update user in Supabase
+    // Step 2: Try to get more profile information from LDAP API (if endpoint exists)
+    let profileInfo: LdapValidateResponse = { ...ldapData };
+    
+    try {
+      const profileResponse = await fetch(`${LDAP_API_BASE}/profile/${username}`, {
+        method: 'GET',
+        headers: {
+          'accept': 'application/json',
+          'X-API-Token': apiToken,
+        },
+      });
+      
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        console.log('LDAP profile data:', JSON.stringify(profileData));
+        // Merge profile data with existing data
+        profileInfo = { ...profileInfo, ...profileData };
+      } else {
+        console.log('Profile endpoint not available or returned error:', profileResponse.status);
+      }
+    } catch (profileError) {
+      console.log('Error fetching profile (optional):', profileError);
+      // Continue without additional profile data
+    }
+
+    // Step 3: Create/update user in Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Generate email from username if not provided
-    const userEmail = ldapData.user?.email || `${username.toLowerCase()}@redemontecarlo.com.br`;
-    const displayName = ldapData.user?.displayName || username;
+    const ldapUsername = profileInfo.username || username;
+    const userEmail = profileInfo.email || `${ldapUsername.toLowerCase()}@redemontecarlo.com.br`;
+    const displayName = profileInfo.full_name || ldapUsername;
+    const department = profileInfo.department || null;
+    const jobTitle = profileInfo.title || null;
+    const office = profileInfo.office || null;
+    const phone = profileInfo.phone || null;
+    const adGroups = profileInfo.groups || [];
+    
+    console.log('Syncing user profile:', {
+      username: ldapUsername,
+      email: userEmail,
+      displayName,
+      department,
+      jobTitle,
+      groups: adGroups,
+    });
     
     // Check if user exists in auth.users
     const { data: existingUsers } = await supabase.auth.admin.listUsers();
@@ -105,6 +149,15 @@ Deno.serve(async (req) => {
     if (existingUser) {
       userId = existingUser.id;
       console.log('Existing user found:', userId);
+      
+      // Update user metadata with latest LDAP info
+      await supabase.auth.admin.updateUserById(userId, {
+        user_metadata: {
+          full_name: displayName,
+          ldap_username: ldapUsername,
+          ldap_groups: adGroups,
+        },
+      });
     } else {
       // Create new user with a random password (they'll use LDAP to login)
       const randomPassword = crypto.randomUUID() + crypto.randomUUID();
@@ -115,7 +168,8 @@ Deno.serve(async (req) => {
         email_confirm: true,
         user_metadata: {
           full_name: displayName,
-          ldap_username: username,
+          ldap_username: ldapUsername,
+          ldap_groups: adGroups,
         },
       });
 
@@ -132,17 +186,21 @@ Deno.serve(async (req) => {
       console.log('New user created:', userId);
     }
 
-    // Step 3: Update/create profile with LDAP data
-    const profileData = {
+    // Step 4: Update/create profile with LDAP data (sync on every login)
+    const profileData: Record<string, unknown> = {
       cod_usuario: userId,
       des_email: userEmail,
       des_nome_completo: displayName,
-      des_departamento: ldapData.user?.department || null,
-      des_cargo: ldapData.user?.title || null,
-      des_ad_object_id: ldapData.user?.objectId || null,
       dta_sincronizacao_ad: new Date().toISOString(),
       ind_ativo: true,
     };
+    
+    // Only update fields that have values from LDAP
+    if (department) profileData.des_departamento = department;
+    if (jobTitle) profileData.des_cargo = jobTitle;
+    if (office) profileData.des_unidade = office;
+    if (phone) profileData.des_telefone = phone;
+    if (profileInfo.objectId) profileData.des_ad_object_id = profileInfo.objectId;
 
     const { error: profileError } = await supabase
       .from('tab_perfil_usuario')
@@ -151,9 +209,11 @@ Deno.serve(async (req) => {
     if (profileError) {
       console.error('Error upserting profile:', profileError);
       // Don't fail the login, just log the error
+    } else {
+      console.log('Profile synced successfully');
     }
 
-    // Step 4: Assign default 'user' role if new user
+    // Step 5: Assign default 'user' role if new user
     if (isNewUser) {
       const { error: roleError } = await supabase
         .from('tab_usuario_role')
@@ -167,7 +227,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Step 5: Generate session token for the user
+    // Step 6: Generate session token for the user
     const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
       email: userEmail,
@@ -192,7 +252,7 @@ Deno.serve(async (req) => {
       .select('des_role')
       .eq('seq_usuario', userId);
 
-    console.log('LDAP login successful for:', username);
+    console.log('LDAP login successful for:', ldapUsername);
 
     return new Response(
       JSON.stringify({
@@ -201,8 +261,10 @@ Deno.serve(async (req) => {
           id: userId,
           email: userEmail,
           fullName: displayName,
-          department: ldapData.user?.department,
-          jobTitle: ldapData.user?.title,
+          department,
+          jobTitle,
+          office,
+          groups: adGroups,
           isNewUser,
           roles: roles?.map(r => r.des_role) || ['user'],
         },
