@@ -607,6 +607,14 @@ export default function AdminSettingsPage() {
     const isExpanded = expandedMenus.has(item.cod_menu_item);
     const isChild = depth > 0;
     
+    // Verificar se é um container (menu principal sem página interna válida ou com filhos)
+    const isValidInternalPath = availablePaths.some(p => p.path === item.des_caminho);
+    const isExternalUrl = item.des_caminho?.startsWith('http');
+    const isContainer = hasChildren || (!isValidInternalPath && !isExternalUrl);
+    
+    // Só mostrar ícone se não for container e tiver um ícone válido
+    const shouldShowIcon = !isContainer && item.des_icone && item.des_icone !== 'Circle';
+    
     // Obter nome do menu pai para submenus
     const parentMenu = item.seq_menu_pai 
       ? menuItems.find(m => m.cod_menu_item === item.seq_menu_pai) 
@@ -678,8 +686,13 @@ export default function AdminSettingsPage() {
           )}
           
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            {getIconComponent(item.des_icone)}
+            {shouldShowIcon && getIconComponent(item.des_icone)}
             <span className="font-medium truncate">{item.des_nome}</span>
+            {isContainer && (
+              <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded shrink-0">
+                Container
+              </span>
+            )}
             
             {/* Badge indicando menu pai para submenus */}
             {parentMenu && (
@@ -791,20 +804,29 @@ export default function AdminSettingsPage() {
     );
   };
 
-  const DragOverlayItem = ({ item }: { item: MenuItem }) => (
-    <div className="flex items-center gap-3 p-4 bg-card rounded-lg shadow-2xl border-2 border-primary">
-      <GripVertical className="h-4 w-4 text-primary" />
-      <div className="flex items-center gap-2 flex-1">
-        {getIconComponent(item.des_icone)}
-        <span className="font-semibold">{item.des_nome}</span>
-        {item.seq_menu_pai && (
-          <span className="text-xs bg-secondary/50 text-secondary-foreground px-2 py-0.5 rounded-md">
-            {menuItems.find(m => m.cod_menu_item === item.seq_menu_pai)?.des_nome}
-          </span>
-        )}
+  const DragOverlayItem = ({ item }: { item: MenuItem }) => {
+    const children = menuItems.filter(m => m.seq_menu_pai === item.cod_menu_item);
+    const hasChildren = children.length > 0;
+    const isValidInternalPath = availablePaths.some(p => p.path === item.des_caminho);
+    const isExternalUrl = item.des_caminho?.startsWith('http');
+    const isContainer = hasChildren || (!isValidInternalPath && !isExternalUrl);
+    const shouldShowIcon = !isContainer && item.des_icone && item.des_icone !== 'Circle';
+    
+    return (
+      <div className="flex items-center gap-3 p-4 bg-card rounded-lg shadow-2xl border-2 border-primary">
+        <GripVertical className="h-4 w-4 text-primary" />
+        <div className="flex items-center gap-2 flex-1">
+          {shouldShowIcon && getIconComponent(item.des_icone)}
+          <span className="font-semibold">{item.des_nome}</span>
+          {item.seq_menu_pai && (
+            <span className="text-xs bg-secondary/50 text-secondary-foreground px-2 py-0.5 rounded-md">
+              {menuItems.find(m => m.cod_menu_item === item.seq_menu_pai)?.des_nome}
+            </span>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   if (!isAdmin) {
     return (
