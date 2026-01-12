@@ -345,13 +345,30 @@ export function RichTextEditor({ content, onChange, placeholder, className, enab
   );
 }
 
-// Component to render HTML content safely
+// Component to render HTML content safely with XSS protection
+import DOMPurify from 'dompurify';
+
 interface RichTextContentProps {
   html: string;
   className?: string;
 }
 
 export const RichTextContent = ({ html, className }: RichTextContentProps) => {
+  // Sanitize HTML to prevent XSS attacks
+  const sanitizedHtml = DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      'p', 'br', 'strong', 'em', 'u', 's', 'b', 'i',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'ul', 'ol', 'li',
+      'a', 'img',
+      'blockquote', 'code', 'pre',
+      'div', 'span'
+    ],
+    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'target', 'rel'],
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+    ALLOW_DATA_ATTR: false,
+  });
+
   return (
     <div 
       className={cn(
@@ -370,7 +387,7 @@ export const RichTextContent = ({ html, className }: RichTextContentProps) => {
         "[&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:my-2",
         className
       )}
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
     />
   );
 };
