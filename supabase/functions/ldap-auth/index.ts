@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
 
     // Step 1: Validate credentials with LDAP API
     console.log(`Attempting LDAP validation for user: ${username}`);
+    console.log(`API Token present: ${!!apiToken}, length: ${apiToken?.length}`);
     
     const ldapResponse = await fetch(`${LDAP_API_BASE}/validate`, {
       method: 'POST',
@@ -59,11 +60,26 @@ Deno.serve(async (req) => {
       body: JSON.stringify({ username, password }),
     });
 
-    const ldapData: LdapLoginResponse = await ldapResponse.json();
-    console.log('LDAP validation response status:', ldapResponse.status);
+    const ldapText = await ldapResponse.text();
+    console.log('LDAP raw response:', ldapText);
+    console.log('LDAP response status:', ldapResponse.status);
+    
+    let ldapData: LdapLoginResponse;
+    try {
+      ldapData = JSON.parse(ldapText);
+    } catch {
+      console.error('Failed to parse LDAP response as JSON');
+      return new Response(
+        JSON.stringify({ error: 'Erro na resposta do servidor LDAP' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    if (!ldapResponse.ok || !ldapData.success) {
-      console.log('LDAP validation failed:', ldapData.message);
+    // Check various possible success indicators from the API
+    const isSuccess = ldapResponse.ok && (ldapData.success !== false);
+    
+    if (!isSuccess) {
+      console.log('LDAP validation failed:', ldapData);
       return new Response(
         JSON.stringify({ error: ldapData.message || 'Credenciais inválidas' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
