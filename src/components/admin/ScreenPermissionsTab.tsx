@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Lock, Save, Loader2, Check, X, Info, Copy, GripVertical, Plus, Trash2, Search, Users, ChevronDown } from 'lucide-react';
+import { Lock, Save, Loader2, Check, X, Info, Copy, Plus, Trash2, Search, Users, ChevronDown, ChevronRight, FolderOpen, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -42,23 +42,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -78,111 +61,24 @@ interface RoleType {
   des_cor: string;
 }
 
-interface ScreenGroup {
-  rota: string;
-  nome: string;
-  ordem: number;
-  permissions: Record<string, Permissao>;
+interface MenuItem {
+  cod_menu_item: string;
+  des_nome: string;
+  des_caminho: string;
+  seq_menu_pai: string | null;
+  num_ordem: number;
 }
 
-// Componente de item de tela com drag-and-drop
-function SortableScreenItem({
-  screen,
-  screenData,
-  selectedRole,
-  pendingChanges,
-  onToggle,
-  onDelete,
-}: {
-  screen: string;
-  screenData: ScreenGroup;
-  selectedRole: string;
-  pendingChanges: Map<string, boolean>;
-  onToggle: (permissao: Permissao) => void;
-  onDelete: (screenName: string) => void;
-}) {
-  const permissao = screenData.permissions[selectedRole];
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: permissao?.cod_permissao || screen });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  if (!permissao) return null;
-
-  const hasChange = pendingChanges.has(permissao.cod_permissao);
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="flex items-center justify-between p-3 border border-border rounded-lg bg-card hover:bg-muted/30 transition-colors"
-    >
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        <button
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded shrink-0"
-        >
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
-        </button>
-        <div className="flex flex-col min-w-0">
-          <span className="font-medium truncate">{screen}</span>
-          <span className="text-xs text-muted-foreground truncate">
-            {screenData.rota}
-          </span>
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-3 shrink-0">
-        <div className="flex items-center gap-2">
-          <Switch
-            checked={permissao.ind_pode_acessar}
-            onCheckedChange={() => onToggle(permissao)}
-            className="data-[state=checked]:bg-green-500"
-          />
-          {permissao.ind_pode_acessar ? (
-            <Check className="h-4 w-4 text-green-500" />
-          ) : (
-            <X className="h-4 w-4 text-destructive" />
-          )}
-          {hasChange && (
-            <span className="h-2 w-2 rounded-full bg-orange-500" />
-          )}
-        </div>
-        
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => onDelete(screen)}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Remover tela</p>
-          </TooltipContent>
-        </Tooltip>
-      </div>
-    </div>
-  );
+interface MenuNode {
+  item: MenuItem;
+  children: MenuNode[];
+  permission?: Permissao;
 }
 
 export function ScreenPermissionsTab() {
   const [permissoes, setPermissoes] = useState<Permissao[]>([]);
   const [roleTypes, setRoleTypes] = useState<RoleType[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Map<string, boolean>>(new Map());
@@ -198,6 +94,7 @@ export function ScreenPermissionsTab() {
   const [addScreenDialogOpen, setAddScreenDialogOpen] = useState(false);
   const [newScreenName, setNewScreenName] = useState('');
   const [newScreenRoute, setNewScreenRoute] = useState('');
+  const [selectedMenuItem, setSelectedMenuItem] = useState<string>('');
   const [isAddingScreen, setIsAddingScreen] = useState(false);
   
   // Estado para deletar tela
@@ -208,13 +105,9 @@ export function ScreenPermissionsTab() {
   
   // Estado para colapsar lista de perfis em mobile
   const [rolesListOpen, setRolesListOpen] = useState(true);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  
+  // Estado para menus expandidos
+  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchData();
@@ -249,6 +142,16 @@ export function ScreenPermissionsTab() {
 
       if (permError) throw permError;
       setPermissoes((permData || []) as Permissao[]);
+
+      // Buscar itens de menu
+      const { data: menuData, error: menuError } = await supabase
+        .from('tab_menu_item')
+        .select('cod_menu_item, des_nome, des_caminho, seq_menu_pai, num_ordem')
+        .eq('ind_ativo', true)
+        .order('num_ordem');
+
+      if (menuError) throw menuError;
+      setMenuItems((menuData || []) as MenuItem[]);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       toast({ title: 'Erro ao carregar dados', variant: 'destructive' });
@@ -348,45 +251,6 @@ export function ScreenPermissionsTab() {
     }
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const screens = Object.keys(groupedByScreen);
-      const oldIndex = screens.findIndex((s) => {
-        const perm = groupedByScreen[s].permissions[selectedRole];
-        return perm?.cod_permissao === active.id;
-      });
-      const newIndex = screens.findIndex((s) => {
-        const perm = groupedByScreen[s].permissions[selectedRole];
-        return perm?.cod_permissao === over.id;
-      });
-
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newScreenOrder = arrayMove(screens, oldIndex, newIndex);
-
-        // Atualizar ordem no banco
-        try {
-          for (let i = 0; i < newScreenOrder.length; i++) {
-            const screenName = newScreenOrder[i];
-            const screenPerms = Object.values(groupedByScreen[screenName].permissions);
-            for (const perm of screenPerms) {
-              await supabase
-                .from('tab_permissao_tela')
-                .update({ num_ordem: i + 1 })
-                .eq('cod_permissao', perm.cod_permissao);
-            }
-          }
-          toast({ title: 'Ordem das telas atualizada!' });
-          await fetchData();
-        } catch (error) {
-          console.error('Erro ao atualizar ordem:', error);
-          toast({ title: 'Erro ao atualizar ordem', variant: 'destructive' });
-        }
-      }
-    }
-  };
-
   const handleAddScreen = async () => {
     if (!newScreenName.trim() || !newScreenRoute.trim()) {
       toast({ title: 'Preencha todos os campos', variant: 'destructive' });
@@ -434,6 +298,7 @@ export function ScreenPermissionsTab() {
       setAddScreenDialogOpen(false);
       setNewScreenName('');
       setNewScreenRoute('');
+      setSelectedMenuItem('');
       await fetchData();
     } catch (error) {
       console.error('Erro ao adicionar tela:', error);
@@ -468,50 +333,95 @@ export function ScreenPermissionsTab() {
     }
   };
 
-  // Agrupa permissões por tela
-  const groupedByScreen = useMemo(() => {
-    const grouped: Record<string, ScreenGroup> = {};
-    permissoes.forEach((p) => {
-      if (!grouped[p.des_nome_tela]) {
-        grouped[p.des_nome_tela] = {
-          rota: p.des_rota,
-          nome: p.des_nome_tela,
-          ordem: p.num_ordem,
-          permissions: {},
-        };
+  // Construir árvore de menus com permissões associadas
+  const menuTree = useMemo(() => {
+    const rolePerms = permissoes.filter(p => p.des_role === selectedRole);
+    const permsByRoute = new Map(rolePerms.map(p => [p.des_rota, p]));
+    
+    // Criar mapa de itens por ID
+    const itemsById = new Map(menuItems.map(item => [item.cod_menu_item, item]));
+    
+    // Construir nós com children
+    const buildTree = (parentId: string | null): MenuNode[] => {
+      return menuItems
+        .filter(item => item.seq_menu_pai === parentId)
+        .sort((a, b) => (a.num_ordem || 0) - (b.num_ordem || 0))
+        .map(item => {
+          const children = buildTree(item.cod_menu_item);
+          const permission = permsByRoute.get(item.des_caminho);
+          return {
+            item,
+            children,
+            permission,
+          };
+        });
+    };
+
+    return buildTree(null);
+  }, [menuItems, permissoes, selectedRole]);
+
+  // Permissões que não estão associadas a nenhum menu
+  const orphanPermissions = useMemo(() => {
+    const rolePerms = permissoes.filter(p => p.des_role === selectedRole);
+    const menuRoutes = new Set(menuItems.map(m => m.des_caminho));
+    return rolePerms.filter(p => !menuRoutes.has(p.des_rota));
+  }, [permissoes, menuItems, selectedRole]);
+
+  // Filtrar árvore por busca
+  const filterTree = useCallback((nodes: MenuNode[], term: string): MenuNode[] => {
+    if (!term.trim()) return nodes;
+    const lowerTerm = term.toLowerCase();
+    
+    return nodes.reduce<MenuNode[]>((acc, node) => {
+      const matchesName = node.item.des_nome.toLowerCase().includes(lowerTerm);
+      const matchesRoute = node.item.des_caminho.toLowerCase().includes(lowerTerm);
+      const filteredChildren = filterTree(node.children, term);
+      
+      if (matchesName || matchesRoute || filteredChildren.length > 0) {
+        acc.push({
+          ...node,
+          children: filteredChildren,
+        });
       }
-      grouped[p.des_nome_tela].permissions[p.des_role] = p;
-    });
-    return grouped;
-  }, [permissoes]);
+      return acc;
+    }, []);
+  }, []);
 
-  const sortedScreens = useMemo(() => {
-    return Object.keys(groupedByScreen).sort((a, b) => {
-      return (groupedByScreen[a].ordem || 0) - (groupedByScreen[b].ordem || 0);
-    });
-  }, [groupedByScreen]);
+  const filteredTree = useMemo(() => filterTree(menuTree, searchTerm), [menuTree, searchTerm, filterTree]);
 
-  // Filtro de busca
-  const filteredScreens = useMemo(() => {
-    if (!searchTerm.trim()) return sortedScreens;
-    const lowerSearch = searchTerm.toLowerCase();
-    return sortedScreens.filter(screen => {
-      const screenData = groupedByScreen[screen];
-      return screen.toLowerCase().includes(lowerSearch) ||
-             screenData.rota.toLowerCase().includes(lowerSearch);
+  const filteredOrphans = useMemo(() => {
+    if (!searchTerm.trim()) return orphanPermissions;
+    const lowerTerm = searchTerm.toLowerCase();
+    return orphanPermissions.filter(
+      p => p.des_nome_tela.toLowerCase().includes(lowerTerm) ||
+           p.des_rota.toLowerCase().includes(lowerTerm)
+    );
+  }, [orphanPermissions, searchTerm]);
+
+  const toggleMenuExpand = (menuId: string) => {
+    setExpandedMenus(prev => {
+      const next = new Set(prev);
+      if (next.has(menuId)) {
+        next.delete(menuId);
+      } else {
+        next.add(menuId);
+      }
+      return next;
     });
-  }, [sortedScreens, groupedByScreen, searchTerm]);
+  };
+
+  const expandAll = () => {
+    const allIds = new Set(menuItems.map(m => m.cod_menu_item));
+    setExpandedMenus(allIds);
+  };
+
+  const collapseAll = () => {
+    setExpandedMenus(new Set());
+  };
 
   const handleClearSearch = useCallback(() => {
     setSearchTerm('');
   }, []);
-
-  const sortableIds = useMemo(() => {
-    return filteredScreens.map((screen) => {
-      const perm = groupedByScreen[screen].permissions[selectedRole];
-      return perm?.cod_permissao || screen;
-    });
-  }, [filteredScreens, groupedByScreen, selectedRole]);
 
   // Contar permissões habilitadas por perfil
   const permissionCounts = useMemo(() => {
@@ -539,6 +449,12 @@ export function ScreenPermissionsTab() {
   const selectedRoleData = useMemo(() => {
     return roleTypes.find(r => r.des_codigo === selectedRole);
   }, [roleTypes, selectedRole]);
+
+  // Menus com filhos (containers)
+  const containerMenus = useMemo(() => {
+    const parentIds = new Set(menuItems.filter(m => m.seq_menu_pai).map(m => m.seq_menu_pai!));
+    return menuItems.filter(m => parentIds.has(m.cod_menu_item));
+  }, [menuItems]);
 
   if (isLoading) {
     return (
@@ -593,8 +509,8 @@ export function ScreenPermissionsTab() {
       <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-lg">
         <Info className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
         <p className="text-sm text-muted-foreground">
-          Selecione um perfil na lista à esquerda para configurar suas permissões. 
-          Use "Copiar Permissões" para replicar configurações entre perfis.
+          As permissões estão organizadas conforme a estrutura de menus do sistema. 
+          Expanda os submenus para ver e configurar as telas disponíveis.
         </p>
       </div>
 
@@ -657,14 +573,14 @@ export function ScreenPermissionsTab() {
           </div>
         </div>
 
-        {/* Telas do perfil selecionado */}
+        {/* Telas do perfil selecionado - organizadas por menu */}
         <div className="lg:col-span-8">
           <Card>
             <CardHeader className="pb-3">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
                   <CardTitle className="text-base flex items-center gap-2">
-                    Telas
+                    Telas por Submenu
                     {selectedRoleData && (
                       <Badge className={selectedRoleData.des_cor}>{selectedRoleData.des_nome}</Badge>
                     )}
@@ -678,61 +594,90 @@ export function ScreenPermissionsTab() {
                     {permissionCounts[selectedRole]?.enabled || 0} de {permissionCounts[selectedRole]?.total || 0} telas habilitadas
                   </CardDescription>
                 </div>
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar tela..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9 pr-9"
-                  />
-                  {searchTerm && (
-                    <button
-                      onClick={handleClearSearch}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:w-48">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 pr-9"
+                    />
+                    {searchTerm && (
+                      <button
+                        onClick={handleClearSearch}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex gap-1">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="icon-sm" onClick={expandAll}>
+                          <FolderOpen className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Expandir todos</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="icon-sm" onClick={collapseAll}>
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Recolher todos</TooltipContent>
+                    </Tooltip>
+                  </div>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              {/* Results count */}
-              {searchTerm && (
-                <p className="text-sm text-muted-foreground mb-4">
-                  {filteredScreens.length} tela{filteredScreens.length !== 1 ? 's' : ''} encontrada{filteredScreens.length !== 1 ? 's' : ''}
-                </p>
-              )}
-
-              <ScrollArea className="h-[450px] pr-4">
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-                    <div className="space-y-2">
-                      {filteredScreens.length === 0 ? (
-                        <div className="flex items-center justify-center py-12 text-muted-foreground">
-                          {searchTerm ? 'Nenhuma tela encontrada' : 'Nenhuma tela cadastrada'}
-                        </div>
-                      ) : (
-                        filteredScreens.map((screen) => (
-                          <SortableScreenItem
-                            key={screen}
-                            screen={screen}
-                            screenData={groupedByScreen[screen]}
-                            selectedRole={selectedRole}
-                            pendingChanges={pendingChanges}
-                            onToggle={handleToggle}
-                            onDelete={setDeleteScreenName}
-                          />
-                        ))
-                      )}
+              <ScrollArea className="h-[500px] pr-4">
+                <div className="space-y-2">
+                  {/* Árvore de menus */}
+                  {filteredTree.length === 0 && filteredOrphans.length === 0 ? (
+                    <div className="flex items-center justify-center py-12 text-muted-foreground">
+                      {searchTerm ? 'Nenhuma tela encontrada' : 'Nenhum menu configurado'}
                     </div>
-                  </SortableContext>
-                </DndContext>
+                  ) : (
+                    <>
+                      {filteredTree.map((node) => (
+                        <MenuTreeNode
+                          key={node.item.cod_menu_item}
+                          node={node}
+                          depth={0}
+                          expandedMenus={expandedMenus}
+                          toggleMenuExpand={toggleMenuExpand}
+                          pendingChanges={pendingChanges}
+                          onToggle={handleToggle}
+                          onDelete={setDeleteScreenName}
+                        />
+                      ))}
+
+                      {/* Permissões órfãs (não associadas a menus) */}
+                      {filteredOrphans.length > 0 && (
+                        <div className="mt-6 pt-4 border-t">
+                          <p className="text-sm font-medium text-muted-foreground mb-3">
+                            Outras Telas (não vinculadas a menus)
+                          </p>
+                          <div className="space-y-2">
+                            {filteredOrphans.map((perm) => (
+                              <PermissionItem
+                                key={perm.cod_permissao}
+                                permission={perm}
+                                pendingChanges={pendingChanges}
+                                onToggle={handleToggle}
+                                onDelete={setDeleteScreenName}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </ScrollArea>
             </CardContent>
           </Card>
@@ -838,6 +783,26 @@ export function ScreenPermissionsTab() {
                 A rota deve começar com / e corresponder ao caminho da página no sistema.
               </p>
             </div>
+
+            <div className="grid gap-2">
+              <Label>Vincular ao Submenu (opcional)</Label>
+              <Select value={selectedMenuItem} onValueChange={setSelectedMenuItem}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um submenu" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum (tela independente)</SelectItem>
+                  {containerMenus.map((menu) => (
+                    <SelectItem key={menu.cod_menu_item} value={menu.cod_menu_item}>
+                      {menu.des_nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Vincular a um submenu organiza a tela na hierarquia do menu.
+              </p>
+            </div>
           </div>
 
           <DialogFooter>
@@ -879,6 +844,193 @@ export function ScreenPermissionsTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+// Componente recursivo para renderizar a árvore de menus
+function MenuTreeNode({
+  node,
+  depth,
+  expandedMenus,
+  toggleMenuExpand,
+  pendingChanges,
+  onToggle,
+  onDelete,
+}: {
+  node: MenuNode;
+  depth: number;
+  expandedMenus: Set<string>;
+  toggleMenuExpand: (id: string) => void;
+  pendingChanges: Map<string, boolean>;
+  onToggle: (permission: Permissao) => void;
+  onDelete: (name: string) => void;
+}) {
+  const hasChildren = node.children.length > 0;
+  const isExpanded = expandedMenus.has(node.item.cod_menu_item);
+  const hasPermission = !!node.permission;
+
+  // Contar permissões habilitadas nos filhos
+  const countChildPermissions = (nodes: MenuNode[]): { enabled: number; total: number } => {
+    let enabled = 0;
+    let total = 0;
+    for (const n of nodes) {
+      if (n.permission) {
+        total++;
+        if (n.permission.ind_pode_acessar) enabled++;
+      }
+      const childCounts = countChildPermissions(n.children);
+      enabled += childCounts.enabled;
+      total += childCounts.total;
+    }
+    return { enabled, total };
+  };
+
+  const childCounts = hasChildren ? countChildPermissions(node.children) : null;
+
+  if (hasChildren) {
+    // É um container/submenu
+    return (
+      <div className="space-y-1">
+        <button
+          onClick={() => toggleMenuExpand(node.item.cod_menu_item)}
+          className={`w-full flex items-center gap-2 p-3 rounded-lg transition-colors hover:bg-muted border ${
+            isExpanded ? 'bg-muted/50 border-border' : 'border-transparent'
+          }`}
+          style={{ paddingLeft: `${12 + depth * 16}px` }}
+        >
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          )}
+          <FolderOpen className="h-4 w-4 text-primary shrink-0" />
+          <span className="font-medium flex-1 text-left truncate">{node.item.des_nome}</span>
+          {childCounts && childCounts.total > 0 && (
+            <Badge variant="outline" className="text-xs shrink-0">
+              {childCounts.enabled}/{childCounts.total}
+            </Badge>
+          )}
+        </button>
+
+        {isExpanded && (
+          <div className="ml-4 space-y-1">
+            {node.children.map((child) => (
+              <MenuTreeNode
+                key={child.item.cod_menu_item}
+                node={child}
+                depth={depth + 1}
+                expandedMenus={expandedMenus}
+                toggleMenuExpand={toggleMenuExpand}
+                pendingChanges={pendingChanges}
+                onToggle={onToggle}
+                onDelete={onDelete}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // É uma tela/folha
+  if (hasPermission) {
+    return (
+      <PermissionItem
+        permission={node.permission!}
+        pendingChanges={pendingChanges}
+        onToggle={onToggle}
+        onDelete={onDelete}
+        indent={depth}
+        menuName={node.item.des_nome}
+      />
+    );
+  }
+
+  // Item de menu sem permissão associada (link externo, etc)
+  return (
+    <div
+      className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-dashed border-border"
+      style={{ marginLeft: `${depth * 16}px` }}
+    >
+      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+      <div className="flex flex-col min-w-0 flex-1">
+        <span className="text-sm truncate">{node.item.des_nome}</span>
+        <span className="text-xs text-muted-foreground truncate">{node.item.des_caminho}</span>
+      </div>
+      <Badge variant="outline" className="text-xs shrink-0 text-muted-foreground">
+        Sem permissão
+      </Badge>
+    </div>
+  );
+}
+
+// Componente para item de permissão
+function PermissionItem({
+  permission,
+  pendingChanges,
+  onToggle,
+  onDelete,
+  indent = 0,
+  menuName,
+}: {
+  permission: Permissao;
+  pendingChanges: Map<string, boolean>;
+  onToggle: (permission: Permissao) => void;
+  onDelete: (name: string) => void;
+  indent?: number;
+  menuName?: string;
+}) {
+  const hasChange = pendingChanges.has(permission.cod_permissao);
+
+  return (
+    <div
+      className="flex items-center justify-between p-3 border border-border rounded-lg bg-card hover:bg-muted/30 transition-colors"
+      style={{ marginLeft: `${indent * 16}px` }}
+    >
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+        <div className="flex flex-col min-w-0">
+          <span className="font-medium truncate">{menuName || permission.des_nome_tela}</span>
+          <span className="text-xs text-muted-foreground truncate">
+            {permission.des_rota}
+          </span>
+        </div>
+      </div>
+      
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={permission.ind_pode_acessar}
+            onCheckedChange={() => onToggle(permission)}
+            className="data-[state=checked]:bg-green-500"
+          />
+          {permission.ind_pode_acessar ? (
+            <Check className="h-4 w-4 text-green-500" />
+          ) : (
+            <X className="h-4 w-4 text-destructive" />
+          )}
+          {hasChange && (
+            <span className="h-2 w-2 rounded-full bg-orange-500" />
+          )}
+        </div>
+        
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => onDelete(permission.des_nome_tela)}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Remover tela</p>
+          </TooltipContent>
+        </Tooltip>
+      </div>
     </div>
   );
 }
@@ -945,11 +1097,11 @@ function RolesList({
             <div className="mt-2 flex items-center gap-2">
               <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-green-500 transition-all duration-300"
+                  className="h-full bg-green-500 transition-all"
                   style={{ width: `${percentage}%` }}
                 />
               </div>
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
+              <span className="text-xs text-muted-foreground shrink-0">
                 {counts?.enabled || 0}/{counts?.total || 0}
               </span>
             </div>
