@@ -7,6 +7,16 @@ const corsHeaders = {
 
 const LDAP_API_BASE = 'http://hubapi.redemontecarlo.com.br/auth/ldap';
 
+// Rate limiting configuration
+const RATE_LIMIT_CONFIG = {
+  maxAttemptsPerIP: 10,       // Max attempts per IP in time window
+  ipWindowMinutes: 15,        // Time window for IP-based limiting (minutes)
+  maxAttemptsPerUser: 5,      // Max attempts per username in time window
+  userWindowMinutes: 30,      // Time window for username-based limiting (minutes)
+  progressiveDelayBase: 2,    // Base for progressive delay (seconds)
+  maxProgressiveDelay: 60,    // Maximum progressive delay (seconds)
+};
+
 // Response from the validate endpoint based on actual API response
 interface LdapValidateResponse {
   ok?: boolean;
@@ -16,7 +26,6 @@ interface LdapValidateResponse {
   username?: string;
   full_name?: string;
   groups?: string[];
-  // Additional profile fields if available
   department?: string;
   title?: string;
   email?: string;
@@ -25,11 +34,172 @@ interface LdapValidateResponse {
   objectId?: string;
 }
 
+interface RateLimitResult {
+  allowed: boolean;
+  retryAfterSeconds?: number;
+  reason?: 'IP_RATE_LIMIT' | 'USERNAME_RATE_LIMIT';
+  consecutiveFailures?: number;
+}
+
+// Extract client IP from request headers
+function getClientIP(req: Request): string {
+  // Check various headers for the real IP
+  const forwarded = req.headers.get('x-forwarded-for');
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  
+  const realIP = req.headers.get('x-real-ip');
+  if (realIP) {
+    return realIP.trim();
+  }
+  
+  const cfConnectingIP = req.headers.get('cf-connecting-ip');
+  if (cfConnectingIP) {
+    return cfConnectingIP.trim();
+  }
+  
+  return 'unknown';
+}
+
+// Check rate limits before allowing login attempt
+async function checkRateLimit(
+  supabase: any,
+  ip: string,
+  username: string
+): Promise<RateLimitResult> {
+  const now = new Date();
+  const ipWindowStart = new Date(now.getTime() - RATE_LIMIT_CONFIG.ipWindowMinutes * 60 * 1000);
+  const userWindowStart = new Date(now.getTime() - RATE_LIMIT_CONFIG.userWindowMinutes * 60 * 1000);
+  const normalizedUsername = username.toLowerCase().trim();
+
+  try {
+    // Check IP-based rate limit
+    const { count: ipFailures } = await supabase
+      .from('tab_tentativa_login')
+      .select('*', { count: 'exact', head: true })
+      .eq('des_ip_address', ip)
+      .eq('ind_sucesso', false)
+      .gte('dta_tentativa', ipWindowStart.toISOString());
+
+    if ((ipFailures || 0) >= RATE_LIMIT_CONFIG.maxAttemptsPerIP) {
+      console.log(`Rate limit exceeded for IP: ${ip} (${ipFailures} failures)`);
+      return {
+        allowed: false,
+        retryAfterSeconds: RATE_LIMIT_CONFIG.ipWindowMinutes * 60,
+        reason: 'IP_RATE_LIMIT',
+      };
+    }
+
+    // Check username-based rate limit
+    const { count: userFailures } = await supabase
+      .from('tab_tentativa_login')
+      .select('*', { count: 'exact', head: true })
+      .eq('des_username', normalizedUsername)
+      .eq('ind_sucesso', false)
+      .gte('dta_tentativa', userWindowStart.toISOString());
+
+    if ((userFailures || 0) >= RATE_LIMIT_CONFIG.maxAttemptsPerUser) {
+      console.log(`Rate limit exceeded for username: ${normalizedUsername} (${userFailures} failures)`);
+      return {
+        allowed: false,
+        retryAfterSeconds: RATE_LIMIT_CONFIG.userWindowMinutes * 60,
+        reason: 'USERNAME_RATE_LIMIT',
+      };
+    }
+
+    // Get consecutive failures for progressive delay
+    const { data: recentFailures } = await supabase
+      .from('tab_tentativa_login')
+      .select('ind_sucesso')
+      .or(`des_ip_address.eq.${ip},des_username.eq.${normalizedUsername}`)
+      .order('dta_tentativa', { ascending: false })
+      .limit(10);
+
+    let consecutiveFailures = 0;
+    if (recentFailures) {
+      for (const attempt of recentFailures) {
+        if (!attempt.ind_sucesso) {
+          consecutiveFailures++;
+        } else {
+          break;
+        }
+      }
+    }
+
+    return {
+      allowed: true,
+      consecutiveFailures,
+    };
+  } catch (error) {
+    console.error('Error checking rate limit:', error);
+    // On error, allow the attempt but log the issue
+    return { allowed: true, consecutiveFailures: 0 };
+  }
+}
+
+// Log a login attempt
+async function logLoginAttempt(
+  supabase: any,
+  ip: string,
+  username: string,
+  success: boolean,
+  failureReason?: string,
+  userAgent?: string
+): Promise<void> {
+  try {
+    await supabase.from('tab_tentativa_login').insert({
+      des_ip_address: ip,
+      des_username: username.toLowerCase().trim(),
+      ind_sucesso: success,
+      des_motivo_falha: failureReason?.substring(0, 255),
+      des_user_agent: userAgent?.substring(0, 500),
+    });
+  } catch (error) {
+    console.error('Error logging login attempt:', error);
+  }
+}
+
+// Clear failed attempts for a username after successful login
+async function clearFailedAttempts(
+  supabase: any,
+  username: string
+): Promise<void> {
+  try {
+    const normalizedUsername = username.toLowerCase().trim();
+    await supabase
+      .from('tab_tentativa_login')
+      .delete()
+      .eq('des_username', normalizedUsername)
+      .eq('ind_sucesso', false);
+    
+    console.log(`Cleared failed attempts for username: ${normalizedUsername}`);
+  } catch (error) {
+    console.error('Error clearing failed attempts:', error);
+  }
+}
+
+// Calculate progressive delay based on consecutive failures
+function calculateProgressiveDelay(consecutiveFailures: number): number {
+  if (consecutiveFailures < 3) return 0;
+  
+  const delay = Math.pow(RATE_LIMIT_CONFIG.progressiveDelayBase, consecutiveFailures - 2);
+  return Math.min(delay, RATE_LIMIT_CONFIG.maxProgressiveDelay);
+}
+
 Deno.serve(async (req) => {
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const clientIP = getClientIP(req);
+  const userAgent = req.headers.get('user-agent') || undefined;
+  
+  console.log(`[${requestId}] LDAP auth request from IP: ${clientIP}`);
 
   try {
     const { username, password } = await req.json();
@@ -41,9 +211,65 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Initialize Supabase client early for rate limiting
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    // Check rate limits BEFORE attempting LDAP validation
+    const rateLimitResult = await checkRateLimit(supabase, clientIP, username);
+    
+    if (!rateLimitResult.allowed) {
+      console.log(`[${requestId}] Rate limit blocked: ${rateLimitResult.reason}`);
+      
+      // Log the blocked attempt
+      await logLoginAttempt(
+        supabase,
+        clientIP,
+        username,
+        false,
+        `BLOCKED_${rateLimitResult.reason}`,
+        userAgent
+      );
+      
+      const retryAfter = rateLimitResult.retryAfterSeconds || 900;
+      const message = rateLimitResult.reason === 'IP_RATE_LIMIT'
+        ? 'Muitas tentativas de login deste endereço IP. Por favor, aguarde antes de tentar novamente.'
+        : 'Muitas tentativas de login para este usuário. Por favor, aguarde antes de tentar novamente.';
+      
+      return new Response(
+        JSON.stringify({ 
+          error: message,
+          code: rateLimitResult.reason,
+          retryAfter,
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': retryAfter.toString(),
+          } 
+        }
+      );
+    }
+
+    // Apply progressive delay if there are consecutive failures
+    if (rateLimitResult.consecutiveFailures && rateLimitResult.consecutiveFailures >= 3) {
+      const delay = calculateProgressiveDelay(rateLimitResult.consecutiveFailures);
+      console.log(`[${requestId}] Progressive delay: ${delay}s (${rateLimitResult.consecutiveFailures} consecutive failures)`);
+      await new Promise(resolve => setTimeout(resolve, delay * 1000));
+    }
+
     const apiToken = Deno.env.get('MC_HUB_API');
     if (!apiToken) {
-      console.error('MC_HUB_API token not configured');
+      console.error(`[${requestId}] MC_HUB_API token not configured`);
       return new Response(
         JSON.stringify({ error: 'Configuração do servidor incompleta' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -51,7 +277,7 @@ Deno.serve(async (req) => {
     }
 
     // Step 1: Validate credentials with LDAP API
-    console.log(`Attempting LDAP validation for user: ${username}`);
+    console.log(`[${requestId}] Attempting LDAP validation for user: ${username}`);
     
     let ldapResponse: Response;
     try {
@@ -65,7 +291,9 @@ Deno.serve(async (req) => {
         body: JSON.stringify({ username, password }),
       });
     } catch (fetchError) {
-      console.error('Failed to connect to LDAP server:', fetchError);
+      console.error(`[${requestId}] Failed to connect to LDAP server:`, fetchError);
+      
+      // Don't log this as a failed attempt (infrastructure issue, not user error)
       return new Response(
         JSON.stringify({ 
           error: 'Não foi possível conectar ao servidor de autenticação. Por favor, tente novamente em alguns minutos.',
@@ -76,12 +304,11 @@ Deno.serve(async (req) => {
     }
 
     const ldapText = await ldapResponse.text();
-    console.log('LDAP raw response:', ldapText);
-    console.log('LDAP response status:', ldapResponse.status);
+    console.log(`[${requestId}] LDAP response status:`, ldapResponse.status);
     
     // Check for gateway/proxy errors (502, 503, 504)
     if (ldapResponse.status >= 502 && ldapResponse.status <= 504) {
-      console.error(`LDAP server gateway error: ${ldapResponse.status}`);
+      console.error(`[${requestId}] LDAP server gateway error: ${ldapResponse.status}`);
       return new Response(
         JSON.stringify({ 
           error: 'O servidor de autenticação está temporariamente indisponível. Por favor, tente novamente em alguns minutos.',
@@ -96,7 +323,7 @@ Deno.serve(async (req) => {
     try {
       ldapData = JSON.parse(ldapText);
     } catch {
-      console.error('Failed to parse LDAP response as JSON. Raw response:', ldapText.substring(0, 200));
+      console.error(`[${requestId}] Failed to parse LDAP response as JSON. Raw response:`, ldapText.substring(0, 200));
       return new Response(
         JSON.stringify({ 
           error: 'Resposta inesperada do servidor de autenticação. Por favor, contate o suporte técnico.',
@@ -107,16 +334,30 @@ Deno.serve(async (req) => {
     }
 
     // Check various possible success indicators from the API
-    // The API returns { ok: true, username, full_name, groups } on success
     const isSuccess = ldapResponse.ok && (ldapData.ok === true || ldapData.success === true);
     
     if (!isSuccess) {
-      console.log('LDAP validation failed:', ldapData);
+      console.log(`[${requestId}] LDAP validation failed for user: ${username}`);
+      
+      // Log failed attempt
+      await logLoginAttempt(
+        supabase,
+        clientIP,
+        username,
+        false,
+        'INVALID_CREDENTIALS',
+        userAgent
+      );
+      
       return new Response(
         JSON.stringify({ error: ldapData.message || ldapData.detail || 'Credenciais inválidas' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Login successful - log success and clear failed attempts
+    await logLoginAttempt(supabase, clientIP, username, true, undefined, userAgent);
+    await clearFailedAttempts(supabase, username);
 
     // Step 2: Try to get more profile information from LDAP API (if endpoint exists)
     let profileInfo: LdapValidateResponse = { ...ldapData };
@@ -132,30 +373,14 @@ Deno.serve(async (req) => {
       
       if (profileResponse.ok) {
         const profileData = await profileResponse.json();
-        console.log('LDAP profile data:', JSON.stringify(profileData));
-        // Merge profile data with existing data
+        console.log(`[${requestId}] LDAP profile data retrieved`);
         profileInfo = { ...profileInfo, ...profileData };
-      } else {
-        console.log('Profile endpoint not available or returned error:', profileResponse.status);
       }
     } catch (profileError) {
-      console.log('Error fetching profile (optional):', profileError);
-      // Continue without additional profile data
+      console.log(`[${requestId}] Error fetching profile (optional):`, profileError);
     }
 
     // Step 3: Create/update user in Supabase
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
-    // Create Supabase admin client with service role key (bypasses RLS)
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-
-    // Generate email from username if not provided
     const ldapUsername = profileInfo.username || username;
     const userEmail = profileInfo.email || `${ldapUsername.toLowerCase()}@redemontecarlo.com.br`;
     const displayName = profileInfo.full_name || ldapUsername;
@@ -165,25 +390,17 @@ Deno.serve(async (req) => {
     const phone = profileInfo.phone || null;
     const adGroups = profileInfo.groups || [];
     
-    console.log('Syncing user profile:', {
-      username: ldapUsername,
-      email: userEmail,
-      displayName,
-      department,
-      jobTitle,
-      groups: adGroups,
-    });
+    console.log(`[${requestId}] Syncing user profile for: ${ldapUsername}`);
     
     // Check if user exists in auth.users
     const { data: existingUsers } = await supabase.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find(u => u.email === userEmail);
+    const existingUser = existingUsers?.users?.find((u: any) => u.email === userEmail);
 
     let userId: string;
     let isNewUser = false;
 
     if (existingUser) {
       userId = existingUser.id;
-      console.log('Existing user found:', userId);
       
       // Update user metadata with latest LDAP info
       await supabase.auth.admin.updateUserById(userId, {
@@ -209,7 +426,7 @@ Deno.serve(async (req) => {
       });
 
       if (createError) {
-        console.error('Error creating user:', createError);
+        console.error(`[${requestId}] Error creating user:`, createError);
         return new Response(
           JSON.stringify({ error: 'Erro ao criar usuário no sistema' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -218,11 +435,10 @@ Deno.serve(async (req) => {
 
       userId = newUser.user!.id;
       isNewUser = true;
-      console.log('New user created:', userId);
+      console.log(`[${requestId}] New user created: ${userId}`);
     }
 
-    // Step 4: Update/create profile with LDAP data (sync on every login)
-    // First, check if user already has a profile with manually edited fields
+    // Step 4: Update/create profile with LDAP data
     const { data: existingProfile } = await supabase
       .from('tab_perfil_usuario')
       .select('des_email, des_telefone')
@@ -236,16 +452,13 @@ Deno.serve(async (req) => {
       ind_ativo: true,
     };
     
-    // Only set email from LDAP if user doesn't have one already (preserve user edits)
     if (!existingProfile?.des_email) {
       profileData.des_email = userEmail;
     }
     
-    // Only update fields that have values from LDAP
     if (department) profileData.des_departamento = department;
     if (jobTitle) profileData.des_cargo = jobTitle;
     if (office) profileData.des_unidade = office;
-    // Only update phone from LDAP if user doesn't have one (preserve user edits)
     if (phone && !existingProfile?.des_telefone) profileData.des_telefone = phone;
     if (profileInfo.objectId) profileData.des_ad_object_id = profileInfo.objectId;
 
@@ -254,10 +467,7 @@ Deno.serve(async (req) => {
       .upsert(profileData, { onConflict: 'cod_usuario' });
 
     if (profileError) {
-      console.error('Error upserting profile:', profileError);
-      // Don't fail the login, just log the error
-    } else {
-      console.log('Profile synced successfully');
+      console.error(`[${requestId}] Error upserting profile:`, profileError);
     }
 
     // Step 5: Assign default 'user' role if new user
@@ -270,7 +480,7 @@ Deno.serve(async (req) => {
         });
 
       if (roleError) {
-        console.error('Error assigning default role:', roleError);
+        console.error(`[${requestId}] Error assigning default role:`, roleError);
       }
     }
 
@@ -281,7 +491,7 @@ Deno.serve(async (req) => {
     });
 
     if (sessionError) {
-      console.error('Error generating session link:', sessionError);
+      console.error(`[${requestId}] Error generating session link:`, sessionError);
       return new Response(
         JSON.stringify({ error: 'Erro ao gerar sessão' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -299,7 +509,8 @@ Deno.serve(async (req) => {
       .select('des_role')
       .eq('seq_usuario', userId);
 
-    console.log('LDAP login successful for:', ldapUsername);
+    const duration = Date.now() - startTime;
+    console.log(`[${requestId}] LDAP login successful for: ${ldapUsername} (${duration}ms)`);
 
     return new Response(
       JSON.stringify({
@@ -313,7 +524,7 @@ Deno.serve(async (req) => {
           office,
           groups: adGroups,
           isNewUser,
-          roles: roles?.map(r => r.des_role) || ['user'],
+          roles: roles?.map((r: any) => r.des_role) || ['user'],
         },
         auth: {
           token,
@@ -325,7 +536,8 @@ Deno.serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('LDAP auth error:', error);
+    const duration = Date.now() - startTime;
+    console.error(`[${requestId}] LDAP auth error (${duration}ms):`, error);
     return new Response(
       JSON.stringify({ error: 'Erro interno do servidor' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
