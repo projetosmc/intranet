@@ -214,7 +214,7 @@ export default function AuthPage() {
             <img 
               src={logoMontecarlo} 
               alt="Monte Carlo" 
-              className="h-12 w-auto object-contain"
+              className="h-20 w-auto object-contain"
             />
           </motion.div>
 
