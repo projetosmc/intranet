@@ -1303,7 +1303,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      view_diretorio_publico: {
+        Row: {
+          cod_usuario: string | null
+          des_avatar_url: string | null
+          des_cargo: string | null
+          des_departamento: string | null
+          des_nome_completo: string | null
+          des_unidade: string | null
+        }
+        Insert: {
+          cod_usuario?: string | null
+          des_avatar_url?: string | null
+          des_cargo?: string | null
+          des_departamento?: string | null
+          des_nome_completo?: string | null
+          des_unidade?: string | null
+        }
+        Update: {
+          cod_usuario?: string | null
+          des_avatar_url?: string | null
+          des_cargo?: string | null
+          des_departamento?: string | null
+          des_nome_completo?: string | null
+          des_unidade?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_user_display_info: {
@@ -1311,6 +1337,16 @@ export type Database = {
         Returns: {
           avatar_url: string
           nome: string
+        }[]
+      }
+      get_user_public_info: {
+        Args: { user_id: string }
+        Returns: {
+          avatar_url: string
+          cargo: string
+          departamento: string
+          nome: string
+          unidade: string
         }[]
       }
       has_role: {
@@ -1328,6 +1364,7 @@ export type Database = {
           departamento: string
           id: string
           nome: string
+          unidade: string
         }[]
       }
       setup_first_admin: { Args: { admin_user_id: string }; Returns: undefined }
