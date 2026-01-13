@@ -1253,6 +1253,36 @@ export type Database = {
         }
         Relationships: []
       }
+      tab_tentativa_login: {
+        Row: {
+          cod_tentativa: string
+          des_ip_address: string
+          des_motivo_falha: string | null
+          des_user_agent: string | null
+          des_username: string | null
+          dta_tentativa: string | null
+          ind_sucesso: boolean | null
+        }
+        Insert: {
+          cod_tentativa?: string
+          des_ip_address: string
+          des_motivo_falha?: string | null
+          des_user_agent?: string | null
+          des_username?: string | null
+          dta_tentativa?: string | null
+          ind_sucesso?: boolean | null
+        }
+        Update: {
+          cod_tentativa?: string
+          des_ip_address?: string
+          des_motivo_falha?: string | null
+          des_user_agent?: string | null
+          des_username?: string | null
+          dta_tentativa?: string | null
+          ind_sucesso?: boolean | null
+        }
+        Relationships: []
+      }
       tab_tipo_reuniao: {
         Row: {
           cod_tipo_reuniao: string
@@ -1356,6 +1386,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      limpar_tentativas_antigas: { Args: never; Returns: undefined }
       search_users_directory: {
         Args: { result_limit?: number; search_term: string }
         Returns: {
