@@ -591,7 +591,7 @@ export function Sidebar() {
         <img 
           src="/logo-montecarlo.png" 
           alt="Monte Carlo" 
-          className="h-8 w-auto object-contain"
+          className="h-12 w-auto object-contain"
         />
       </div>
 
