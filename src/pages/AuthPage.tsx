@@ -60,19 +60,41 @@ export default function AuthPage() {
 
       if (error) {
         console.error('LDAP auth error:', error);
+        
+        // Try to extract error message from the response
+        let errorMessage = 'Erro de comunicação com o servidor';
+        
+        // Check if we have a response body with more details
+        if (error.context?.body) {
+          try {
+            const errorBody = await error.context.body.json?.() || error.context.body;
+            if (typeof errorBody === 'object' && errorBody.error) {
+              errorMessage = errorBody.error;
+            }
+          } catch {
+            // If we can't parse the body, use the default message
+          }
+        }
+        
+        // Check for specific error codes
+        if (data?.code === 'LDAP_SERVER_UNAVAILABLE' || data?.code === 'LDAP_CONNECTION_ERROR') {
+          errorMessage = data.error || 'Servidor de autenticação temporariamente indisponível';
+        }
+        
         toast({
           title: 'Erro ao entrar',
-          description: 'Erro de comunicação com o servidor',
+          description: errorMessage,
           variant: 'destructive',
         });
         setIsSubmitting(false);
         return;
       }
 
-      if (!data.success) {
+      if (!data?.success) {
+        const errorMessage = data?.error || 'Credenciais inválidas';
         toast({
           title: 'Erro ao entrar',
-          description: data.error || 'Credenciais inválidas',
+          description: errorMessage,
           variant: 'destructive',
         });
         setIsSubmitting(false);
