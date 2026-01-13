@@ -194,19 +194,31 @@ Deno.serve(async (req) => {
     }
 
     // Step 4: Update/create profile with LDAP data (sync on every login)
+    // First, check if user already has a profile with manually edited fields
+    const { data: existingProfile } = await supabase
+      .from('tab_perfil_usuario')
+      .select('des_email, des_telefone')
+      .eq('cod_usuario', userId)
+      .single();
+    
     const profileData: Record<string, unknown> = {
       cod_usuario: userId,
-      des_email: userEmail,
       des_nome_completo: displayName,
       dta_sincronizacao_ad: new Date().toISOString(),
       ind_ativo: true,
     };
     
+    // Only set email from LDAP if user doesn't have one already (preserve user edits)
+    if (!existingProfile?.des_email) {
+      profileData.des_email = userEmail;
+    }
+    
     // Only update fields that have values from LDAP
     if (department) profileData.des_departamento = department;
     if (jobTitle) profileData.des_cargo = jobTitle;
     if (office) profileData.des_unidade = office;
-    if (phone) profileData.des_telefone = phone;
+    // Only update phone from LDAP if user doesn't have one (preserve user edits)
+    if (phone && !existingProfile?.des_telefone) profileData.des_telefone = phone;
     if (profileInfo.objectId) profileData.des_ad_object_id = profileInfo.objectId;
 
     const { error: profileError } = await supabase
