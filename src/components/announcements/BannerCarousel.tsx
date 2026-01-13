@@ -58,7 +58,7 @@ export function BannerCarousel({
   };
   return <div className="relative w-full rounded-2xl overflow-hidden bg-card border border-border shadow-lg mx-0 px-0">
       {/* Main Carousel Container - Fixed aspect ratio, image adapts to container */}
-      <div className="relative w-full h-0 pb-[42.86%] md:pb-[33.33%] bg-muted">
+      <div className="relative w-full h-0 pb-[35%] md:pb-[25%] bg-muted">
         {!imageLoaded && <Skeleton className="absolute inset-0 w-full h-full" />}
         <AnimatePresence mode="wait">
           <motion.div key={currentBanner.id} initial={{
