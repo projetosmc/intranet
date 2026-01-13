@@ -1,12 +1,29 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  'https://haycuruhkzmhszwcmcpn.lovableproject.com',
+  'https://intranet.redemontecarlo.com.br',
+  'http://localhost:8080',
+  'http://localhost:5173',
+];
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  };
+}
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -224,8 +241,8 @@ serve(async (req) => {
         .insert({
           seq_usuario: userId,
           des_acao: "CREATE_ADMIN",
-          des_entidade: "tab_usuario_role",
-          des_descricao: `Admin role granted to ${email}${hasExistingAdmin ? " by existing admin" : " (first admin setup)"}`,
+          des_tipo_entidade: "tab_usuario_role",
+          des_id_entidade: userId,
         });
     } catch (auditError) {
       console.error("Error creating audit log:", auditError);
@@ -255,7 +272,7 @@ serve(async (req) => {
         error: errorMessage,
       }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         status: 500,
       }
     );
