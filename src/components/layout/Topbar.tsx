@@ -215,7 +215,7 @@ export function Topbar() {
                 />
                 <div className="hidden md:flex flex-col items-start">
                   <span className="text-sm font-medium leading-none">{profile?.fullName || user?.name}</span>
-                  <span className="text-xs text-muted-foreground leading-none mt-1">{user?.email}</span>
+                  <span className="text-xs text-muted-foreground leading-none mt-1">{profile?.email || user?.email}</span>
                 </div>
               </Button>
             </DropdownMenuTrigger>
@@ -223,7 +223,7 @@ export function Topbar() {
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">{profile?.fullName || user?.name}</p>
-                  <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{profile?.email || user?.email}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
