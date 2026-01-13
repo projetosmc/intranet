@@ -17,23 +17,39 @@ import { useUser } from '@/contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { format, isToday, isTomorrow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-
 export default function HomePage() {
   const navigate = useNavigate();
-  const { user } = useUser();
-  const { activeAnnouncements, bannerAnnouncements, isLoading: announcementsLoading } = useDbAnnouncements();
-  const { birthdays, isLoading: birthdaysLoading } = useBirthdays();
-  const { events: calendarEvents, addEvent, deleteEvent, isLoading: calendarLoading } = useCalendarEvents();
-  const { calendarEvents: reservationEvents, upcomingMeetings, isLoading: reservationsLoading } = useUserReservations();
+  const {
+    user
+  } = useUser();
+  const {
+    activeAnnouncements,
+    bannerAnnouncements,
+    isLoading: announcementsLoading
+  } = useDbAnnouncements();
+  const {
+    birthdays,
+    isLoading: birthdaysLoading
+  } = useBirthdays();
+  const {
+    events: calendarEvents,
+    addEvent,
+    deleteEvent,
+    isLoading: calendarLoading
+  } = useCalendarEvents();
+  const {
+    calendarEvents: reservationEvents,
+    upcomingMeetings,
+    isLoading: reservationsLoading
+  } = useUserReservations();
 
   // Ativar notificações para reuniões próximas
   useNotifications(upcomingMeetings.map(m => ({
     id: m.id,
     roomName: m.roomName,
     startTime: m.startTime,
-    date: m.date,
+    date: m.date
   })));
-
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Bom dia';
@@ -53,7 +69,6 @@ export default function HomePage() {
         type: 'birthday'
       };
     });
-
     const calEvents = calendarEvents.map(e => {
       // event_date já é um Date
       const ed = e.event_date;
@@ -64,7 +79,6 @@ export default function HomePage() {
         id: e.id
       };
     });
-
     return [...birthdayEvents, ...calEvents, ...reservationEvents];
   }, [birthdays, calendarEvents, reservationEvents]);
 
@@ -72,21 +86,24 @@ export default function HomePage() {
   const formatMeetingDate = (date: Date) => {
     if (isToday(date)) return 'Hoje';
     if (isTomorrow(date)) return 'Amanhã';
-    return format(date, "dd/MM", { locale: ptBR });
+    return format(date, "dd/MM", {
+      locale: ptBR
+    });
   };
-
-  return (
-    <div className="relative min-h-[calc(100vh-8rem)]">
+  return <div className="relative min-h-[calc(100vh-8rem)]">
       <div className="space-y-6">
         {/* Hero Section */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="relative"
-        >
+        <motion.section initial={{
+        opacity: 0,
+        y: 20
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }} transition={{
+        duration: 0.5
+      }} className="relative">
           <div className="max-w-2xl">
-            <h1 className="text-3xl font-bold text-foreground mb-2">
+            <h1 className="text-3xl font-bold text-foreground mb-2 pt-[20px]">
               {getGreeting()}, <span className="gradient-text">{user?.name}</span>
             </h1>
             <p className="text-muted-foreground">
@@ -96,31 +113,34 @@ export default function HomePage() {
         </motion.section>
 
         {/* Próximas Reuniões - Mostrar skeleton ou conteúdo */}
-        {reservationsLoading ? (
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.05 }}
-          >
+        {reservationsLoading ? <motion.section initial={{
+        opacity: 0,
+        y: 20
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }} transition={{
+        duration: 0.5,
+        delay: 0.05
+      }}>
             <UpcomingMeetingsSkeleton />
-          </motion.section>
-        ) : upcomingMeetings.length > 0 && (
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.05 }}
-          >
+          </motion.section> : upcomingMeetings.length > 0 && <motion.section initial={{
+        opacity: 0,
+        y: 20
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }} transition={{
+        duration: 0.5,
+        delay: 0.05
+      }}>
             <div className="glass-card p-4 rounded-xl border border-primary/20 bg-primary/5">
               <div className="flex items-center gap-2 mb-3">
                 <Clock className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold text-foreground">Próximas Reuniões</h3>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {upcomingMeetings.slice(0, 3).map((meeting) => (
-                  <div
-                    key={meeting.id}
-                    className="flex items-center gap-3 p-3 bg-background/50 rounded-lg border border-border/50"
-                  >
+                {upcomingMeetings.slice(0, 3).map(meeting => <div key={meeting.id} className="flex items-center gap-3 p-3 bg-background/50 rounded-lg border border-border/50">
                     <div className="p-2 rounded-lg bg-primary/10">
                       <DoorOpen className="h-4 w-4 text-primary" />
                     </div>
@@ -130,39 +150,40 @@ export default function HomePage() {
                         {formatMeetingDate(meeting.date)} às {meeting.startTime.slice(0, 5)}
                       </p>
                     </div>
-                  </div>
-                ))}
+                  </div>)}
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-2"
-                onClick={() => navigate('/reserva-salas')}
-              >
+              <Button variant="ghost" size="sm" className="mt-2" onClick={() => navigate('/reserva-salas')}>
                 Ver todas as reservas
                 <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
-          </motion.section>
-        )}
+          </motion.section>}
 
         {/* Banner Carousel */}
-        {bannerAnnouncements.length > 0 && (
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
+        {bannerAnnouncements.length > 0 && <motion.section initial={{
+        opacity: 0,
+        y: 20
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }} transition={{
+        duration: 0.5,
+        delay: 0.1
+      }}>
             <BannerCarousel banners={bannerAnnouncements} />
-          </motion.section>
-        )}
+          </motion.section>}
 
         {/* Main Content - Split Layout */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.15 }}
-        >
+        <motion.section initial={{
+        opacity: 0,
+        y: 20
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }} transition={{
+        duration: 0.5,
+        delay: 0.15
+      }}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Side - Announcements */}
             <div>
@@ -178,23 +199,12 @@ export default function HomePage() {
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {announcementsLoading ? (
-                  <>
+                {announcementsLoading ? <>
                     <AnnouncementCardSkeleton />
                     <AnnouncementCardSkeleton />
                     <AnnouncementCardSkeleton />
                     <AnnouncementCardSkeleton />
-                  </>
-                ) : (
-                  activeAnnouncements.slice(0, 4).map((announcement, index) => (
-                    <AnnouncementCard
-                      key={announcement.id}
-                      announcement={announcement}
-                      onClick={() => navigate(`/comunicados/${announcement.id}`)}
-                      delay={index}
-                    />
-                  ))
-                )}
+                  </> : activeAnnouncements.slice(0, 4).map((announcement, index) => <AnnouncementCard key={announcement.id} announcement={announcement} onClick={() => navigate(`/comunicados/${announcement.id}`)} delay={index} />)}
               </div>
             </div>
 
@@ -205,25 +215,12 @@ export default function HomePage() {
                 <h2 className="text-xl font-semibold text-foreground">Calendário</h2>
               </div>
               
-              {calendarLoading ? (
-                <CalendarSkeleton />
-              ) : (
-                <EventCalendar 
-                  events={allEvents} 
-                  onAddEvent={addEvent}
-                  onDeleteEvent={deleteEvent}
-                />
-              )}
+              {calendarLoading ? <CalendarSkeleton /> : <EventCalendar events={allEvents} onAddEvent={addEvent} onDeleteEvent={deleteEvent} />}
               
-              {birthdaysLoading ? (
-                <BirthdayListSkeleton />
-              ) : (
-                <BirthdayList birthdays={birthdays} isLoading={birthdaysLoading} />
-              )}
+              {birthdaysLoading ? <BirthdayListSkeleton /> : <BirthdayList birthdays={birthdays} isLoading={birthdaysLoading} />}
             </div>
           </div>
         </motion.section>
       </div>
-    </div>
-  );
+    </div>;
 }
