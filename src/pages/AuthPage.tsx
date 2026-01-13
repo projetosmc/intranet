@@ -131,29 +131,72 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-primary/10">
-      {/* Decorative Background Elements */}
+      {/* Animated Decorative Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ 
+            opacity: [0.3, 0.5, 0.3], 
+            scale: [1, 1.1, 1],
+            x: [0, 20, 0],
+            y: [0, -10, 0]
+          }}
+          transition={{ 
+            duration: 8, 
+            repeat: Infinity, 
+            ease: "easeInOut" 
+          }}
+          className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl" 
+        />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ 
+            opacity: [0.2, 0.4, 0.2], 
+            scale: [1, 1.15, 1],
+            x: [0, -15, 0],
+            y: [0, 20, 0]
+          }}
+          transition={{ 
+            duration: 10, 
+            repeat: Infinity, 
+            ease: "easeInOut",
+            delay: 1
+          }}
+          className="absolute -bottom-40 -left-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl" 
+        />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ 
+            opacity: [0.1, 0.2, 0.1], 
+            scale: [1, 1.05, 1]
+          }}
+          transition={{ 
+            duration: 6, 
+            repeat: Infinity, 
+            ease: "easeInOut",
+            delay: 0.5
+          }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" 
+        />
       </div>
+
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="w-full max-w-md relative z-10"
+        className="w-full max-w-sm relative z-10"
       >
         {/* Logo */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="flex items-center justify-center mb-6"
+          className="flex items-center justify-center mb-8"
         >
           <img 
             src="/logo-montecarlo.png" 
             alt="Monte Carlo" 
-            className="h-14 w-auto object-contain"
+            className="h-16 w-auto object-contain"
           />
         </motion.div>
 
@@ -162,7 +205,7 @@ export default function AuthPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="text-2xl font-bold text-center mb-2"
+          className="text-3xl font-bold text-center mb-2 text-foreground"
         >
           MC Hub
         </motion.h1>
@@ -171,83 +214,81 @@ export default function AuthPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="text-muted-foreground text-center mb-6"
+          className="text-muted-foreground text-center mb-10"
         >
           Faça login com sua conta de rede
         </motion.p>
 
-        {/* Card */}
-        <motion.div
+        {/* Form - Embedded without card */}
+        <motion.form 
+          onSubmit={handleSubmit} 
+          className="space-y-5"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-card/80 backdrop-blur-sm border border-border rounded-2xl p-6 shadow-xl"
         >
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username" className="text-sm font-medium">
-                Usuário de rede
-              </Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="seu.usuario"
-                  className="pl-10 bg-background border-input"
-                  autoComplete="username"
-                  autoFocus
-                />
-              </div>
-              {errors.username && (
-                <p className="text-xs text-destructive">{errors.username}</p>
-              )}
+          <div className="space-y-2">
+            <Label htmlFor="username" className="text-sm font-medium text-foreground">
+              Usuário de rede
+            </Label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="seu.usuario"
+                className="pl-10 bg-background/60 backdrop-blur-sm border-border/50 focus:bg-background/80 transition-colors h-11"
+                autoComplete="username"
+                autoFocus
+              />
             </div>
+            {errors.username && (
+              <p className="text-xs text-destructive">{errors.username}</p>
+            )}
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium">
-                Senha
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="pl-10 bg-background border-input"
-                  autoComplete="current-password"
-                />
-              </div>
-              {errors.password && (
-                <p className="text-xs text-destructive">{errors.password}</p>
-              )}
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-sm font-medium text-foreground">
+              Senha
+            </Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="pl-10 bg-background/60 backdrop-blur-sm border-border/50 focus:bg-background/80 transition-colors h-11"
+                autoComplete="current-password"
+              />
             </div>
+            {errors.password && (
+              <p className="text-xs text-destructive">{errors.password}</p>
+            )}
+          </div>
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                'Entrar'
-              )}
-            </Button>
-          </form>
-        </motion.div>
+          <Button
+            type="submit"
+            className="w-full h-11 mt-2"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              'Entrar'
+            )}
+          </Button>
+        </motion.form>
 
         {/* Footer */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="text-center text-sm text-muted-foreground mt-6"
+          className="text-center text-sm text-muted-foreground mt-8"
         >
           Use as mesmas credenciais que você utiliza para acessar seu computador
         </motion.p>
