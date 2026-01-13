@@ -87,7 +87,7 @@ export default function HomePage() {
         >
           <div className="max-w-2xl">
             <h1 className="text-3xl font-bold text-foreground mb-2">
-              {getGreeting()}, <span className="gradient-text">{user?.name?.split(' ')[0]}</span>
+              {getGreeting()}, <span className="gradient-text">{user?.name}</span>
             </h1>
             <p className="text-muted-foreground">
               Mantenha-se atualizado com os comunicados da rede.
