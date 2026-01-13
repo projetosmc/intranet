@@ -3,7 +3,6 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Fuse from 'fuse.js';
 import { 
-  Fuel,
   Shield,
   Search,
   ChevronDown,
@@ -587,15 +586,13 @@ export function Sidebar() {
       className="fixed left-0 top-0 z-40 h-screen w-72 flex flex-col"
       style={{ background: 'var(--gradient-sidebar)' }}
     >
-      {/* Header */}
-      <div className="flex items-center gap-3 px-6 h-[65px] bg-card border-b border-border">
-        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10">
-          <Fuel className="h-6 w-6 text-primary" />
-        </div>
-        <div className="flex flex-col">
-          <span className="font-bold text-foreground">MC Hub</span>
-          <span className="text-xs text-muted-foreground">Monte Carlo</span>
-        </div>
+      {/* Header com Logo */}
+      <div className="flex items-center justify-center px-6 h-[65px] bg-card border-b border-border">
+        <img 
+          src="/logo-montecarlo.png" 
+          alt="Monte Carlo" 
+          className="h-8 w-auto object-contain"
+        />
       </div>
 
       {/* Admin Badge */}
