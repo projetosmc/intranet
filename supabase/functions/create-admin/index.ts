@@ -9,12 +9,15 @@ const ALLOWED_ORIGINS = [
   'http://localhost:5173',
 ];
 
-// Pattern for Lovable preview domains (UUID.lovableproject.com)
-const LOVABLE_PREVIEW_PATTERN = /^https:\/\/[a-f0-9-]+\.lovableproject\.com$/;
+// Patterns for Lovable domains (supports both lovableproject.com and lovable.app)
+const LOVABLE_PATTERNS = [
+  /^https:\/\/[a-f0-9-]+\.lovableproject\.com$/,
+  /^https:\/\/[a-z0-9-]+--[a-f0-9-]+\.lovable\.app$/,
+];
 
 function isAllowedOrigin(origin: string): boolean {
   if (ALLOWED_ORIGINS.includes(origin)) return true;
-  if (LOVABLE_PREVIEW_PATTERN.test(origin)) return true;
+  if (LOVABLE_PATTERNS.some(pattern => pattern.test(origin))) return true;
   return false;
 }
 
