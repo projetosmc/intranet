@@ -126,11 +126,12 @@ export function ScreenPermissionsTab() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Buscar tipos de perfil
+      // Buscar tipos de perfil (excluir admin, pois tem acesso a todas as telas por padrão)
       const { data: rolesData, error: rolesError } = await supabase
         .from('tab_perfil_tipo')
         .select('cod_perfil_tipo, des_codigo, des_nome, des_cor')
         .eq('ind_ativo', true)
+        .neq('des_codigo', 'admin')
         .order('num_ordem');
 
       if (rolesError) throw rolesError;
