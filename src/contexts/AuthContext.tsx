@@ -137,17 +137,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [isSessionChecked, user, rolesQuery.isFetching, rolesQuery.isSuccess, permissionsQuery.isFetching, permissionsQuery.isSuccess]);
 
-  // SIMPLIFIED loading logic - only block on session check
+  // Loading logic - wait for roles AND permissions to fully load
   const isLoading = useMemo(() => {
     if (hasTimedOut || hasError) return false;
     if (!isSessionChecked) return true;
     if (!user) return false;
     
-    // Only wait for roles on initial load
-    if (!rolesQuery.data && rolesQuery.isFetching) return true;
+    // Wait for roles to load
+    if (!rolesQuery.isSuccess && rolesQuery.isFetching) return true;
+    
+    // Wait for permissions to load (unless admin who doesn't need them)
+    if (!isAdmin && !permissionsQuery.isSuccess && permissionsQuery.isFetching) return true;
+    
+    // If roles loaded but permissions query not started/finished yet, wait
+    if (rolesQuery.isSuccess && !isAdmin && !permissionsQuery.isSuccess && permissionsQuery.fetchStatus !== 'idle') return true;
     
     return false;
-  }, [isSessionChecked, user, rolesQuery.data, rolesQuery.isFetching, hasTimedOut, hasError]);
+  }, [isSessionChecked, user, rolesQuery.isSuccess, rolesQuery.isFetching, permissionsQuery.isSuccess, permissionsQuery.isFetching, permissionsQuery.fetchStatus, hasTimedOut, hasError, isAdmin]);
 
   // Timeout effect
   useEffect(() => {
