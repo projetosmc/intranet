@@ -9,6 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
+import logoMontecarlo from '@/assets/logo-montecarlo-transparent.png';
+import mascotMontecarlo from '@/assets/mascot-montecarlo.png';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Usuário é obrigatório'),
@@ -130,7 +132,7 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-primary/10">
+    <div className="min-h-screen flex relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-primary/10">
       {/* Animated Decorative Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div 
@@ -180,119 +182,143 @@ export default function AuthPage() {
         />
       </div>
 
+      {/* Left Side - Mascot */}
       <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="w-full max-w-sm relative z-10"
+        initial={{ opacity: 0, x: -50 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+        className="hidden lg:flex flex-1 items-center justify-center relative z-10"
       >
-        {/* Logo */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="flex items-center justify-center mb-8"
-        >
-          <img 
-            src="/logo-montecarlo.png" 
-            alt="Monte Carlo" 
-            className="h-16 w-auto object-contain"
-          />
-        </motion.div>
-
-        {/* Title */}
-        <motion.h1
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="text-3xl font-bold text-center mb-2 text-foreground"
-        >
-          MC Hub
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="text-muted-foreground text-center mb-10"
-        >
-          Faça login com sua conta de rede
-        </motion.p>
-
-        {/* Form - Embedded without card */}
-        <motion.form 
-          onSubmit={handleSubmit} 
-          className="space-y-5"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <div className="space-y-2">
-            <Label htmlFor="username" className="text-sm font-medium text-foreground">
-              Usuário de rede
-            </Label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="seu.usuario"
-                className="pl-10 bg-background/60 backdrop-blur-sm border-border/50 focus:bg-background/80 transition-colors h-11"
-                autoComplete="username"
-                autoFocus
-              />
-            </div>
-            {errors.username && (
-              <p className="text-xs text-destructive">{errors.username}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-sm font-medium text-foreground">
-              Senha
-            </Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="pl-10 bg-background/60 backdrop-blur-sm border-border/50 focus:bg-background/80 transition-colors h-11"
-                autoComplete="current-password"
-              />
-            </div>
-            {errors.password && (
-              <p className="text-xs text-destructive">{errors.password}</p>
-            )}
-          </div>
-
-          <Button
-            type="submit"
-            className="w-full h-11 mt-2"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              'Entrar'
-            )}
-          </Button>
-        </motion.form>
-
-        {/* Footer */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-center text-sm text-muted-foreground mt-8"
-        >
-          Use as mesmas credenciais que você utiliza para acessar seu computador
-        </motion.p>
+        <motion.img 
+          src={mascotMontecarlo} 
+          alt="Mascote Monte Carlo" 
+          className="max-h-[70vh] w-auto object-contain drop-shadow-2xl"
+          initial={{ y: 10 }}
+          animate={{ y: [0, -10, 0] }}
+          transition={{ 
+            duration: 4, 
+            repeat: Infinity, 
+            ease: "easeInOut" 
+          }}
+        />
       </motion.div>
+
+      {/* Right Side - Login Form */}
+      <div className="flex-1 flex items-center justify-center p-4 lg:p-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="w-full max-w-sm relative z-10"
+        >
+          {/* Logo */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex items-center justify-center mb-8"
+          >
+            <img 
+              src={logoMontecarlo} 
+              alt="Monte Carlo" 
+              className="h-12 w-auto object-contain"
+            />
+          </motion.div>
+
+          {/* Title */}
+          <motion.h1
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-3xl font-bold text-center mb-2 text-foreground"
+          >
+            MC Hub
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="text-muted-foreground text-center mb-10"
+          >
+            Faça login com sua conta de rede
+          </motion.p>
+
+          {/* Form - Embedded without card */}
+          <motion.form 
+            onSubmit={handleSubmit} 
+            className="space-y-5"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="username" className="text-sm font-medium text-foreground">
+                Usuário de rede
+              </Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="seu.usuario"
+                  className="pl-10 bg-background/60 backdrop-blur-sm border-border/50 focus:bg-background/80 transition-colors h-11"
+                  autoComplete="username"
+                  autoFocus
+                />
+              </div>
+              {errors.username && (
+                <p className="text-xs text-destructive">{errors.username}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                Senha
+              </Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="pl-10 bg-background/60 backdrop-blur-sm border-border/50 focus:bg-background/80 transition-colors h-11"
+                  autoComplete="current-password"
+                />
+              </div>
+              {errors.password && (
+                <p className="text-xs text-destructive">{errors.password}</p>
+              )}
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full h-11 mt-2"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                'Entrar'
+              )}
+            </Button>
+          </motion.form>
+
+          {/* Footer */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="text-center text-sm text-muted-foreground mt-8"
+          >
+            Use as mesmas credenciais que você utiliza para acessar seu computador
+          </motion.p>
+        </motion.div>
+      </div>
     </div>
   );
 }
