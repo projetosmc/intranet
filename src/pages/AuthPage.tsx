@@ -209,7 +209,7 @@ export default function AuthPage() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="flex items-center justify-center mb-8 mt-4"
+            className="flex items-center justify-center mb-12 mt-16"
           >
             <img 
               src={logoMontecarlo} 
@@ -218,20 +218,10 @@ export default function AuthPage() {
             />
           </motion.div>
 
-          {/* Title */}
-          <motion.h1
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-3xl font-bold text-center mb-2 text-foreground"
-          >
-            MC Hub
-          </motion.h1>
-
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.3 }}
             className="text-muted-foreground text-center mb-10"
           >
             Faça login com sua conta de rede
