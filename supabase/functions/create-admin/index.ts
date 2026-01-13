@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-// Allowed origins for CORS
+// Allowed origins for CORS - includes pattern matching for Lovable preview domains
 const ALLOWED_ORIGINS = [
   'https://haycuruhkzmhszwcmcpn.lovableproject.com',
   'https://intranet.redemontecarlo.com.br',
@@ -9,9 +9,18 @@ const ALLOWED_ORIGINS = [
   'http://localhost:5173',
 ];
 
+// Pattern for Lovable preview domains (UUID.lovableproject.com)
+const LOVABLE_PREVIEW_PATTERN = /^https:\/\/[a-f0-9-]+\.lovableproject\.com$/;
+
+function isAllowedOrigin(origin: string): boolean {
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  if (LOVABLE_PREVIEW_PATTERN.test(origin)) return true;
+  return false;
+}
+
 function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') || '';
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  const allowedOrigin = isAllowedOrigin(origin) ? origin : ALLOWED_ORIGINS[0];
   
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
