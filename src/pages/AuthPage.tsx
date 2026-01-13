@@ -187,19 +187,12 @@ export default function AuthPage() {
         initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, ease: 'easeOut' }}
-        className="hidden lg:flex flex-1 items-center justify-center relative z-10"
+        className="hidden lg:flex flex-1 items-end justify-center relative z-10"
       >
-        <motion.img 
+        <img 
           src={mascotMontecarlo} 
           alt="Mascote Monte Carlo" 
-          className="max-h-[70vh] w-auto object-contain drop-shadow-2xl"
-          initial={{ y: 10 }}
-          animate={{ y: [0, -10, 0] }}
-          transition={{ 
-            duration: 4, 
-            repeat: Infinity, 
-            ease: "easeInOut" 
-          }}
+          className="max-h-[85vh] w-auto object-contain drop-shadow-2xl"
         />
       </motion.div>
 
