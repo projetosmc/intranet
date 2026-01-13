@@ -8,3 +8,12 @@ verify_jwt = false
 
 [functions.ldap-auth]
 verify_jwt = false
+
+[functions.cleanup-login-attempts]
+verify_jwt = false
+
+# Cron job to cleanup old login attempts daily at 3:00 AM UTC
+[[cron_jobs]]
+name = "cleanup-login-attempts"
+schedule = "0 3 * * *"
+function = "cleanup-login-attempts"

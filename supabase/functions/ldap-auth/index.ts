@@ -1,9 +1,24 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  'https://haycuruhkzmhszwcmcpn.lovableproject.com',
+  'https://intranet.redemontecarlo.com.br',
+  'http://localhost:8080',
+  'http://localhost:5173',
+];
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  };
+}
 
 const LDAP_API_BASE = 'http://hubapi.redemontecarlo.com.br/auth/ldap';
 
@@ -190,6 +205,7 @@ function calculateProgressiveDelay(consecutiveFailures: number): number {
 Deno.serve(async (req) => {
   const requestId = crypto.randomUUID();
   const startTime = Date.now();
+  const corsHeaders = getCorsHeaders(req);
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
