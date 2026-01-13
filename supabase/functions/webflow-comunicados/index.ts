@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,6 +42,52 @@ serve(async (req) => {
   }
 
   try {
+    // ========== AUTHENTICATION ==========
+    const authHeader = req.headers.get('Authorization');
+    
+    if (!authHeader?.startsWith('Bearer ')) {
+      console.log('Rejected: No authorization header provided');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Authentication required',
+          announcements: [],
+          source: 'error'
+        }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Verify the user is authenticated
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !userData?.user) {
+      console.log('Rejected: Invalid authentication token');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid authentication token',
+          announcements: [],
+          source: 'error'
+        }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    console.log(`Authenticated user: ${userData.user.id}`);
+    // ========== END AUTHENTICATION ==========
+
     const webflowToken = Deno.env.get('WEBFLOW_API_TOKEN');
     const collectionId = Deno.env.get('WEBFLOW_COLLECTION_ID');
 
