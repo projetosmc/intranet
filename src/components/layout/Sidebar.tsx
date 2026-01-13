@@ -690,8 +690,11 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 mt-2 space-y-1 scrollbar-thin">
-        {isLoading ? (
-          <div className="px-3 py-2 text-sm text-muted-foreground">Carregando...</div>
+        {isLoading || permissionsLoading ? (
+          <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Carregando...</span>
+          </div>
         ) : (
           <>
             {/* Top items (Meu Dia, Comunicados) */}
