@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Fuel, User, Lock, Loader2, Network } from 'lucide-react';
+import { User, Lock, Loader2, Network } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -142,11 +142,13 @@ export default function AuthPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="flex items-center justify-center mb-4"
+          className="flex items-center justify-center mb-6"
         >
-          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10">
-            <Fuel className="h-7 w-7 text-primary" />
-          </div>
+          <img 
+            src="/logo-montecarlo.png" 
+            alt="Monte Carlo" 
+            className="h-14 w-auto object-contain"
+          />
         </motion.div>
 
         {/* Title */}
@@ -156,7 +158,7 @@ export default function AuthPage() {
           transition={{ delay: 0.3 }}
           className="text-2xl font-bold text-center mb-2"
         >
-          Sistema MC Hub
+          MC Hub
         </motion.h1>
 
         <motion.p
