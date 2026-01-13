@@ -37,7 +37,7 @@ export default function ProjetosPage() {
   }
 
   return (
-    <div className="absolute inset-0 -m-6">
+    <div className="relative w-full h-[calc(100vh-140px)]">
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
