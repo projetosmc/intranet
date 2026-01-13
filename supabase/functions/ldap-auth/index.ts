@@ -53,27 +53,55 @@ Deno.serve(async (req) => {
     // Step 1: Validate credentials with LDAP API
     console.log(`Attempting LDAP validation for user: ${username}`);
     
-    const ldapResponse = await fetch(`${LDAP_API_BASE}/validate`, {
-      method: 'POST',
-      headers: {
-        'accept': 'application/json',
-        'Content-Type': 'application/json',
-        'X-API-Token': apiToken,
-      },
-      body: JSON.stringify({ username, password }),
-    });
+    let ldapResponse: Response;
+    try {
+      ldapResponse = await fetch(`${LDAP_API_BASE}/validate`, {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-API-Token': apiToken,
+        },
+        body: JSON.stringify({ username, password }),
+      });
+    } catch (fetchError) {
+      console.error('Failed to connect to LDAP server:', fetchError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Não foi possível conectar ao servidor de autenticação. Por favor, tente novamente em alguns minutos.',
+          code: 'LDAP_CONNECTION_ERROR'
+        }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const ldapText = await ldapResponse.text();
     console.log('LDAP raw response:', ldapText);
     console.log('LDAP response status:', ldapResponse.status);
     
+    // Check for gateway/proxy errors (502, 503, 504)
+    if (ldapResponse.status >= 502 && ldapResponse.status <= 504) {
+      console.error(`LDAP server gateway error: ${ldapResponse.status}`);
+      return new Response(
+        JSON.stringify({ 
+          error: 'O servidor de autenticação está temporariamente indisponível. Por favor, tente novamente em alguns minutos.',
+          code: 'LDAP_SERVER_UNAVAILABLE',
+          status: ldapResponse.status
+        }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     let ldapData: LdapValidateResponse;
     try {
       ldapData = JSON.parse(ldapText);
     } catch {
-      console.error('Failed to parse LDAP response as JSON');
+      console.error('Failed to parse LDAP response as JSON. Raw response:', ldapText.substring(0, 200));
       return new Response(
-        JSON.stringify({ error: 'Erro na resposta do servidor LDAP' }),
+        JSON.stringify({ 
+          error: 'Resposta inesperada do servidor de autenticação. Por favor, contate o suporte técnico.',
+          code: 'LDAP_INVALID_RESPONSE'
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
