@@ -17,6 +17,7 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const mcHubApiToken = Deno.env.get("MC_HUB_API") || "";
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
@@ -96,7 +97,10 @@ Deno.serve(async (req) => {
       console.log(`[sync-rastreio-vendas] Fetching: ${url}`);
 
       const response = await fetch(url, {
-        headers: { accept: "application/json" },
+        headers: {
+          "accept": "application/json",
+          "X-API-Token": mcHubApiToken,
+        },
       });
 
       if (!response.ok) {
