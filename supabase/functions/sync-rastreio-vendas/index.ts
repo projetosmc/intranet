@@ -10,7 +10,7 @@ const API_BASE = "http://hubapi.redemontecarlo.com.br/financeiro/rastreio-vendas
 const BATCH_LIMIT = 1000;
 const ENTIDADE = "rastreio_vendas";
 
-Deno.serve(async (req) => {
+const MC_HUB_API_TOKEN = Deno.env.get("MC_HUB_API") || "";
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
