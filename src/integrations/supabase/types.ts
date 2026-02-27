@@ -1112,6 +1112,84 @@ export type Database = {
         }
         Relationships: []
       }
+      tab_rastreio_venda: {
+        Row: {
+          cod_empresa: number
+          cod_forma_pagto: number | null
+          cod_pessoa_sacado: number | null
+          cod_rastreio: string
+          des_forma_pagto: string | null
+          des_nom_resumido: string | null
+          dta_atualizacao: string | null
+          dta_cadastro: string | null
+          dta_faturamento: string | null
+          dta_prev_recebimento: string | null
+          dta_recebimento: string | null
+          dta_venc_titulo: string | null
+          dta_vencimento_fatura: string | null
+          dta_venda: string | null
+          nom_pessoa: string | null
+          num_cupom: number | null
+          seq_cupom: number | null
+          seq_titulo: number
+          source_key: string | null
+          tipo_titulo: string | null
+          val_bruto_titulo: number | null
+          val_liquido_titulo: number | null
+          val_pagamento: number | null
+        }
+        Insert: {
+          cod_empresa: number
+          cod_forma_pagto?: number | null
+          cod_pessoa_sacado?: number | null
+          cod_rastreio?: string
+          des_forma_pagto?: string | null
+          des_nom_resumido?: string | null
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          dta_faturamento?: string | null
+          dta_prev_recebimento?: string | null
+          dta_recebimento?: string | null
+          dta_venc_titulo?: string | null
+          dta_vencimento_fatura?: string | null
+          dta_venda?: string | null
+          nom_pessoa?: string | null
+          num_cupom?: number | null
+          seq_cupom?: number | null
+          seq_titulo: number
+          source_key?: string | null
+          tipo_titulo?: string | null
+          val_bruto_titulo?: number | null
+          val_liquido_titulo?: number | null
+          val_pagamento?: number | null
+        }
+        Update: {
+          cod_empresa?: number
+          cod_forma_pagto?: number | null
+          cod_pessoa_sacado?: number | null
+          cod_rastreio?: string
+          des_forma_pagto?: string | null
+          des_nom_resumido?: string | null
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          dta_faturamento?: string | null
+          dta_prev_recebimento?: string | null
+          dta_recebimento?: string | null
+          dta_venc_titulo?: string | null
+          dta_vencimento_fatura?: string | null
+          dta_venda?: string | null
+          nom_pessoa?: string | null
+          num_cupom?: number | null
+          seq_cupom?: number | null
+          seq_titulo?: number
+          source_key?: string | null
+          tipo_titulo?: string | null
+          val_bruto_titulo?: number | null
+          val_liquido_titulo?: number | null
+          val_pagamento?: number | null
+        }
+        Relationships: []
+      }
       tab_reserva_sala: {
         Row: {
           cod_reserva: string
@@ -1250,6 +1328,51 @@ export type Database = {
           dta_ultima_verificacao?: string | null
           ind_ativo?: boolean | null
           num_ordem?: number | null
+        }
+        Relationships: []
+      }
+      tab_sync_controle: {
+        Row: {
+          cod_sync: string
+          des_entidade: string
+          des_erro: string | null
+          des_status: string
+          dta_atualizacao: string | null
+          dta_cadastro: string | null
+          dta_fim_sync: string | null
+          dta_inicio_sync: string | null
+          dta_ultima_sync: string | null
+          num_last_seq_titulo: number | null
+          num_registros_processados: number | null
+          num_total_registros: number | null
+        }
+        Insert: {
+          cod_sync?: string
+          des_entidade: string
+          des_erro?: string | null
+          des_status?: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          dta_fim_sync?: string | null
+          dta_inicio_sync?: string | null
+          dta_ultima_sync?: string | null
+          num_last_seq_titulo?: number | null
+          num_registros_processados?: number | null
+          num_total_registros?: number | null
+        }
+        Update: {
+          cod_sync?: string
+          des_entidade?: string
+          des_erro?: string | null
+          des_status?: string
+          dta_atualizacao?: string | null
+          dta_cadastro?: string | null
+          dta_fim_sync?: string | null
+          dta_inicio_sync?: string | null
+          dta_ultima_sync?: string | null
+          num_last_seq_titulo?: number | null
+          num_registros_processados?: number | null
+          num_total_registros?: number | null
         }
         Relationships: []
       }
