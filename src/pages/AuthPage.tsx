@@ -132,7 +132,8 @@ export default function AuthPage() {
         description: `Login realizado com sucesso${data.user?.isNewUser ? '. Sua conta foi criada automaticamente.' : '.'}`,
       });
       
-      navigate('/');
+      // Don't navigate here - let useEffect with isAuthenticated handle it
+      // This avoids race conditions with onAuthStateChange
     } catch (err) {
       console.error('Login error:', err);
       toast({
