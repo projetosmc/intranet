@@ -209,15 +209,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
     let initialSessionHandled = false;
 
+    console.log('[Auth] Setting up auth listener...');
+
     // Set up listener FIRST to avoid Navigator LockManager deadlock
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
         if (!isMounted) return;
 
+        console.log('[Auth] onAuthStateChange event:', event, 'user:', newSession?.user?.id ?? 'none');
+
         // If we get INITIAL_SESSION, use it as the initial session check
         if (event === 'INITIAL_SESSION') {
           if (!initialSessionHandled) {
             initialSessionHandled = true;
+            console.log('[Auth] INITIAL_SESSION handled, user:', newSession?.user?.id ?? 'none');
             setSession(newSession);
             setUser(newSession?.user ?? null);
             setIsSessionChecked(true);
@@ -228,37 +233,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
+        // For all other events, use setTimeout to avoid Supabase internal lock issues
+        setTimeout(() => {
+          if (!isMounted) return;
+          
+          setSession(newSession);
+          setUser(newSession?.user ?? null);
 
-        if (event === 'SIGNED_OUT') {
-          queryClient.removeQueries({ queryKey: [ROLES_QUERY_KEY] });
-          queryClient.removeQueries({ queryKey: [PERMISSIONS_QUERY_KEY] });
-          setLoadingStage('idle');
-          setHasTimedOut(false);
-          setHasError(false);
-          setIsSessionChecked(true);
-        } else if (event === 'SIGNED_IN' && newSession?.user) {
-          setIsSessionChecked(true);
-          setLoadingStage('roles');
-          // Use queueMicrotask to avoid lock contention
-          queueMicrotask(() => {
-            if (!isMounted) return;
+          if (event === 'SIGNED_OUT') {
+            queryClient.removeQueries({ queryKey: [ROLES_QUERY_KEY] });
+            queryClient.removeQueries({ queryKey: [PERMISSIONS_QUERY_KEY] });
+            setLoadingStage('idle');
+            setHasTimedOut(false);
+            setHasError(false);
+            setIsSessionChecked(true);
+          } else if (event === 'SIGNED_IN' && newSession?.user) {
+            console.log('[Auth] SIGNED_IN, invalidating role queries for:', newSession.user.id);
+            setIsSessionChecked(true);
+            setLoadingStage('roles');
             queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY, newSession.user.id] });
-          });
-        } else if (event === 'TOKEN_REFRESHED') {
-          setIsSessionChecked(true);
-        }
+          } else if (event === 'TOKEN_REFRESHED') {
+            setIsSessionChecked(true);
+          }
+        }, 0);
       }
     );
 
-    // Fallback: if INITIAL_SESSION doesn't fire within 3s, manually check
+    // Fallback: if INITIAL_SESSION doesn't fire within 2s, manually check
     const fallbackTimer = setTimeout(async () => {
       if (initialSessionHandled || !isMounted) return;
+      console.log('[Auth] Fallback: INITIAL_SESSION not received, checking session manually...');
       try {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
         if (!isMounted || initialSessionHandled) return;
         initialSessionHandled = true;
+        console.log('[Auth] Fallback session result:', initialSession?.user?.id ?? 'none');
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
         setIsSessionChecked(true);
@@ -266,14 +275,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoadingStage('idle');
         }
       } catch (error) {
-        console.error('Error getting session (fallback):', error);
+        console.error('[Auth] Error getting session (fallback):', error);
         if (isMounted && !initialSessionHandled) {
           initialSessionHandled = true;
           setIsSessionChecked(true);
           setLoadingStage('idle');
         }
       }
-    }, 3000);
+    }, 2000);
 
     return () => {
       isMounted = false;
