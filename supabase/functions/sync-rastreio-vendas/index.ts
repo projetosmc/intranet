@@ -6,104 +6,121 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const API_BASE = "http://hubapi.redemontecarlo.com.br/financeiro/rastreio-vendas/";
-const BATCH_LIMIT = 1000;
+const JOBS_API_BASE = "https://hubapi.redemontecarlo.com.br/jobs/rastreio-vendas";
 const ENTIDADE = "rastreio_vendas";
-const EMPRESAS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const POLL_INTERVAL_MS = 5000;
+const MAX_POLL_ATTEMPTS = 360; // 30 min max (5s * 360)
 
-function getMonthRanges(dtIni: string, dtFim: string): { start: string; end: string }[] {
-  const ranges: { start: string; end: string }[] = [];
-  const startDate = new Date(dtIni + "T00:00:00Z");
-  const endDate = new Date(dtFim + "T00:00:00Z");
-
-  let current = new Date(startDate);
-  while (current <= endDate) {
-    const monthStart = current.toISOString().split("T")[0];
-    const monthEnd = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + 1, 0));
-    const end = monthEnd > endDate ? dtFim : monthEnd.toISOString().split("T")[0];
-    ranges.push({ start: monthStart, end });
-    current = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + 1, 1));
-  }
-  return ranges;
-}
-
-async function fetchAndUpsertBatch(
-  supabase: any,
-  mcHubApiToken: string,
-  codEmpresa: number,
+async function startJob(
+  token: string,
   dtIni: string,
   dtFim: string,
-): Promise<{ processed: number; maxSeq: number }> {
-  let totalProcessed = 0;
-  let maxSeqTitulo = 0;
-  let hasMore = true;
-  let currentLastSeq = 0;
+  limit: number = 10000,
+): Promise<string> {
+  const response = await fetch(JOBS_API_BASE, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ dt_ini: dtIni, dt_fim: dtFim, limit }),
+  });
 
-  while (hasMore) {
-    const url = `${API_BASE}?dt_ini=${dtIni}&dt_fim=${dtFim}&cod_empresa=${codEmpresa}&last_seq_titulo=${currentLastSeq}&limit=${BATCH_LIMIT}`;
-    console.log(`[sync] Fetching empresa=${codEmpresa} ${dtIni}~${dtFim} seq>${currentLastSeq}`);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Erro ao iniciar job: ${response.status} - ${text.substring(0, 200)}`);
+  }
 
-    const response = await fetch(url, {
-      headers: { accept: "application/json", "X-API-Token": mcHubApiToken },
+  const data = await response.json();
+  console.log(`[sync] Job criado: ${data.job_id}, status: ${data.status}`);
+  return data.job_id;
+}
+
+async function pollJobStatus(
+  token: string,
+  jobId: string,
+  supabase: any,
+): Promise<any[]> {
+  let attempts = 0;
+
+  while (attempts < MAX_POLL_ATTEMPTS) {
+    attempts++;
+
+    const response = await fetch(`${JOBS_API_BASE}/${jobId}`, {
+      headers: { "Authorization": `Bearer ${token}` },
     });
 
     if (!response.ok) {
       const text = await response.text();
-      // Se for timeout, logar e pular esse lote
-      if (response.status === 504) {
-        console.warn(`[sync] 504 timeout empresa=${codEmpresa} ${dtIni}~${dtFim}, pulando...`);
-        break;
-      }
-      throw new Error(`API ${response.status}: ${text.substring(0, 200)}`);
+      throw new Error(`Erro ao consultar job: ${response.status} - ${text.substring(0, 200)}`);
     }
 
-    const data = await response.json();
-    if (!Array.isArray(data) || data.length === 0) {
-      hasMore = false;
-      break;
+    const result = await response.json();
+
+    if (result.status === "completed") {
+      console.log(`[sync] Job ${jobId} concluído com ${result.data?.length || 0} registros`);
+      return result.data || [];
     }
 
-    const records = data.map((item: any) => ({
-      cod_empresa: item.cod_empresa,
-      des_nom_resumido: item.des_nom_resumido,
-      cod_pessoa_sacado: item.cod_pessoa_sacado,
-      nom_pessoa: item.nom_pessoa,
-      tipo_titulo: item.tipo_titulo,
-      dta_venda: item.dta_venda || null,
-      dta_venc_titulo: item.dta_venc_titulo || null,
-      dta_faturamento: item.dta_faturamento || null,
-      dta_vencimento_fatura: item.dta_vencimento_fatura || null,
-      dta_recebimento: item.dta_recebimento || null,
-      val_bruto_titulo: item.val_bruto_titulo || 0,
-      val_liquido_titulo: item.val_liquido_titulo || 0,
-      val_pagamento: item.val_pagamento || 0,
-      cod_forma_pagto: item.cod_forma_pagto,
-      des_forma_pagto: item.des_forma_pagto,
-      seq_titulo: item.seq_titulo,
-      seq_cupom: item.seq_cupom,
-      num_cupom: item.num_cupom,
-      source_key: item.source_key,
-      dta_prev_recebimento: item.dta_prev_recebimento || null,
-      dta_atualizacao: new Date().toISOString(),
-    }));
-
-    for (let i = 0; i < records.length; i += 500) {
-      const batch = records.slice(i, i + 500);
-      const { error } = await supabase
-        .from("tab_rastreio_venda")
-        .upsert(batch, { onConflict: "seq_titulo,cod_empresa" });
-      if (error) throw new Error(`Upsert error: ${error.message}`);
+    if (result.status === "failed" || result.status === "error") {
+      throw new Error(`Job falhou: ${JSON.stringify(result)}`);
     }
 
-    totalProcessed += data.length;
-    const batchMaxSeq = Math.max(...data.map((item: any) => item.seq_titulo || 0));
-    if (batchMaxSeq > maxSeqTitulo) maxSeqTitulo = batchMaxSeq;
-    currentLastSeq = batchMaxSeq;
+    // Update progress
+    if (result.progress) {
+      console.log(`[sync] Job ${jobId}: ${result.progress.processed}/${result.progress.total_estimated}`);
+      await supabase
+        .from("tab_sync_controle")
+        .update({
+          num_registros_processados: result.progress.processed,
+          num_total_registros: result.progress.total_estimated,
+          dta_atualizacao: new Date().toISOString(),
+        })
+        .eq("des_entidade", ENTIDADE);
+    }
 
-    if (data.length < BATCH_LIMIT) hasMore = false;
+    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
   }
 
-  return { processed: totalProcessed, maxSeq: maxSeqTitulo };
+  throw new Error(`Job ${jobId} excedeu o tempo máximo de polling (${MAX_POLL_ATTEMPTS * POLL_INTERVAL_MS / 1000}s)`);
+}
+
+async function upsertRecords(supabase: any, data: any[]): Promise<number> {
+  if (!data || data.length === 0) return 0;
+
+  const records = data.map((item: any) => ({
+    cod_empresa: item.cod_empresa,
+    des_nom_resumido: item.des_nom_resumido,
+    cod_pessoa_sacado: item.cod_pessoa_sacado,
+    nom_pessoa: item.nom_pessoa,
+    tipo_titulo: item.tipo_titulo,
+    dta_venda: item.dta_venda || null,
+    dta_venc_titulo: item.dta_venc_titulo || null,
+    dta_faturamento: item.dta_faturamento || null,
+    dta_vencimento_fatura: item.dta_vencimento_fatura || null,
+    dta_recebimento: item.dta_recebimento || null,
+    val_bruto_titulo: item.val_bruto_titulo || 0,
+    val_liquido_titulo: item.val_liquido_titulo || 0,
+    val_pagamento: item.val_pagamento || 0,
+    cod_forma_pagto: item.cod_forma_pagto,
+    des_forma_pagto: item.des_forma_pagto,
+    seq_titulo: item.seq_titulo,
+    seq_cupom: item.seq_cupom,
+    num_cupom: item.num_cupom,
+    source_key: item.source_key,
+    dta_prev_recebimento: item.dta_prev_recebimento || null,
+    dta_atualizacao: new Date().toISOString(),
+  }));
+
+  for (let i = 0; i < records.length; i += 500) {
+    const batch = records.slice(i, i + 500);
+    const { error } = await supabase
+      .from("tab_rastreio_venda")
+      .upsert(batch, { onConflict: "seq_titulo,cod_empresa" });
+    if (error) throw new Error(`Upsert error: ${error.message}`);
+  }
+
+  return records.length;
 }
 
 Deno.serve(async (req) => {
@@ -131,7 +148,7 @@ Deno.serve(async (req) => {
       if (Date.now() - startedAt < 30 * 60 * 1000) {
         return new Response(
           JSON.stringify({ success: false, message: "Sincronização já em andamento" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 409 }
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 409 },
         );
       }
     }
@@ -142,6 +159,7 @@ Deno.serve(async (req) => {
         des_status: "running",
         dta_inicio_sync: new Date().toISOString(),
         num_registros_processados: 0,
+        num_total_registros: 0,
         des_erro: null,
         dta_atualizacao: new Date().toISOString(),
       })
@@ -167,33 +185,21 @@ Deno.serve(async (req) => {
     }
 
     const dtFim = now.toISOString().split("T")[0];
-    const monthRanges = getMonthRanges(dtIni, dtFim);
-    let totalProcessed = 0;
-    let maxSeqTitulo = 0;
 
-    console.log(`[sync] Mode=${mode}, ${dtIni}~${dtFim}, ${monthRanges.length} meses, ${EMPRESAS.length} empresas`);
+    console.log(`[sync] Mode=${mode}, período: ${dtIni} ~ ${dtFim}`);
 
-    for (const empresa of EMPRESAS) {
-      for (const range of monthRanges) {
-        try {
-          const result = await fetchAndUpsertBatch(supabase, mcHubApiToken, empresa, range.start, range.end);
-          totalProcessed += result.processed;
-          if (result.maxSeq > maxSeqTitulo) maxSeqTitulo = result.maxSeq;
+    // Step 1: Start async job
+    const jobId = await startJob(mcHubApiToken, dtIni, dtFim);
 
-          // Atualizar progresso
-          await supabase
-            .from("tab_sync_controle")
-            .update({
-              num_registros_processados: totalProcessed,
-              num_last_seq_titulo: maxSeqTitulo,
-              dta_atualizacao: new Date().toISOString(),
-            })
-            .eq("des_entidade", ENTIDADE);
-        } catch (err) {
-          console.error(`[sync] Erro empresa=${empresa} ${range.start}~${range.end}:`, err.message);
-        }
-      }
-    }
+    // Step 2: Poll until completed
+    const allData = await pollJobStatus(mcHubApiToken, jobId, supabase);
+
+    // Step 3: Upsert all records
+    const totalProcessed = await upsertRecords(supabase, allData);
+
+    const maxSeqTitulo = allData.length > 0
+      ? Math.max(...allData.map((item: any) => item.seq_titulo || 0))
+      : 0;
 
     await supabase
       .from("tab_sync_controle")
@@ -211,8 +217,8 @@ Deno.serve(async (req) => {
     console.log(`[sync] Concluído. Total: ${totalProcessed} registros`);
 
     return new Response(
-      JSON.stringify({ success: true, totalProcessed, maxSeqTitulo }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ success: true, totalProcessed, maxSeqTitulo, jobId }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
     console.error("[sync] Error:", error);
@@ -228,7 +234,7 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 },
     );
   }
 });
