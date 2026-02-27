@@ -197,41 +197,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, [queryClient]);
 
-  // Initialize auth
+  // Initialize auth - IMPORTANT: Set up onAuthStateChange BEFORE getSession to avoid lock contention
   useEffect(() => {
     let isMounted = true;
+    let initialSessionHandled = false;
 
-    const initializeAuth = async () => {
-      try {
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-        
-        if (!isMounted) return;
-        
-        if (error) {
-          console.error('Error getting session:', error);
-        }
-        
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
-        setIsSessionChecked(true);
-        
-        if (!initialSession?.user) {
-          setLoadingStage('idle');
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-        if (isMounted) {
-          setIsSessionChecked(true);
-          setLoadingStage('idle');
-        }
-      }
-    };
-
-    initializeAuth();
-
+    // Set up listener FIRST to avoid Navigator LockManager deadlock
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
         if (!isMounted) return;
+
+        // If we get INITIAL_SESSION, use it as the initial session check
+        if (event === 'INITIAL_SESSION') {
+          if (!initialSessionHandled) {
+            initialSessionHandled = true;
+            setSession(newSession);
+            setUser(newSession?.user ?? null);
+            setIsSessionChecked(true);
+            if (!newSession?.user) {
+              setLoadingStage('idle');
+            }
+          }
+          return;
+        }
 
         setSession(newSession);
         setUser(newSession?.user ?? null);
@@ -242,23 +230,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoadingStage('idle');
           setHasTimedOut(false);
           setHasError(false);
-          setIsSessionChecked(true); // Ensure session is marked as checked
+          setIsSessionChecked(true);
         } else if (event === 'SIGNED_IN' && newSession?.user) {
-          setIsSessionChecked(true); // CRITICAL: Mark session as checked on sign in
+          setIsSessionChecked(true);
           setLoadingStage('roles');
-          setTimeout(() => {
+          // Use queueMicrotask to avoid lock contention
+          queueMicrotask(() => {
             if (!isMounted) return;
             queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY, newSession.user.id] });
-          }, 0);
+          });
         } else if (event === 'TOKEN_REFRESHED') {
-          // Just update session, don't trigger loading
           setIsSessionChecked(true);
         }
       }
     );
 
+    // Fallback: if INITIAL_SESSION doesn't fire within 3s, manually check
+    const fallbackTimer = setTimeout(async () => {
+      if (initialSessionHandled || !isMounted) return;
+      try {
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        if (!isMounted || initialSessionHandled) return;
+        initialSessionHandled = true;
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+        setIsSessionChecked(true);
+        if (!initialSession?.user) {
+          setLoadingStage('idle');
+        }
+      } catch (error) {
+        console.error('Error getting session (fallback):', error);
+        if (isMounted && !initialSessionHandled) {
+          initialSessionHandled = true;
+          setIsSessionChecked(true);
+          setLoadingStage('idle');
+        }
+      }
+    }, 3000);
+
     return () => {
       isMounted = false;
+      clearTimeout(fallbackTimer);
       subscription.unsubscribe();
     };
   }, [queryClient]);
