@@ -97,7 +97,10 @@ Deno.serve(async (req) => {
       console.log(`[sync-rastreio-vendas] Fetching: ${url}`);
 
       const response = await fetch(url, {
-        headers: { accept: "application/json" },
+        headers: {
+          "accept": "application/json",
+          "X-API-Token": mcHubApiToken,
+        },
       });
 
       if (!response.ok) {
