@@ -8,10 +8,12 @@ const ALLOWED_ORIGINS = [
   'http://localhost:5173',
 ];
 
-// Patterns for Lovable domains (supports both lovableproject.com and lovable.app)
+// Patterns for Lovable domains and Vercel deployments
 const LOVABLE_PATTERNS = [
   /^https:\/\/[a-f0-9-]+\.lovableproject\.com$/,
   /^https:\/\/[a-z0-9-]+--[a-f0-9-]+\.lovable\.app$/,
+  /^https:\/\/[a-z0-9-]+\.vercel\.app$/,
+  /^https:\/\/[a-z0-9-]+-[a-z0-9-]+\.vercel\.app$/,
 ];
 
 function isAllowedOrigin(origin: string): boolean {
