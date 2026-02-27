@@ -182,20 +182,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setHasTimedOut(false);
     setHasError(false);
     loadingStartTime.current = Date.now();
-    setLoadingStage('session');
     
-    // Re-check session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      setIsSessionChecked(true);
-      
-      if (currentSession?.user) {
-        queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] });
-        queryClient.invalidateQueries({ queryKey: [PERMISSIONS_QUERY_KEY] });
-      }
-    });
-  }, [queryClient]);
+    if (user) {
+      // Don't re-check session (avoids lock), just re-fetch roles/permissions
+      setLoadingStage('roles');
+      queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [PERMISSIONS_QUERY_KEY] });
+    } else {
+      setLoadingStage('session');
+      // Only call getSession as last resort
+      supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        setIsSessionChecked(true);
+        
+        if (currentSession?.user) {
+          queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] });
+          queryClient.invalidateQueries({ queryKey: [PERMISSIONS_QUERY_KEY] });
+        }
+      });
+    }
+  }, [queryClient, user]);
 
   // Initialize auth - IMPORTANT: Set up onAuthStateChange BEFORE getSession to avoid lock contention
   useEffect(() => {
