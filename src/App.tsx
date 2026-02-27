@@ -19,6 +19,7 @@ import AdminProfilesPage from "./pages/AdminProfilesPage";
 import AuthPage from "./pages/AuthPage";
 import SetupAdminPage from "./pages/SetupAdminPage";
 import ProfilePage from "./pages/ProfilePage";
+import TrilhaVendasPage from "./pages/TrilhaVendasPage";
 
 import NotFound from "./pages/NotFound";
 
