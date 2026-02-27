@@ -12,8 +12,17 @@ verify_jwt = false
 [functions.cleanup-login-attempts]
 verify_jwt = false
 
+[functions.sync-rastreio-vendas]
+verify_jwt = false
+
 # Cron job to cleanup old login attempts daily at 3:00 AM UTC
 [[cron_jobs]]
 name = "cleanup-login-attempts"
 schedule = "0 3 * * *"
 function = "cleanup-login-attempts"
+
+# Cron job to sync rastreio vendas daily at 3:00 AM UTC (incremental)
+[[cron_jobs]]
+name = "sync-rastreio-vendas"
+schedule = "0 3 * * *"
+function = "sync-rastreio-vendas"

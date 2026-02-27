@@ -19,6 +19,7 @@ import AdminProfilesPage from "./pages/AdminProfilesPage";
 import AuthPage from "./pages/AuthPage";
 import SetupAdminPage from "./pages/SetupAdminPage";
 import ProfilePage from "./pages/ProfilePage";
+import TrilhaVendasPage from "./pages/TrilhaVendasPage";
 
 import NotFound from "./pages/NotFound";
 
@@ -44,6 +45,8 @@ const App = () => (
                   <Route path="/reserva-salas" element={<RoomReservationPage />} />
                   
                   <Route path="/perfil" element={<ProfilePage />} />
+                  {/* Rotas financeiro */}
+                  <Route path="/financeiro/trilha-vendas" element={<PermissionRoute><TrilhaVendasPage /></PermissionRoute>} />
                   {/* Rotas administrativas com verificação de permissão */}
                   <Route path="/admin/configuracoes" element={<PermissionRoute><AdminSettingsPage /></PermissionRoute>} />
                   <Route path="/admin/comunicados" element={<PermissionRoute><AdminAnnouncementsPage /></PermissionRoute>} />
