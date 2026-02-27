@@ -254,7 +254,8 @@ export function Sidebar() {
   // Rotas válidas do sistema (para identificar containers)
   const validInternalPaths = useMemo(() => [
     '/', '/comunicados', '/status', '/reserva-salas', '/perfil',
-    '/admin/configuracoes', '/admin/comunicados', '/admin/perfis'
+    '/admin/configuracoes', '/admin/comunicados', '/admin/perfis',
+    '/financeiro/trilha-vendas'
   ], []);
 
   // Processa items de menu recursivamente para suportar N níveis

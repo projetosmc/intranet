@@ -45,6 +45,8 @@ const App = () => (
                   <Route path="/reserva-salas" element={<RoomReservationPage />} />
                   
                   <Route path="/perfil" element={<ProfilePage />} />
+                  {/* Rotas financeiro */}
+                  <Route path="/financeiro/trilha-vendas" element={<PermissionRoute><TrilhaVendasPage /></PermissionRoute>} />
                   {/* Rotas administrativas com verificação de permissão */}
                   <Route path="/admin/configuracoes" element={<PermissionRoute><AdminSettingsPage /></PermissionRoute>} />
                   <Route path="/admin/comunicados" element={<PermissionRoute><AdminAnnouncementsPage /></PermissionRoute>} />
