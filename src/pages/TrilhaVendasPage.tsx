@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
+import { Progress } from '@/components/ui/progress';
 import { 
   RefreshCw, Search, TrendingUp, DollarSign, CreditCard, Calendar,
   Clock, CheckCircle, AlertCircle, Loader2, ArrowUpDown, ChevronLeft, ChevronRight
@@ -292,9 +293,23 @@ export default function TrilhaVendasPage() {
         </div>
         <div className="flex items-center gap-2">
           {syncStatus?.des_status === 'running' ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              <span>Sincronizando... {syncStatus.num_registros_processados} registros</span>
+            <div className="flex flex-col gap-2 min-w-[260px]">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span>
+                  Sincronizando... {(syncStatus.num_registros_processados ?? 0).toLocaleString('pt-BR')}
+                  {syncStatus.num_total_registros ? ` / ${syncStatus.num_total_registros.toLocaleString('pt-BR')}` : ''} registros
+                </span>
+              </div>
+              <Progress 
+                value={syncStatus.num_total_registros ? Math.round(((syncStatus.num_registros_processados ?? 0) / syncStatus.num_total_registros) * 100) : undefined}
+                className="h-2"
+              />
+              {syncStatus.num_total_registros ? (
+                <span className="text-xs text-muted-foreground text-right">
+                  {Math.round(((syncStatus.num_registros_processados ?? 0) / syncStatus.num_total_registros) * 100)}%
+                </span>
+              ) : null}
             </div>
           ) : (
             <>
