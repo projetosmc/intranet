@@ -15,7 +15,7 @@ interface Meeting {
 export function useNotifications(meetings: Meeting[]) {
   const [notifiedMeetings, setNotifiedMeetings] = useState<Set<string>>(new Set());
   const [permission, setPermission] = useState<NotificationPermission>('default');
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Solicitar permissão para notificações
   const requestPermission = useCallback(async () => {
