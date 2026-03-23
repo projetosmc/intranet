@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
+import { Progress } from '@/components/ui/progress';
 import { 
   RefreshCw, Search, TrendingUp, DollarSign, CreditCard, Calendar,
   Clock, CheckCircle, AlertCircle, Loader2, ArrowUpDown, ChevronLeft, ChevronRight
