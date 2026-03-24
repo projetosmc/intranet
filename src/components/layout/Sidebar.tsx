@@ -496,6 +496,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
           <button
             type="button"
             onClick={(e) => {
+              createRipple(e);
               e.preventDefault();
               toggleMenu(item.name);
             }}
@@ -562,6 +563,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
       <NavLink
         to={item.path}
         {...linkProps}
+        onClick={createRipple}
         className={cn(
           "ripple-container group flex items-center gap-2 rounded-lg transition-all duration-200 relative overflow-hidden",
           // Padding e tamanho baseado na profundidade
