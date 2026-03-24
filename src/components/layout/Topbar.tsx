@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, User, LogOut, CheckCheck, Trash2, RefreshCw, Menu, AlertTriangle, WifiOff, Settings } from 'lucide-react';
+import { Bell, User, LogOut, CheckCheck, Trash2, RefreshCw, Menu, AlertTriangle, WifiOff, Settings, Home, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -40,11 +40,32 @@ interface TopbarProps {
   onMobileMenuToggle?: () => void;
 }
 
+// Mapeamento de rotas para nomes legíveis
+const routeNames: Record<string, string> = {
+  '': 'Início',
+  'comunicados': 'Comunicados',
+  'status': 'Status dos Sistemas',
+  'suporte': 'Suporte',
+  'reserva-salas': 'Reserva de Salas',
+  'base-conhecimento': 'Base de Conhecimento',
+  'perfil': 'Meu Perfil',
+  'admin': 'Administração',
+  'configuracoes': 'Configurações',
+  'usuarios': 'Usuários',
+  'auditoria': 'Auditoria',
+  'sistemas': 'Sistemas',
+  'perfis': 'Perfis',
+  'faqs': 'FAQs',
+  'trilha-vendas': 'Trilha de Vendas',
+};
+
 export function Topbar({ onMobileMenuToggle }: TopbarProps) {
   const { user, signOut } = useUser();
   const { isRevalidating, isSessionExpired, session, refreshSession } = useAuthContext();
   const { profile, isLoading: isProfileLoading } = useUserProfile();
   const navigate = useNavigate();
+  const location = useLocation();
+  const pathSegments = location.pathname.split('/').filter(Boolean);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const { 
