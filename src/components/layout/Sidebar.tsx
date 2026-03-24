@@ -451,6 +451,25 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
   );
 
   // Componente recursivo para renderizar menus de N níveis
+  // Ripple effect handler
+  const createRipple = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    const button = e.currentTarget;
+    const rect = button.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const x = e.clientX - rect.left - size / 2;
+    const y = e.clientY - rect.top - size / 2;
+
+    const ripple = document.createElement("span");
+    ripple.className = "ripple";
+    ripple.style.width = `${size}px`;
+    ripple.style.height = `${size}px`;
+    ripple.style.left = `${x}px`;
+    ripple.style.top = `${y}px`;
+
+    button.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 600);
+  }, []);
+
   const MenuItem = ({ item, depth = 0 }: { item: MenuItemType; depth?: number }) => {
     const Icon = item.icon;
     const hasChildren = item.children && item.children.length > 0;
@@ -477,6 +496,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
           <button
             type="button"
             onClick={(e) => {
+              createRipple(e);
               e.preventDefault();
               toggleMenu(item.name);
             }}
@@ -543,6 +563,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
       <NavLink
         to={item.path}
         {...linkProps}
+        onClick={createRipple}
         className={cn(
           "ripple-container group flex items-center gap-2 rounded-lg transition-all duration-200 relative overflow-hidden",
           // Padding e tamanho baseado na profundidade
