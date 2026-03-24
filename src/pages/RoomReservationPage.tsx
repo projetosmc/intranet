@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/contexts/UserContext';
 import { toast } from '@/hooks/use-toast';
-import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
+
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   format, 
@@ -1078,7 +1078,7 @@ export default function RoomReservationPage() {
 
   return (
     <div className="h-[calc(100vh-8rem)]">
-      <Breadcrumbs className="mb-4" isLoading={isLoading} />
+      
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
