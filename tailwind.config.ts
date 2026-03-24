@@ -1,7 +1,6 @@
 import type { Config } from "tailwindcss";
 
 export default {
-  darkMode: ["class"],
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
   theme: {
@@ -73,13 +72,21 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // Status colors
         status: {
           pending: "hsl(var(--status-pending))",
           approved: "hsl(var(--status-approved))",
           rejected: "hsl(var(--status-rejected))",
           awaiting: "hsl(var(--status-awaiting))",
           late: "hsl(var(--status-late))",
+          rascunho: "hsl(var(--status-rascunho))",
+          submetido: "hsl(var(--status-submetido))",
+          pendente: "hsl(var(--status-pendente))",
+          aprovado: "hsl(var(--status-aprovado))",
+          aguardando: "hsl(var(--status-aguardando))",
+          confirmado: "hsl(var(--status-confirmado))",
+          concluido: "hsl(var(--status-concluido))",
+          reprovado: "hsl(var(--status-reprovado))",
+          cancelado: "hsl(var(--status-cancelado))",
         },
       },
       borderRadius: {
@@ -95,6 +102,8 @@ export default {
         'lg': 'var(--shadow-lg)',
         'xl': 'var(--shadow-xl)',
         'glow': 'var(--shadow-glow)',
+        'card': 'var(--shadow-card)',
+        'elevated': 'var(--shadow-lg)',
       },
       keyframes: {
         "accordion-down": {
@@ -129,6 +138,10 @@ export default {
           "0%": { transform: "translateX(0)" },
           "100%": { transform: "translateX(100%)" },
         },
+        "slide-in-left": {
+          from: { opacity: "0", transform: "translateX(-20px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
+        },
         "float": {
           "0%, 100%": { transform: "translateY(0px)" },
           "50%": { transform: "translateY(-10px)" },
@@ -136,6 +149,10 @@ export default {
         "glow-pulse": {
           "0%, 100%": { boxShadow: "0 0 10px hsl(195 100% 44% / 0.2)" },
           "50%": { boxShadow: "var(--shadow-glow)" },
+        },
+        "pulse-soft": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.7" },
         },
       },
       animation: {
@@ -147,8 +164,10 @@ export default {
         "scale-out": "scale-out 0.2s ease-out",
         "slide-in-right": "slide-in-right 0.3s ease-out",
         "slide-out-right": "slide-out-right 0.3s ease-out",
+        "slide-in-left": "slide-in-left 0.3s ease-out",
         "float": "float 6s ease-in-out infinite",
         "glow-pulse": "glow-pulse 2s ease-in-out infinite",
+        "pulse-soft": "pulse-soft 2s ease-in-out infinite",
         "enter": "fade-in 0.3s ease-out, scale-in 0.2s ease-out",
         "exit": "fade-out 0.3s ease-out, scale-out 0.2s ease-out",
       },
