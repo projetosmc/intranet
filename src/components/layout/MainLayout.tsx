@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion, type Transition } from 'framer-motion';
 import { Sidebar } from './Sidebar';
@@ -16,17 +17,24 @@ const pageTransition: Transition = {
 function MainLayoutContent() {
   const { isLoading } = useGlobalLoading();
   const location = useLocation();
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  const toggleMobileSidebar = () => setIsMobileSidebarOpen(prev => !prev);
+  const closeMobileSidebar = () => setIsMobileSidebarOpen(false);
 
   return (
     <div className="min-h-screen bg-background">
       <GlobalLoadingIndicator isLoading={isLoading} />
-      <Sidebar />
+      <Sidebar
+        isMobileOpen={isMobileSidebarOpen}
+        onMobileClose={closeMobileSidebar}
+      />
       
       {/* Popup de comunicados urgentes */}
       <UrgentAnnouncementPopup />
       
       <div className="flex flex-col min-h-screen lg:ml-72">
-        <Topbar />
+        <Topbar onMobileMenuToggle={toggleMobileSidebar} />
         
         <main className="flex-1 p-3 sm:p-4 lg:p-6">
           <AnimatePresence mode="wait">
