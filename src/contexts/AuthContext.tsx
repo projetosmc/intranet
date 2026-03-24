@@ -22,9 +22,11 @@ interface AuthContextType {
   hasTimedOut: boolean;
   hasError: boolean;
   isRevalidating: boolean;
+  isSessionExpired: boolean;
   signIn: (email: string, password: string) => Promise<{ error: unknown }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: unknown }>;
   signOut: () => Promise<void>;
+  refreshSession: () => Promise<void>;
   roles: AppRole[];
   isAdmin: boolean;
   isModerator: boolean;
@@ -313,6 +315,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }, []);
 
+  // Session expiry detection
+  const isSessionExpired = useMemo(() => {
+    if (!session?.expires_at) return false;
+    return new Date(session.expires_at * 1000) < new Date();
+  }, [session]);
+
+  const refreshSession = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error) throw error;
+      if (data.session) {
+        setSession(data.session);
+        setUser(data.session.user);
+      }
+    } catch (error) {
+      console.error('[Auth] Failed to refresh session:', error);
+    }
+  }, []);
+
   // Permission check
   const canAccess = useCallback((route: string): boolean => {
     if (isAdmin) return true;
@@ -351,9 +372,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     hasTimedOut,
     hasError,
     isRevalidating,
+    isSessionExpired,
     signIn,
     signUp,
     signOut,
+    refreshSession,
     roles,
     isAdmin,
     isModerator,
@@ -369,9 +392,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     hasTimedOut,
     hasError,
     isRevalidating,
+    isSessionExpired,
     signIn,
     signUp,
     signOut,
+    refreshSession,
     roles,
     isAdmin,
     isModerator,
