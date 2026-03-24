@@ -83,7 +83,12 @@ export const clearMenuCache = () => {
   window.dispatchEvent(new CustomEvent('menu-cache-cleared'));
 };
 
-export function Sidebar() {
+interface SidebarProps {
+  isMobileOpen?: boolean;
+  onMobileClose?: () => void;
+}
+
+export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { isAdmin } = useUser();
@@ -586,12 +591,21 @@ export function Sidebar() {
     <div className="flex flex-col h-full" style={{ background: 'var(--gradient-sidebar)' }}>
 
       {/* Header com Logo */}
-      <div className="flex items-center justify-center px-6 h-[65px] bg-card border-b border-border">
+      <div className="h-16 lg:h-[65px] flex items-center justify-center border-b border-sidebar-border bg-card px-4 relative">
         <img 
           src="/logo-montecarlo.png" 
           alt="Monte Carlo" 
-          className="h-12 w-auto object-contain"
+          className="h-10 lg:h-12 w-auto object-contain"
         />
+        {/* Mobile close button */}
+        {onMobileClose && (
+          <button
+            onClick={onMobileClose}
+            className="lg:hidden absolute right-4 p-2 rounded-lg hover:bg-sidebar-accent/50 text-sidebar-foreground"
+          >
+            <LucideIcons.X className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {/* Admin Badge */}
@@ -727,6 +741,39 @@ export function Sidebar() {
           <span className="text-xs text-sidebar-foreground/40">v1.0.0</span>
         </div>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex fixed left-0 top-0 z-40 h-screen w-72 flex-col border-r border-sidebar-border">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {isMobileOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onMobileClose}
+              className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            />
+            <motion.aside
+              initial={{ x: -288 }}
+              animate={{ x: 0 }}
+              exit={{ x: -288 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed left-0 top-0 z-50 h-screen w-72 border-r border-sidebar-border lg:hidden"
+            >
+              {sidebarContent}
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

@@ -33,7 +33,11 @@ import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-export function Topbar() {
+interface TopbarProps {
+  onMobileMenuToggle?: () => void;
+}
+
+export function Topbar({ onMobileMenuToggle }: TopbarProps) {
   const { user, signOut } = useUser();
   const { isRevalidating } = useAuthContext();
   const { profile } = useUserProfile();
@@ -67,7 +71,18 @@ export function Topbar() {
       transition={{ duration: 0.3 }}
       className="sticky top-0 z-20 h-[65px] border-b border-border bg-background"
     >
-      <div className="flex items-center justify-end h-full px-6">
+      <div className="flex items-center justify-between h-full px-4 lg:px-6">
+        {/* Mobile Menu Button */}
+        <button
+          onClick={onMobileMenuToggle}
+          className="lg:hidden p-2 rounded-lg hover:bg-muted text-foreground"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        
+        {/* Spacer for desktop */}
+        <div className="hidden lg:block" />
+
         {/* Right Side Actions */}
         <div className="flex items-center gap-2">
 
