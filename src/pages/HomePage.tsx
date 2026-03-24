@@ -90,57 +90,77 @@ export default function HomePage() {
       locale: ptBR
     });
   };
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.05,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] },
+    },
+  };
+
+  const meetingCardVariants = {
+    hidden: { opacity: 0, scale: 0.95 },
+    visible: (i: number) => ({
+      opacity: 1,
+      scale: 1,
+      transition: { duration: 0.3, delay: i * 0.08, ease: 'easeOut' },
+    }),
+  };
+
   return <div className="relative min-h-[calc(100vh-8rem)]">
-      <div className="space-y-6">
+      <motion.div
+        className="space-y-6"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {/* Hero Section */}
-        <motion.section initial={{
-        opacity: 0,
-        y: 20
-      }} animate={{
-        opacity: 1,
-        y: 0
-      }} transition={{
-        duration: 0.5
-      }} className="relative">
+        <motion.section variants={itemVariants} className="relative">
           <div className="max-w-2xl">
             <h1 className="text-3xl font-bold text-foreground mb-2 pt-[20px]">
               {getGreeting()}, <span className="gradient-text">{user?.name}</span>
             </h1>
-            <p className="text-muted-foreground">
+            <motion.p
+              className="text-muted-foreground"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+            >
               Mantenha-se atualizado com os comunicados da rede.
-            </p>
+            </motion.p>
           </div>
         </motion.section>
 
-        {/* Próximas Reuniões - Mostrar skeleton ou conteúdo */}
-        {reservationsLoading ? <motion.section initial={{
-        opacity: 0,
-        y: 20
-      }} animate={{
-        opacity: 1,
-        y: 0
-      }} transition={{
-        duration: 0.5,
-        delay: 0.05
-      }}>
+        {/* Próximas Reuniões */}
+        {reservationsLoading ? <motion.section variants={itemVariants}>
             <UpcomingMeetingsSkeleton />
-          </motion.section> : upcomingMeetings.length > 0 && <motion.section initial={{
-        opacity: 0,
-        y: 20
-      }} animate={{
-        opacity: 1,
-        y: 0
-      }} transition={{
-        duration: 0.5,
-        delay: 0.05
-      }}>
+          </motion.section> : upcomingMeetings.length > 0 && <motion.section variants={itemVariants}>
             <div className="glass-card p-4 rounded-xl border border-primary/20 bg-primary/5">
               <div className="flex items-center gap-2 mb-3">
                 <Clock className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold text-foreground">Próximas Reuniões</h3>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {upcomingMeetings.slice(0, 3).map(meeting => <div key={meeting.id} className="flex items-center gap-3 p-3 bg-background/50 rounded-lg border border-border/50">
+                {upcomingMeetings.slice(0, 3).map((meeting, i) => <motion.div
+                    key={meeting.id}
+                    custom={i}
+                    variants={meetingCardVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="flex items-center gap-3 p-3 bg-background/50 rounded-lg border border-border/50"
+                  >
                     <div className="p-2 rounded-lg bg-primary/10">
                       <DoorOpen className="h-4 w-4 text-primary" />
                     </div>
@@ -150,7 +170,7 @@ export default function HomePage() {
                         {formatMeetingDate(meeting.date)} às {meeting.startTime.slice(0, 5)}
                       </p>
                     </div>
-                  </div>)}
+                  </motion.div>)}
               </div>
               <Button variant="ghost" size="sm" className="mt-2" onClick={() => navigate('/reserva-salas')}>
                 Ver todas as reservas
@@ -160,42 +180,30 @@ export default function HomePage() {
           </motion.section>}
 
         {/* Banner Carousel */}
-        {bannerAnnouncements.length > 0 && <motion.section initial={{
-        opacity: 0,
-        y: 20
-      }} animate={{
-        opacity: 1,
-        y: 0
-      }} transition={{
-        duration: 0.5,
-        delay: 0.1
-      }}>
+        {bannerAnnouncements.length > 0 && <motion.section variants={itemVariants}>
             <BannerCarousel banners={bannerAnnouncements} />
           </motion.section>}
 
         {/* Main Content - Split Layout */}
-        <motion.section initial={{
-        opacity: 0,
-        y: 20
-      }} animate={{
-        opacity: 1,
-        y: 0
-      }} transition={{
-        duration: 0.5,
-        delay: 0.15
-      }}>
+        <motion.section variants={itemVariants}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Side - Announcements */}
-            <div>
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
+                <motion.div className="flex items-center gap-2" variants={itemVariants}>
                   <Megaphone className="h-5 w-5 text-primary" />
                   <h2 className="text-xl font-semibold text-foreground">Comunicados</h2>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => navigate('/comunicados')}>
-                  Ver todos
-                  <ArrowRight className="h-4 w-4 ml-1" />
-                </Button>
+                </motion.div>
+                <motion.div variants={itemVariants}>
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/comunicados')}>
+                    Ver todos
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </motion.div>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -206,21 +214,30 @@ export default function HomePage() {
                     <AnnouncementCardSkeleton />
                   </> : activeAnnouncements.slice(0, 4).map((announcement, index) => <AnnouncementCard key={announcement.id} announcement={announcement} onClick={() => navigate(`/comunicados/${announcement.id}`)} delay={index} />)}
               </div>
-            </div>
+            </motion.div>
 
             {/* Right Side - Calendar and Birthdays */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
+            <motion.div
+              className="space-y-4"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              <motion.div className="flex items-center gap-2 mb-2" variants={itemVariants}>
                 <Calendar className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold text-foreground">Calendário</h2>
-              </div>
+              </motion.div>
               
-              {calendarLoading ? <CalendarSkeleton /> : <EventCalendar events={allEvents} onAddEvent={addEvent} onDeleteEvent={deleteEvent} />}
+              <motion.div variants={itemVariants}>
+                {calendarLoading ? <CalendarSkeleton /> : <EventCalendar events={allEvents} onAddEvent={addEvent} onDeleteEvent={deleteEvent} />}
+              </motion.div>
               
-              {birthdaysLoading ? <BirthdayListSkeleton /> : <BirthdayList birthdays={birthdays} isLoading={birthdaysLoading} />}
-            </div>
+              <motion.div variants={itemVariants}>
+                {birthdaysLoading ? <BirthdayListSkeleton /> : <BirthdayList birthdays={birthdays} isLoading={birthdaysLoading} />}
+              </motion.div>
+            </motion.div>
           </div>
         </motion.section>
-      </div>
+      </motion.div>
     </div>;
 }
