@@ -582,11 +582,9 @@ export function Sidebar() {
     );
   };
 
-  return (
-    <aside
-      className="fixed left-0 top-0 z-40 h-screen w-72 flex flex-col"
-      style={{ background: 'var(--gradient-sidebar)' }}
-    >
+  const sidebarContent = (
+    <div className="flex flex-col h-full" style={{ background: 'var(--gradient-sidebar)' }}>
+
       {/* Header com Logo */}
       <div className="flex items-center justify-center px-6 h-[65px] bg-card border-b border-border">
         <img 

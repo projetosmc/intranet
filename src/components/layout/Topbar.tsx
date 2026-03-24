@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, User, LogOut, CheckCheck, Trash2, RefreshCw } from 'lucide-react';
+import { Bell, User, LogOut, CheckCheck, Trash2, RefreshCw, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserAvatar } from '@/components/ui/user-avatar';
