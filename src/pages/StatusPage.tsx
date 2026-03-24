@@ -4,7 +4,7 @@ import { Activity, CheckCircle, AlertTriangle, XCircle, RefreshCw } from 'lucide
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
+
 import { useGlobalLoading } from '@/contexts/GlobalLoadingContext';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -80,7 +80,7 @@ export default function StatusPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs isLoading={isLoading} />
+      
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
