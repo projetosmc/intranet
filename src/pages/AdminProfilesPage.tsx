@@ -231,7 +231,7 @@ export default function AdminProfilesPage() {
           <h1 className="text-2xl font-bold">Gerenciamento de Perfis</h1>
         </div>
 
-        <Tabs defaultValue={defaultTab} className="space-y-6">
+        <Tabs value={activeProfileTab} onValueChange={setActiveProfileTab} className="space-y-0">
           <TabsList>
             {(canAccessUsersTab || isAdmin) && (
               <TabsTrigger value="usuarios" className="gap-2">
@@ -253,8 +253,11 @@ export default function AdminProfilesPage() {
             )}
           </TabsList>
 
+          <AnimatePresence mode="wait">
+          <motion.div key={activeProfileTab} {...profileTabTransition} className="mt-6">
+
           {/* Aba de Usuários */}
-          <TabsContent value="usuarios">
+          <TabsContent value="usuarios" className="mt-0">
             <div className="glass-card p-6 rounded-xl">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
                 <div>
@@ -364,18 +367,21 @@ export default function AdminProfilesPage() {
           </TabsContent>
 
           {/* Aba de Tipos de Perfil */}
-          <TabsContent value="tipos">
+          <TabsContent value="tipos" className="mt-0">
             <div className="glass-card p-6 rounded-xl">
               <RoleTypesTab />
             </div>
           </TabsContent>
 
           {/* Aba de Permissões por Perfil */}
-          <TabsContent value="permissoes">
+          <TabsContent value="permissoes" className="mt-0">
             <div className="glass-card p-6 rounded-xl">
               <ScreenPermissionsTab />
             </div>
           </TabsContent>
+
+          </motion.div>
+          </AnimatePresence>
         </Tabs>
       </motion.div>
 
