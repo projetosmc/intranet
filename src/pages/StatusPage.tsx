@@ -78,14 +78,28 @@ export default function StatusPage() {
     }
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1, delayChildren: 0.05 },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+  };
+
   return (
-    <div className="space-y-6">
+    <motion.div
+      className="space-y-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
+      <motion.div variants={itemVariants}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Activity className="h-6 w-6 text-primary" />
@@ -102,9 +116,7 @@ export default function StatusPage() {
       </motion.div>
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.1 }}
+        variants={itemVariants}
         className={`glass-card p-6 border-l-4 ${allOperational ? 'border-l-success' : 'border-l-warning'}`}
       >
         <div className="flex items-center gap-4">
@@ -134,9 +146,7 @@ export default function StatusPage() {
 
       {!isLoading && systems.length > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
+          variants={itemVariants}
           className="glass-card divide-y divide-border"
         >
           {systems.map((system, index) => {
@@ -165,17 +175,13 @@ export default function StatusPage() {
         </motion.div>
       )}
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.3 }}
-      >
+      <motion.div variants={itemVariants}>
         <h2 className="text-lg font-semibold text-foreground mb-4">Histórico de Incidentes</h2>
         <div className="glass-card p-8 text-center">
           <CheckCircle className="h-10 w-10 text-success mx-auto mb-3" />
           <p className="text-muted-foreground">Nenhum incidente nos últimos 30 dias</p>
         </div>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
