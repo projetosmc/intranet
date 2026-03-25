@@ -61,6 +61,12 @@ const availableIcons = [
   'BarChart', 'PieChart', 'TrendingUp', 'Clock', 'CheckCircle', 'DoorOpen'
 ];
 
+const tabTransition = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] } },
+  exit: { opacity: 0, y: -8, transition: { duration: 0.15 } },
+};
+
 export default function AdminSettingsPage() {
   const navigate = useNavigate();
   const { isAdmin } = useUser();
@@ -81,6 +87,7 @@ export default function AdminSettingsPage() {
   const [deactivateConfirm, setDeactivateConfirm] = useState<{ id: string; name: string; activeSubmenus: number } | null>(null);
   const [editingTags, setEditingTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
+  const [activeSettingsTab, setActiveSettingsTab] = useState('menu');
 
   // Sugestões de tags populares baseadas nas tags existentes
   const popularTags = useMemo(() => {
@@ -874,7 +881,7 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="menu">
+        <Tabs value={activeSettingsTab} onValueChange={setActiveSettingsTab}>
           <TabsList className="flex-wrap">
             <TabsTrigger value="menu" className="flex items-center gap-2">
               <Menu className="h-4 w-4" />
@@ -894,7 +901,10 @@ export default function AdminSettingsPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="menu" className="mt-6">
+          <AnimatePresence mode="wait">
+          <motion.div key={activeSettingsTab} {...tabTransition} className="mt-6">
+
+          <TabsContent value="menu" className="mt-0">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-lg font-semibold">Itens do Menu</h2>
@@ -1325,17 +1335,20 @@ export default function AdminSettingsPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="rooms" className="mt-6">
+          <TabsContent value="rooms" className="mt-0">
             <RoomConfigTab />
           </TabsContent>
 
-          <TabsContent value="systems" className="mt-6">
+          <TabsContent value="systems" className="mt-0">
             <SystemsTab />
           </TabsContent>
 
-          <TabsContent value="audit" className="mt-6">
+          <TabsContent value="audit" className="mt-0">
             <AuditLogsTab />
           </TabsContent>
+
+          </motion.div>
+          </AnimatePresence>
         </Tabs>
       </motion.div>
 
