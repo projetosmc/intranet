@@ -314,7 +314,7 @@ export default function AdminProfilesPage() {
                       </TableRow>
                     ) : (
                       filteredUsers.map((user) => (
-                        <TableRow key={user.id}>
+                        <TableRow key={user.id} className="admin-row-hover">
                           <TableCell className="font-medium">{user.fullName}</TableCell>
                           <TableCell className="text-muted-foreground">{user.email}</TableCell>
                           <TableCell>

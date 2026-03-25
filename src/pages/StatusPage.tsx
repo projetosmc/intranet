@@ -159,7 +159,7 @@ export default function StatusPage() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.2, delay: 0.1 + index * 0.03 }}
-                className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors"
+                className="flex items-center justify-between p-4 admin-row-hover"
               >
                 <div className="flex items-center gap-3">
                   <Icon className={`h-5 w-5 ${config.color}`} />
