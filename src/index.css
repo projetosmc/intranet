@@ -244,41 +244,51 @@
   /* Admin Action Buttons */
   .admin-action-btn {
     @apply transition-all duration-200 ease-out;
-    &:hover {
-      transform: scale(1.12);
-    }
-    &:active {
-      transform: scale(0.92);
-      transition-duration: 100ms;
-    }
+  }
+  .admin-action-btn:hover {
+    transform: scale(1.12);
+  }
+  .admin-action-btn:active {
+    transform: scale(0.92);
+    transition-duration: 100ms;
   }
 
   .admin-action-edit {
-    @apply admin-action-btn;
-    &:hover {
-      color: hsl(var(--primary));
-      background-color: hsl(var(--primary) / 0.1);
-    }
+    @apply transition-all duration-200 ease-out;
+  }
+  .admin-action-edit:hover {
+    transform: scale(1.12);
+    color: hsl(var(--primary));
+    background-color: hsl(var(--primary) / 0.1);
+  }
+  .admin-action-edit:active {
+    transform: scale(0.92);
+    transition-duration: 100ms;
   }
 
   .admin-action-delete {
-    @apply admin-action-btn;
-    &:hover {
-      color: hsl(var(--destructive));
-      background-color: hsl(var(--destructive) / 0.1);
-    }
+    @apply transition-all duration-200 ease-out;
+  }
+  .admin-action-delete:hover {
+    transform: scale(1.12);
+    color: hsl(var(--destructive));
+    background-color: hsl(var(--destructive) / 0.1);
+  }
+  .admin-action-delete:active {
+    transform: scale(0.92);
+    transition-duration: 100ms;
   }
 
   .admin-action-toggle {
     @apply transition-all duration-200 ease-out;
-    &:hover {
-      transform: scale(1.08);
-      filter: brightness(1.1);
-    }
-    &:active {
-      transform: scale(0.95);
-      transition-duration: 100ms;
-    }
+  }
+  .admin-action-toggle:hover {
+    transform: scale(1.08);
+    filter: brightness(1.1);
+  }
+  .admin-action-toggle:active {
+    transform: scale(0.95);
+    transition-duration: 100ms;
   }
 
   /* Status Badges */
