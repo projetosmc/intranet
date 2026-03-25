@@ -535,6 +535,6 @@ export default function ProfilePage() {
           onCropComplete={handleCroppedImage}
         />
       )}
-    </div>
+    </motion.div>
   );
 }
