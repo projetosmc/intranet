@@ -217,68 +217,79 @@
 
   /* Admin Micro-Interactions */
   .admin-row-hover {
-    @apply transition-all duration-200 ease-out hover:bg-muted/40 hover:shadow-sm;
-    &:hover {
-      transform: translateY(-1px);
-    }
+    @apply transition-all duration-200 ease-out;
+  }
+  .admin-row-hover:hover {
+    @apply bg-muted/40 shadow-sm;
+    transform: translateY(-1px);
   }
 
   .admin-card-hover {
     @apply transition-all duration-200 ease-out cursor-default;
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px -2px hsl(var(--primary) / 0.1), 0 2px 6px -2px hsl(var(--foreground) / 0.06);
-      border-color: hsl(var(--primary) / 0.2);
-    }
+  }
+  .admin-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px -2px hsl(var(--primary) / 0.1), 0 2px 6px -2px hsl(var(--foreground) / 0.06);
+    border-color: hsl(var(--primary) / 0.2);
   }
 
   .admin-stat-hover {
     @apply transition-all duration-200 ease-out;
-    &:hover {
-      transform: translateY(-2px) scale(1.02);
-      box-shadow: 0 6px 16px -4px hsl(var(--primary) / 0.15);
-      border-color: hsl(var(--primary) / 0.3);
-    }
+  }
+  .admin-stat-hover:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 6px 16px -4px hsl(var(--primary) / 0.15);
+    border-color: hsl(var(--primary) / 0.3);
   }
 
   /* Admin Action Buttons */
   .admin-action-btn {
     @apply transition-all duration-200 ease-out;
-    &:hover {
-      transform: scale(1.12);
-    }
-    &:active {
-      transform: scale(0.92);
-      transition-duration: 100ms;
-    }
+  }
+  .admin-action-btn:hover {
+    transform: scale(1.12);
+  }
+  .admin-action-btn:active {
+    transform: scale(0.92);
+    transition-duration: 100ms;
   }
 
   .admin-action-edit {
-    @apply admin-action-btn;
-    &:hover {
-      color: hsl(var(--primary));
-      background-color: hsl(var(--primary) / 0.1);
-    }
+    @apply transition-all duration-200 ease-out;
+  }
+  .admin-action-edit:hover {
+    transform: scale(1.12);
+    color: hsl(var(--primary));
+    background-color: hsl(var(--primary) / 0.1);
+  }
+  .admin-action-edit:active {
+    transform: scale(0.92);
+    transition-duration: 100ms;
   }
 
   .admin-action-delete {
-    @apply admin-action-btn;
-    &:hover {
-      color: hsl(var(--destructive));
-      background-color: hsl(var(--destructive) / 0.1);
-    }
+    @apply transition-all duration-200 ease-out;
+  }
+  .admin-action-delete:hover {
+    transform: scale(1.12);
+    color: hsl(var(--destructive));
+    background-color: hsl(var(--destructive) / 0.1);
+  }
+  .admin-action-delete:active {
+    transform: scale(0.92);
+    transition-duration: 100ms;
   }
 
   .admin-action-toggle {
     @apply transition-all duration-200 ease-out;
-    &:hover {
-      transform: scale(1.08);
-      filter: brightness(1.1);
-    }
-    &:active {
-      transform: scale(0.95);
-      transition-duration: 100ms;
-    }
+  }
+  .admin-action-toggle:hover {
+    transform: scale(1.08);
+    filter: brightness(1.1);
+  }
+  .admin-action-toggle:active {
+    transform: scale(0.95);
+    transition-duration: 100ms;
   }
 
   /* Status Badges */
@@ -389,9 +400,9 @@
   /* Hover Lift Effect */
   .hover-lift {
     @apply transition-all duration-300 ease-out hover:-translate-y-1;
-    &:hover {
-      box-shadow: var(--shadow-lg);
-    }
+  }
+  .hover-lift:hover {
+    box-shadow: var(--shadow-lg);
   }
 
   /* Table styles */
