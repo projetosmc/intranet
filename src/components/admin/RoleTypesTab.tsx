@@ -143,12 +143,12 @@ function SortableRow({ role, onEdit, onDelete }: {
       </TableCell>
       <TableCell className="text-right">
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" size="icon" onClick={onEdit}>
+          <Button className="admin-action-edit" variant="ghost" size="icon" onClick={onEdit}>
             <Pencil className="h-4 w-4" />
           </Button>
           {!role.ind_sistema && (
-            <Button variant="ghost" size="icon" onClick={onDelete}>
-              <Trash2 className="h-4 w-4 text-destructive" />
+            <Button className="admin-action-delete" variant="ghost" size="icon" onClick={onDelete}>
+              <Trash2 className="h-4 w-4" />
             </Button>
           )}
         </div>

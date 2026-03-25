@@ -239,12 +239,12 @@ export function SystemsTab() {
           <Badge variant={config.variant}>{config.label}</Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Switch checked={system.ind_ativo} onCheckedChange={() => handleToggleActive(system.cod_sistema, system.ind_ativo)} />
-          <Button variant="ghost" size="icon-sm" onClick={() => { setEditingSystem(system); setIsDialogOpen(true); }}>
+          <Switch className="admin-action-toggle" checked={system.ind_ativo} onCheckedChange={() => handleToggleActive(system.cod_sistema, system.ind_ativo)} />
+          <Button className="admin-action-edit" variant="ghost" size="icon-sm" onClick={() => { setEditingSystem(system); setIsDialogOpen(true); }}>
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon-sm" onClick={() => setDeleteSystemId(system.cod_sistema)}>
-            <Trash2 className="h-4 w-4 text-destructive" />
+          <Button className="admin-action-delete" variant="ghost" size="icon-sm" onClick={() => setDeleteSystemId(system.cod_sistema)}>
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </motion.div>

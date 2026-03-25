@@ -502,6 +502,7 @@ export default function AdminAnnouncementsPage() {
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button
+                          className="admin-action-edit"
                           variant="ghost"
                           size="icon"
                           onClick={() => handleOpenEdit(announcement)}
@@ -512,7 +513,7 @@ export default function AdminAnnouncementsPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleOpenDelete(announcement.id)}
-                          className="text-destructive hover:text-destructive"
+                          className="admin-action-delete"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
