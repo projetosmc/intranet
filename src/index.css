@@ -215,6 +215,32 @@
     @apply bg-card/80 backdrop-blur-xl border border-border/50 rounded-xl shadow-md;
   }
 
+  /* Admin Micro-Interactions */
+  .admin-row-hover {
+    @apply transition-all duration-200 ease-out hover:bg-muted/40 hover:shadow-sm;
+    &:hover {
+      transform: translateY(-1px);
+    }
+  }
+
+  .admin-card-hover {
+    @apply transition-all duration-200 ease-out cursor-default;
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px -2px hsl(var(--primary) / 0.1), 0 2px 6px -2px hsl(var(--foreground) / 0.06);
+      border-color: hsl(var(--primary) / 0.2);
+    }
+  }
+
+  .admin-stat-hover {
+    @apply transition-all duration-200 ease-out;
+    &:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 6px 16px -4px hsl(var(--primary) / 0.15);
+      border-color: hsl(var(--primary) / 0.3);
+    }
+  }
+
   /* Status Badges */
   .status-badge {
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
