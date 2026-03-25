@@ -278,13 +278,31 @@ export default function ProfilePage() {
     return user?.email?.slice(0, 2).toUpperCase() || 'U';
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1, delayChildren: 0.05 },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] },
+    },
+  };
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
+    <motion.div
+      className="max-w-2xl mx-auto space-y-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div variants={itemVariants}>
         <h1 className="text-3xl font-bold">Meu Perfil</h1>
         <p className="text-muted-foreground mt-1">
           Gerencie suas informações pessoais
@@ -292,9 +310,7 @@ export default function ProfilePage() {
       </motion.div>
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+        variants={itemVariants}
         className="bg-card border border-border rounded-xl p-8 shadow-md"
       >
         <div className="flex flex-col items-center mb-8">
