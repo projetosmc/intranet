@@ -334,6 +334,7 @@ export default function AdminProfilesPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             <Button
+                              className="admin-action-edit"
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEditRoles(user)}

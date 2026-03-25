@@ -272,9 +272,9 @@ export function RoomConfigTab() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Switch checked={room.ind_ativo} onCheckedChange={() => handleToggleRoomActive(room.cod_sala, room.ind_ativo)} />
-          <Button variant="ghost" size="icon-sm" onClick={() => { setEditingRoom(room); setSelectedRoles(room.des_roles_permitidos || ['all']); setIsRoomDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon-sm" onClick={() => setDeleteRoomId(room.cod_sala)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+          <Switch className="admin-action-toggle" checked={room.ind_ativo} onCheckedChange={() => handleToggleRoomActive(room.cod_sala, room.ind_ativo)} />
+          <Button className="admin-action-edit" variant="ghost" size="icon-sm" onClick={() => { setEditingRoom(room); setSelectedRoles(room.des_roles_permitidos || ['all']); setIsRoomDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+          <Button className="admin-action-delete" variant="ghost" size="icon-sm" onClick={() => setDeleteRoomId(room.cod_sala)}><Trash2 className="h-4 w-4" /></Button>
         </div>
       </motion.div>
     );
@@ -291,9 +291,9 @@ export function RoomConfigTab() {
         </motion.div>
         <div className="flex-1"><span className="font-medium">{type.des_nome}</span></div>
         <div className="flex items-center gap-2">
-          <Switch checked={type.ind_ativo} onCheckedChange={() => handleToggleTypeActive(type.cod_tipo_reuniao, type.ind_ativo)} />
-          <Button variant="ghost" size="icon-sm" onClick={() => { setEditingType(type); setIsTypeDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon-sm" onClick={() => setDeleteTypeId(type.cod_tipo_reuniao)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+          <Switch className="admin-action-toggle" checked={type.ind_ativo} onCheckedChange={() => handleToggleTypeActive(type.cod_tipo_reuniao, type.ind_ativo)} />
+          <Button className="admin-action-edit" variant="ghost" size="icon-sm" onClick={() => { setEditingType(type); setIsTypeDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+          <Button className="admin-action-delete" variant="ghost" size="icon-sm" onClick={() => setDeleteTypeId(type.cod_tipo_reuniao)}><Trash2 className="h-4 w-4" /></Button>
         </div>
       </motion.div>
     );
