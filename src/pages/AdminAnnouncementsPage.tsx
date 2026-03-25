@@ -1119,6 +1119,6 @@ export default function AdminAnnouncementsPage() {
           onSkipCrop={handleSkipCrop}
         />
       )}
-    </div>
+    </motion.div>
   );
 }
