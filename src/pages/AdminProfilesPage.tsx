@@ -196,10 +196,6 @@ export default function AdminProfilesPage() {
     );
   }
 
-  // Determinar qual aba mostrar por padrão
-  const defaultTab = canAccessUsersTab || isAdmin ? 'usuarios' : 
-                     canAccessRoleTypesTab ? 'tipos' : 
-                     canAccessPermissionsTab ? 'permissoes' : 'usuarios';
 
   const containerVariants = {
     hidden: { opacity: 0 },
