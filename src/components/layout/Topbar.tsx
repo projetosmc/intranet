@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AnimatedThemeToggler } from './AnimatedThemeToggler';
+
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LogoutConfirmDialog } from './LogoutConfirmDialog';
 import {
@@ -232,8 +232,6 @@ export function Topbar({ onMobileMenuToggle }: TopbarProps) {
               )}
             </AnimatePresence>
 
-            {/* Theme Toggle */}
-            <AnimatedThemeToggler />
 
             {/* Notifications Bell */}
             <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>

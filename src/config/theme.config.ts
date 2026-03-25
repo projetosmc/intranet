@@ -16,7 +16,7 @@ export const theme = {
   // Fontes
   fonts: {
     sans: ['Inter', 'Figtree', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-    mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'monospace'],
+    mono: ['Inter', 'Figtree', 'ui-sans-serif', 'system-ui', 'sans-serif'],
   },
 
   // Tamanho base da fonte
@@ -121,45 +121,6 @@ export const cssVariables = {
     '--shadow-glow': '0 0 20px hsl(195 100% 44% / 0.3)',
   },
 
-  dark: {
-    '--background': '222 47% 5%',
-    '--foreground': '210 40% 98%',
-
-    '--card': '222 47% 8%',
-    '--card-foreground': '210 40% 98%',
-
-    '--popover': '222 47% 8%',
-    '--popover-foreground': '210 40% 98%',
-
-    '--primary': '195 100% 44%',
-    '--primary-foreground': '0 0% 100%',
-
-    '--secondary': '217 33% 17%',
-    '--secondary-foreground': '210 40% 98%',
-    '--muted': '217 33% 17%',
-    '--muted-foreground': '215 20% 65%',
-
-    '--accent': '195 100% 44%',
-    '--accent-foreground': '0 0% 100%',
-
-    '--destructive': '0 62% 30%',
-    '--destructive-foreground': '210 40% 98%',
-
-    '--border': '217 33% 17%',
-    '--input': '217 33% 17%',
-    '--ring': '195 81% 60%',
-
-    '--sidebar-background': '222 47% 8%',
-    '--sidebar-foreground': '210 40% 98%',
-    '--sidebar-primary': '195 100% 44%',
-    '--sidebar-primary-foreground': '0 0% 100%',
-    '--sidebar-accent': '217 33% 17%',
-    '--sidebar-accent-foreground': '210 40% 98%',
-    '--sidebar-border': '217 33% 20%',
-    '--sidebar-ring': '195 81% 60%',
-
-    '--gradient-card': 'linear-gradient(135deg, hsl(217 33% 17% / 0.9) 0%, hsl(222 47% 11% / 0.8) 100%)',
-  },
 } as const;
 
 // ============================================================================

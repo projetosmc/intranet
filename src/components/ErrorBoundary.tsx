@@ -69,7 +69,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   Detalhes técnicos
                 </summary>
                 <div className="mt-3 space-y-2">
-                  <p className="text-sm font-mono text-destructive break-all">
+                  <p className="text-sm text-destructive break-all">
                     {this.state.error.message}
                   </p>
                   {this.state.errorInfo && (

@@ -440,7 +440,7 @@ export function BannerCropModal({
                       onChange={(e) => setBackgroundColor(e.target.value)}
                       className="w-8 h-8 rounded cursor-pointer border-0"
                     />
-                    <span className="text-xs text-muted-foreground font-mono">{backgroundColor}</span>
+                    <span className="text-xs text-muted-foreground">{backgroundColor}</span>
                   </div>
                 )}
               </div>

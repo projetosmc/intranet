@@ -1010,7 +1010,7 @@ export default function AdminSettingsPage() {
                               const prefix = depth > 0 ? '└ ' : '';
                               return (
                                 <SelectItem key={item.cod_menu_item} value={item.cod_menu_item}>
-                                  <span className="font-mono">{indent}{prefix}</span>
+                                  <span className="text-xs">{indent}{prefix}</span>
                                   <span>{item.des_nome}</span>
                                 </SelectItem>
                               );

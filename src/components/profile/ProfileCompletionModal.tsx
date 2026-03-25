@@ -181,7 +181,7 @@ export function ProfileCompletionModal({ onComplete }: ProfileCompletionModalPro
 
           {/* Form */}
           <div className="p-6 space-y-6">
-            <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-700 dark:text-amber-400">
+            <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-700">
               <AlertCircle className="h-5 w-5 shrink-0" />
               <p className="text-sm">
                 Essas informações são obrigatórias para utilizar o sistema.
@@ -260,7 +260,7 @@ export function ProfileCompletionModal({ onComplete }: ProfileCompletionModalPro
               {isFormValid ? (
                 <>
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <span className="text-green-600 dark:text-green-400">Formulário válido</span>
+                  <span className="text-green-600">Formulário válido</span>
                 </>
               ) : (
                 <>

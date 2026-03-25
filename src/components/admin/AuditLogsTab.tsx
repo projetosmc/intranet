@@ -45,20 +45,20 @@ const entityLabels: Record<string, string> = {
 };
 
 const actionColors: Record<string, string> = {
-  role_added: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-  role_removed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-  user_activated: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-  user_deactivated: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-  profile_updated: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-  menu_item_created: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-  menu_item_updated: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-  menu_item_deleted: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-  announcement_created: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-  announcement_updated: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-  announcement_deleted: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-  event_created: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-  event_updated: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-  event_deleted: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+  role_added: 'bg-green-100 text-green-800',
+  role_removed: 'bg-red-100 text-red-800',
+  user_activated: 'bg-green-100 text-green-800',
+  user_deactivated: 'bg-red-100 text-red-800',
+  profile_updated: 'bg-blue-100 text-blue-800',
+  menu_item_created: 'bg-green-100 text-green-800',
+  menu_item_updated: 'bg-blue-100 text-blue-800',
+  menu_item_deleted: 'bg-red-100 text-red-800',
+  announcement_created: 'bg-green-100 text-green-800',
+  announcement_updated: 'bg-blue-100 text-blue-800',
+  announcement_deleted: 'bg-red-100 text-red-800',
+  event_created: 'bg-green-100 text-green-800',
+  event_updated: 'bg-blue-100 text-blue-800',
+  event_deleted: 'bg-red-100 text-red-800',
 };
 
 export function AuditLogsTab() {
