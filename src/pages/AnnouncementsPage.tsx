@@ -126,7 +126,7 @@ export default function AnnouncementsPage() {
             {selectedAnnouncement.templateType === 'poll' ? (
               <PollCard announcement={selectedAnnouncement} onVote={vote} />
             ) : (
-              <div className="prose prose-slate dark:prose-invert max-w-none">
+              <div className="prose prose-slate max-w-none">
                 <RichTextContent html={selectedAnnouncement.content} />
               </div>
             )}
