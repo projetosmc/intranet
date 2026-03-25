@@ -199,14 +199,12 @@ export default function AnnouncementsPage() {
         </p>
       </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {activeAnnouncements.map((announcement, index) => (
           announcement.templateType === 'poll' ? (
             <motion.div
               key={announcement.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
+              variants={itemVariants}
             >
               <PollCard announcement={announcement} onVote={vote} />
             </motion.div>
@@ -219,12 +217,11 @@ export default function AnnouncementsPage() {
             />
           )
         ))}
-      </div>
+      </motion.div>
 
       {activeAnnouncements.length === 0 && !isLoading && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          variants={itemVariants}
           className="glass-card p-12 text-center"
         >
           <Megaphone className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
@@ -236,6 +233,6 @@ export default function AnnouncementsPage() {
       )}
 
       {isLoading && <AnnouncementsPageSkeleton />}
-    </div>
+    </motion.div>
   );
 }
