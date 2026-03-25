@@ -1762,7 +1762,6 @@ export default function RoomReservationPage() {
           </div>
         </DialogContent>
       </Dialog>
-      </motion.div>
     </motion.div>
   );
 }
