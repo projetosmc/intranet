@@ -48,6 +48,11 @@ export default function AdminProfilesPage() {
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeProfileTab, setActiveProfileTab] = useState(() => {
+    if (canAccessUsersTab || isAdmin) return 'usuarios';
+    if (canAccessRoleTypesTab || isAdmin) return 'tipos';
+    return 'permissoes';
+  });
 
   useEffect(() => {
     if (isAdmin) {
