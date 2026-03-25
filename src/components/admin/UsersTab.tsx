@@ -117,7 +117,7 @@ export function UsersTab() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-muted/50 border border-border rounded-lg p-4">
+      <div className="bg-muted/50 border border-border rounded-lg p-4 admin-card-hover">
         <div className="flex items-center gap-3">
           <Building2 className="h-5 w-5 text-muted-foreground" />
           <div>
@@ -171,7 +171,7 @@ export function UsersTab() {
             </thead>
             <tbody>
               {filteredUsers.map((user) => (
-                <tr key={user.cod_usuario} className="border-b border-border hover:bg-muted/30 transition-colors">
+                <tr key={user.cod_usuario} className="border-b border-border admin-row-hover">
                   <td className="p-4">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">

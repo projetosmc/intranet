@@ -112,7 +112,7 @@ function SortableRow({ role, onEdit, onDelete }: {
   };
 
   return (
-    <TableRow ref={setNodeRef} style={style}>
+    <TableRow ref={setNodeRef} style={style} className="admin-row-hover">
       <TableCell className="w-[40px]">
         <button
           {...attributes}

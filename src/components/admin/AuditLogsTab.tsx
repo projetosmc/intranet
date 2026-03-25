@@ -134,23 +134,23 @@ export function AuditLogsTab() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-card border border-border rounded-lg p-4">
+        <div className="bg-card border border-border rounded-lg p-4 admin-stat-hover">
           <p className="text-sm text-muted-foreground">Total de logs</p>
           <p className="text-2xl font-bold">{logs.length}</p>
         </div>
-        <div className="bg-card border border-border rounded-lg p-4">
+        <div className="bg-card border border-border rounded-lg p-4 admin-stat-hover">
           <p className="text-sm text-muted-foreground">Permissões alteradas</p>
           <p className="text-2xl font-bold">
             {logs.filter(l => l.des_tipo_entidade === 'user_role').length}
           </p>
         </div>
-        <div className="bg-card border border-border rounded-lg p-4">
+        <div className="bg-card border border-border rounded-lg p-4 admin-stat-hover">
           <p className="text-sm text-muted-foreground">Perfis alterados</p>
           <p className="text-2xl font-bold">
             {logs.filter(l => l.des_tipo_entidade === 'profile').length}
           </p>
         </div>
-        <div className="bg-card border border-border rounded-lg p-4">
+        <div className="bg-card border border-border rounded-lg p-4 admin-stat-hover">
           <p className="text-sm text-muted-foreground">Hoje</p>
           <p className="text-2xl font-bold">
             {logs.filter(l => {
@@ -178,7 +178,7 @@ export function AuditLogsTab() {
                 key={log.cod_log}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="p-4 hover:bg-muted/30 transition-colors"
+                className="p-4 admin-row-hover"
               >
                 <div 
                   className="flex items-start gap-4 cursor-pointer"

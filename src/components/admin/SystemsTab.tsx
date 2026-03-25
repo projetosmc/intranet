@@ -228,7 +228,7 @@ export function SystemsTab() {
         ref={setNodeRef}
         style={style}
         animate={{ scale: isDragging ? 1.02 : 1, opacity: isDragging ? 0.9 : 1 }}
-        className={`flex items-center gap-3 p-4 ${isDragging ? 'z-50 bg-card rounded-lg shadow-lg' : 'hover:bg-muted/30'}`}
+        className={`flex items-center gap-3 p-4 ${isDragging ? 'z-50 bg-card rounded-lg shadow-lg' : 'admin-row-hover'}`}
       >
         <motion.div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
           <GripVertical className="h-4 w-4 text-muted-foreground" />
