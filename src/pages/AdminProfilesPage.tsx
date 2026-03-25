@@ -178,7 +178,7 @@ export default function AdminProfilesPage() {
 
   const getRoleColor = useCallback((roleCode: string) => {
     const role = roleTypes.find(r => r.des_codigo === roleCode);
-    return role?.des_cor || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    return role?.des_cor || 'bg-gray-100 text-gray-800';
   }, [roleTypes]);
 
   // Verificar se tem acesso a pelo menos uma aba
