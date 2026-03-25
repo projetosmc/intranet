@@ -505,8 +505,8 @@ export default function TrilhaVendasPage() {
                           </TableCell>
                           <TableCell className="text-xs whitespace-nowrap">{formatDate(venda.dta_venda)}</TableCell>
                           <TableCell className="text-xs">{venda.des_forma_pagto}</TableCell>
-                          <TableCell className="text-xs font-mono text-right">{formatCurrency(venda.val_bruto_titulo)}</TableCell>
-                          <TableCell className="text-xs font-mono text-right">{formatCurrency(venda.val_liquido_titulo)}</TableCell>
+                          <TableCell className="text-xs tabular-nums text-right">{formatCurrency(venda.val_bruto_titulo)}</TableCell>
+                          <TableCell className="text-xs tabular-nums text-right">{formatCurrency(venda.val_liquido_titulo)}</TableCell>
                           <TableCell className="text-xs whitespace-nowrap">{formatDate(venda.dta_faturamento)}</TableCell>
                           <TableCell className="text-xs whitespace-nowrap">{formatDate(venda.dta_vencimento_fatura)}</TableCell>
                           <TableCell className="text-xs whitespace-nowrap">{formatDate(venda.dta_prev_recebimento)}</TableCell>
@@ -515,7 +515,7 @@ export default function TrilhaVendasPage() {
                               <span className="text-emerald-600">{formatDate(venda.dta_recebimento)}</span>
                             ) : '—'}
                           </TableCell>
-                          <TableCell className="text-xs font-mono text-right">
+                          <TableCell className="text-xs tabular-nums text-right">
                             {venda.val_pagamento ? (
                               <span className="text-emerald-600">{formatCurrency(venda.val_pagamento)}</span>
                             ) : '—'}
