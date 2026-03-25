@@ -732,10 +732,12 @@ export default function AdminSettingsPage() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Switch
+              className="admin-action-toggle"
               checked={item.ind_ativo}
               onCheckedChange={() => handleToggleActive(item.cod_menu_item, item.ind_ativo)}
             />
             <Button 
+              className="admin-action-edit"
               variant="ghost" 
               size="icon-sm" 
               onClick={() => { 
@@ -746,7 +748,6 @@ export default function AdminSettingsPage() {
                 const isExternal = item.des_caminho?.startsWith('http');
                 const hasChildren = menuItems.some(m => m.seq_menu_pai === item.cod_menu_item);
                 const isInternalPath = availablePaths.some(p => p.path === item.des_caminho);
-                // Determinar tipo: container se tem filhos ou se o caminho não é uma rota válida
                 const detectedPathType = isExternal ? 'external' : (isInternalPath ? 'internal' : 'container');
                 setPathType(detectedPathType);
                 setSelectedPath(isExternal || !isInternalPath ? '' : item.des_caminho || '');
@@ -758,11 +759,12 @@ export default function AdminSettingsPage() {
               <Pencil className="h-4 w-4" />
             </Button>
             <Button 
+              className="admin-action-delete"
               variant="ghost" 
               size="icon-sm" 
               onClick={() => setDeleteItemId(item.cod_menu_item)}
             >
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </motion.div>
