@@ -902,9 +902,9 @@ export default function AdminSettingsPage() {
           </TabsList>
 
           <AnimatePresence mode="wait">
-          <motion.div key={activeSettingsTab} {...tabTransition}>
+          <motion.div key={activeSettingsTab} {...tabTransition} className="mt-6">
 
-          <TabsContent value="menu" className="mt-6" forceMount={activeSettingsTab === 'menu' ? true : undefined} hidden={activeSettingsTab !== 'menu'}>
+          <TabsContent value="menu" className="mt-0">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-lg font-semibold">Itens do Menu</h2>
@@ -1335,15 +1335,15 @@ export default function AdminSettingsPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="rooms" className="mt-6" forceMount={activeSettingsTab === 'rooms' ? true : undefined} hidden={activeSettingsTab !== 'rooms'}>
+          <TabsContent value="rooms" className="mt-0">
             <RoomConfigTab />
           </TabsContent>
 
-          <TabsContent value="systems" className="mt-6" forceMount={activeSettingsTab === 'systems' ? true : undefined} hidden={activeSettingsTab !== 'systems'}>
+          <TabsContent value="systems" className="mt-0">
             <SystemsTab />
           </TabsContent>
 
-          <TabsContent value="audit" className="mt-6" forceMount={activeSettingsTab === 'audit' ? true : undefined} hidden={activeSettingsTab !== 'audit'}>
+          <TabsContent value="audit" className="mt-0">
             <AuditLogsTab />
           </TabsContent>
 
